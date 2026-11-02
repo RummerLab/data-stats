@@ -1,7 +1,7 @@
 <script lang="ts">
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
-	import MooreaMap from '#lib/components/MooreaMap.svelte';
+	import InteractiveMap from '#lib/components/InteractiveMap.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
 	import { num, pct, season } from '#lib/format';
@@ -22,25 +22,39 @@
 		</p>
 	</header>
 
-	<section class="section grid-2">
+	<section class="section">
 		<ChartCard
-			title="Catch rate around the island"
-			subtitle="Circles sized by sharks per net-hour (both species)"
+			title="Nurseries around the island"
+			subtitle="Circles sized by sharks per net-hour (both species). Switch between satellite and street maps, or show adult blacktip capture spots."
 		>
-			<MooreaMap
-				points={mapped.map((r) => ({
-					id: r.id,
-					label: r.name,
-					lat: r.lat!,
-					lon: r.lon!,
-					value: r.cpue,
-					href: r.href,
-					sub: `${num(r.captures)} captures, ${num(r.sets)} sets`
-				}))}
+			<InteractiveMap
+				label="Map of Mo'orea's shark nurseries"
 				valueLabel="Sharks / net-hour"
 				format={(v) => num(v, 2)}
+				layers={[
+					{
+						name: 'Nurseries',
+						color: 'var(--series-1)',
+						sized: true,
+						points: mapped.map((r) => ({
+							id: r.id,
+							label: r.name,
+							lat: r.lat!,
+							lon: r.lon!,
+							value: r.cpue,
+							href: r.href,
+							sub: `${num(r.captures)} captures, ${num(r.sets)} sets`
+						}))
+					},
+					...(data.adults.length
+						? [{ name: 'Adult blacktip captures', color: 'var(--series-4)', points: data.adults }]
+						: [])
+				]}
 			/>
 		</ChartCard>
+	</section>
+
+	<section class="section grid-2">
 		<ChartCard
 			title="Sicklefin lemons vs blacktips"
 			subtitle="Catch rate per species: lemon sharks are concentrated in a few southern and western nurseries"

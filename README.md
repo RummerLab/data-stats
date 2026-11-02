@@ -86,4 +86,4 @@ Read [AGENTS.md](AGENTS.md) before changing the importer, charts or release proc
 
 ## Credits
 
-Survey data © the Physioshark project. Environmental data: Open-Meteo (CC BY 4.0, ERA5 © Copernicus/ECMWF), NOAA OISST v2.1, NOAA Coral Reef Watch (via PacIOOS), University of Hawaii Sea Level Center, NOAA Climate Prediction Center. Coastline © OpenStreetMap contributors (ODbL).
+Survey data © the Physioshark project. Environmental data: Open-Meteo (CC BY 4.0, ERA5 © Copernicus/ECMWF), NOAA OISST v2.1, NOAA Coral Reef Watch (via PacIOOS), University of Hawaii Sea Level Center, NOAA Climate Prediction Center. Coastline and street map tiles © OpenStreetMap contributors (ODbL). Satellite imagery © Esri, Maxar, Earthstar Geographics.

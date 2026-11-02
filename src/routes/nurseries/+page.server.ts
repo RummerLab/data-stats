@@ -52,5 +52,22 @@ export const load: PageServerLoad = () =>
 				round(cpueOf(eff.filter((s) => s.siteId === id && s.season === season)))
 			)
 		);
-		return { rows, seasons: d.seasons, heat };
+		// Adult blacktips caught on hook and line, where the datasheet has both coordinates.
+		const adults = d.adults
+			.filter((a) => a.lat != null && a.lon != null && a.lon < 0)
+			.map((a, i) => ({
+				id: `adult-${i}`,
+				label: a.name ? `Adult blacktip “${a.name}”` : 'Adult blacktip',
+				lat: a.lat!,
+				lon: a.lon!,
+				sub: [
+					a.date,
+					a.sex === 'F' ? 'female' : a.sex === 'M' ? 'male' : null,
+					a.tlMm ? `${Math.round(a.tlMm)} mm TL` : null
+				]
+					.filter(Boolean)
+					.join(' · '),
+				href: '/adults'
+			}));
+		return { rows, seasons: d.seasons, heat, adults };
 	});

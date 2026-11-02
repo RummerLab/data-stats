@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
+	import InteractiveMap from '#lib/components/InteractiveMap.svelte';
 	import MooreaMap from '#lib/components/MooreaMap.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
@@ -43,7 +44,29 @@
 
 	<section class="section grid-2">
 		<ChartCard title="Location">
-			<MooreaMap points={data.map} maxR={10} showLabels={false} />
+			{#if s.lat != null && s.lon != null}
+				<InteractiveMap
+					label={`Map of ${s.name}`}
+					height={360}
+					focus={{ lat: s.lat, lon: s.lon, zoom: 15 }}
+					fallback={data.map}
+					layers={[
+						{
+							name: s.name,
+							color: 'var(--series-2)',
+							radius: 9,
+							points: data.map.filter((p) => p.id === s.id)
+						},
+						{
+							name: 'Other nurseries',
+							color: 'var(--series-1)',
+							points: data.map.filter((p) => p.id !== s.id)
+						}
+					]}
+				/>
+			{:else}
+				<MooreaMap points={data.map} maxR={10} showLabels={false} />
+			{/if}
 			{#if s.directions || s.habitat}
 				<p class="small"><b>Directions (2014–15 log):</b> {s.directions ?? '–'}</p>
 				<p class="small"><b>Habitat:</b> {s.habitat ?? '–'}</p>

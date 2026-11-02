@@ -14,20 +14,29 @@
 <script lang="ts">
 	import outline from '#lib/moorea-outline.json';
 	import Tip, { type TipState } from './charts/Tip.svelte';
+	import { registerCsv } from './charts/csv';
 
 	let {
 		points,
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
 		showLabels = true,
-		maxR = 20
+		maxR = 20,
+		csv = true
 	}: {
 		points: MapPoint[];
 		valueLabel?: string;
 		format?: (v: number) => string;
 		showLabels?: boolean;
 		maxR?: number;
+		/** Offer the points as CSV to the enclosing ChartCard. */
+		csv?: boolean;
 	} = $props();
+
+	registerCsv(() => ({
+		columns: ['name', 'lat', 'lon', valueLabel || 'value'],
+		rows: csv ? points.map((p) => [p.label, p.lat, p.lon, p.value]) : []
+	}));
 
 	let width = $state(640);
 	const lat0 = -17.53;

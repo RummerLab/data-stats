@@ -53,6 +53,10 @@
 				formulas.
 			</li>
 			<li><b>Coastline:</b> © OpenStreetMap contributors (ODbL), simplified.</li>
+			<li>
+				<b>Interactive maps:</b> street tiles © OpenStreetMap contributors; satellite imagery © Esri,
+				Maxar, Earthstar Geographics. Tiles load from those servers in your browser.
+			</li>
 		</ul>
 		<p class="small muted">
 			Last import {date(data.importedAt)}. Environmental data to {date(data.external.weather)} (weather),
