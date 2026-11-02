@@ -1,0 +1,43 @@
+node_modules
+
+# Output
+.output
+/.svelte-kit
+/build
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Source spreadsheets: NEVER commit (public repo). Mounted read-only at runtime.
+/data
+*.xlsx
+!/samples/fixture/*.xlsx
+~$*.xlsx
+
+# Derived SQLite cache
+*.sqlite
+*.sqlite-*
+/cache
+
+# Package managers
+package-lock.json
+yarn.lock
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# Playwright
+/e2e/.tmp
+/test-results
+/playwright-report
+
+# Local agent worktrees
+.worktrees/
+/.claude/worktrees/
