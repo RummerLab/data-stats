@@ -108,6 +108,7 @@
 			note={`Median ${num(t.dark)} min after sunset on dark nights (n = ${num(t.nDark)}) vs ${num(t.bright)} min on bright nights (n = ${num(t.nBright)}); Welch ${pValue(t.p)}.`}
 		>
 			<Histogram
+				mode="overlay"
 				edges={t.edges}
 				series={[
 					{ name: 'Dark nights', color: 'var(--series-1)', counts: t.histDark },
