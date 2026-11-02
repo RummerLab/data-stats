@@ -14,6 +14,15 @@
 		data.rows
 			.filter((r) => fx(r) != null && fy(r) != null)
 			.map((r) => ({ x: fx(r)!, y: fy(r)!, label: r.name, href: `/nurseries/${r.id}` }));
+	const busyText = $derived.by(() => {
+		const { busyMean, quietMean, p } = data.busyDays;
+		const test = p != null ? ` (Welch's t-test p = ${num(p, 3)})` : '';
+		const verdict =
+			p != null && p < 0.05
+				? "The difference is unlikely to be chance alone, but the sets aren't randomised: crews, sites and moon phases differ between these days too."
+				: 'That is within what chance alone would produce.';
+		return `Busy days average ${num(busyMean, 2)} sharks per net-hour against ${num(quietMean, 2)} on ordinary weekdays${test}. ${verdict}`;
+	});
 </script>
 
 <div class="container">
@@ -133,6 +142,62 @@
 				opacity={0.85}
 			/>
 		</ChartCard>
+	</section>
+
+	<section class="section">
+		<h2>Busy days</h2>
+		<p>
+			A rough proxy for people on the water: weekends, French Polynesia's public holidays and the
+			Christmas–New Year period (20 Dec – 5 Jan). {busyText}
+			School holidays aren't included yet: the Polynesian school calendar changes every year.
+		</p>
+		<div class="grid-2">
+			<ChartCard
+				title="Catch rate by type of day"
+				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+			>
+				<BarChart
+					categories={data.busyDays.byType.map((t) => `${t.label} (${t.n})`)}
+					series={[
+						{
+							name: 'Sharks / net-hour',
+							color: 'var(--series-1)',
+							values: data.busyDays.byType.map((t) => t.mean)
+						}
+					]}
+					errors={data.busyDays.byType.map((t) =>
+						t.lo != null && t.hi != null ? [t.lo, t.hi] : null
+					)}
+					valueFormat={(v) => num(v, 2)}
+				/>
+			</ChartCard>
+			<ChartCard
+				title="Catch rate by day of the week"
+				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+			>
+				<BarChart
+					categories={data.busyDays.byWeekday.map((t) => `${t.label} (${t.n})`)}
+					series={[
+						{
+							name: 'Sharks / net-hour',
+							color: 'var(--series-1)',
+							values: data.busyDays.byWeekday.map((t) => t.mean)
+						}
+					]}
+					errors={data.busyDays.byWeekday.map((t) =>
+						t.lo != null && t.hi != null ? [t.lo, t.hi] : null
+					)}
+					valueFormat={(v) => num(v, 2)}
+				/>
+			</ChartCard>
+		</div>
+		{#if data.busyDays.holidays.length}
+			<p class="small">
+				Sets on public holidays: {data.busyDays.holidays
+					.map((h) => `${h.name} (${h.n})`)
+					.join(', ')}.
+			</p>
+		{/if}
 	</section>
 
 	<section class="section card">

@@ -42,6 +42,7 @@ src/lib/server/data.ts   loads the whole dataset into memory per import; memo() 
 src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env.ts (per-set variables)
                          findings.ts (live findings)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
+src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
 src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap, charts/*
 src/routes/              one folder per page (+page.server.ts computes, +page.svelte renders)

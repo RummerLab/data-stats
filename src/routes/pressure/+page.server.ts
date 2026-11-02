@@ -9,7 +9,8 @@ import {
 	recapturePairs,
 	round
 } from '#lib/server/analytics/common';
-import { mean, median, pairs, spearman } from '#lib/stats';
+import { DAY_TYPES, dayType, holidayOn } from '#lib/server/holidays';
+import { mean, median, pairs, se, spearman, welch } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -70,5 +71,56 @@ export const load: PageServerLoad = () =>
 				return r ? round(r.rho, 2) : null;
 			})
 		}));
-		return { rows, metrics, outcomes: outcomes.map((o) => o[1]), corr };
+		// Busy days (#25): do weekends and holidays, when more people are on the water, change the
+		// evening catch? Mean per-set catch rate with a ±1.96·SE interval.
+		const dated = eff.filter((s) => s.date && s.cpue != null);
+		const group = (ss: typeof dated, label: string) => {
+			const ys = ss.map((s) => s.cpue);
+			const m = mean(ys);
+			const e = se(ys);
+			return {
+				label,
+				n: ss.length,
+				mean: round(m, 3),
+				lo: m != null && e != null ? round(Math.max(0, m - 1.96 * e), 3) : null,
+				hi: m != null && e != null ? round(m + 1.96 * e, 3) : null
+			};
+		};
+		const byType = DAY_TYPES.map((t) =>
+			group(
+				dated.filter((s) => dayType(s.date!) === t),
+				t
+			)
+		);
+		const byWeekday = [1, 2, 3, 4, 5, 6, 0].map((wd, i) =>
+			group(
+				dated.filter((s) => s.weekday === wd),
+				['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
+			)
+		);
+		const busy = dated.filter((s) => dayType(s.date!) !== 'Weekday');
+		const quiet = dated.filter((s) => dayType(s.date!) === 'Weekday');
+		const test = welch(
+			busy.map((s) => s.cpue),
+			quiet.map((s) => s.cpue)
+		);
+		const holidaySets = new Map<string, number>();
+		for (const s of dated) {
+			const h = holidayOn(s.date!);
+			if (h) holidaySets.set(h, (holidaySets.get(h) ?? 0) + 1);
+		}
+		return {
+			rows,
+			metrics,
+			outcomes: outcomes.map((o) => o[1]),
+			corr,
+			busyDays: {
+				byType,
+				byWeekday,
+				busyMean: round(mean(busy.map((s) => s.cpue)), 2),
+				quietMean: round(mean(quiet.map((s) => s.cpue)), 2),
+				p: test ? round(test.p, 3) : null,
+				holidays: [...holidaySets].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }))
+			}
+		};
 	});
