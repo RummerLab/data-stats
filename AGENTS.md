@@ -98,6 +98,7 @@ pnpm build && pnpm test:e2e  # Playwright + axe against the production build
 pnpm db:generate             # after editing schema.ts
 pnpm external                # refresh environmental snapshots
 pnpm fixture                 # regenerate synthetic workbooks
+pnpm social-preview          # re-render static/og-image.png + docs/social-preview.png (Playwright)
 REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # opt-in real-data summary
 ```
 

@@ -8,6 +8,7 @@ Matches [physioshark.org](https://physioshark.org/): clean, corporate, ocean-blu
 - Page titles 700, section titles 650, body 400 at 16 px / 1.6. Hero headline uppercase like the main site.
 - Logo: the Physioshark project logo (`static/logo-physioshark.png`, from [RummerLab/physioshark-project](https://github.com/RummerLab/physioshark-project)) followed by a `DATA` chip (white on `#1d5fb8` in both themes for contrast). On dark surfaces it is shown as a light monochrome (`filter`), since the navy half would vanish.
 - Icon: `static/favicon.svg` is the project's shark mark (with a lighter navy under `prefers-color-scheme: dark`). `PhysiosharkIcon.svelte` inlines it with `--mark-light` / `--mark-dark` colours for the navy footer. Don't redraw or recolour the mark beyond that.
+- Social preview: `scripts/make-social-preview.mjs` renders `static/og-image.png` (1200×630, `og:image`) and `docs/social-preview.png` (1280×640, uploaded by hand under the GitHub repo's Settings → Social preview). The wave is decorative, not data, so the images don't go stale.
 
 ## Colour tokens (`src/app.css`)
 

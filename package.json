@@ -22,6 +22,7 @@
 		"format": "prettier --write --cache --cache-strategy content .",
 		"db:generate": "drizzle-kit generate",
 		"fixture": "node scripts/make-fixture.mjs",
+		"social-preview": "node scripts/make-social-preview.mjs",
 		"external": "node scripts/fetch-external.mjs",
 		"import": "node scripts/import.mjs",
 		"start": "node scripts/server.mjs"
