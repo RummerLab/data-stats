@@ -11,7 +11,8 @@
 		xLabel = '',
 		yLabel = 'Count',
 		xFormat = compact,
-		markers = []
+		markers = [],
+		mode = 'stack'
 	}: {
 		/** Bin edges (n + 1 values). */
 		edges: number[];
@@ -21,6 +22,8 @@
 		yLabel?: string;
 		xFormat?: (v: number) => string;
 		markers?: { x: number; label: string }[];
+		/** 'stack' adds series up; 'overlay' draws each from zero (translucent fill + outline). */
+		mode?: 'stack' | 'overlay';
 	} = $props();
 
 	let width = $state(640);
@@ -33,7 +36,10 @@
 	const totals = $derived(
 		edges.slice(0, -1).map((_, i) => series.reduce((a, s) => a + (s.counts[i] ?? 0), 0))
 	);
-	const yExt = $derived(nice(0, Math.max(1, ...totals), 5, true));
+	const peak = $derived(
+		mode === 'overlay' ? Math.max(1, ...series.flatMap((s) => s.counts)) : Math.max(1, ...totals)
+	);
+	const yExt = $derived(nice(0, peak, 5, true));
 	const sx = $derived(
 		linear(
 			[edges[0] ?? 0, edges[edges.length - 1] ?? 1],
@@ -44,6 +50,15 @@
 	const xt = $derived(
 		ticks(edges[0] ?? 0, edges[edges.length - 1] ?? 1, Math.max(3, Math.floor(width / 80)))
 	);
+	/** Stepped outline along the top of one series' bars (overlay mode). */
+	function outline(counts: number[]): string {
+		let d = '';
+		edges.slice(0, -1).forEach((e0, i) => {
+			const y = sy(counts[i] ?? 0);
+			d += `${i ? 'L' : 'M'}${sx(e0)},${y}L${sx(edges[i + 1])},${y}`;
+		});
+		return d;
+	}
 	let tip = $state<TipState | null>(null);
 	function show(e: PointerEvent, i: number) {
 		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
@@ -85,7 +100,7 @@
 		{#each edges.slice(0, -1) as e0, i (i)}
 			{@const x0 = sx(e0) + 1}
 			{@const x1 = sx(edges[i + 1]) - 1}
-			{#each series as s, k (s.name)}
+			{#each mode === 'overlay' ? [] : series as s, k (s.name)}
 				{@const below = series.slice(0, k).reduce((a, q) => a + (q.counts[i] ?? 0), 0)}
 				{@const v = s.counts[i] ?? 0}
 				{#if v > 0}
@@ -109,6 +124,26 @@
 				onpointermove={(e) => show(e, i)}
 			/>
 		{/each}
+		{#if mode === 'overlay'}
+			{#each series as s (s.name)}
+				<g pointer-events="none">
+					{#each edges.slice(0, -1) as e0, i (i)}
+						{@const v = s.counts[i] ?? 0}
+						{#if v > 0}
+							<rect
+								x={sx(e0)}
+								width={Math.max(0, sx(edges[i + 1]) - sx(e0))}
+								y={sy(v)}
+								height={Math.max(0, sy(0) - sy(v))}
+								fill={s.color}
+								fill-opacity="0.22"
+							/>
+						{/if}
+					{/each}
+					<path d={outline(s.counts)} fill="none" stroke={s.color} stroke-width="2" />
+				</g>
+			{/each}
+		{/if}
 		<line
 			x1={m.left}
 			x2={width - m.right}

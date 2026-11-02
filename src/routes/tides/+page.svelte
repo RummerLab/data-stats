@@ -46,6 +46,7 @@
 			subtitle="Clock time of every high and low tide since 2013"
 		>
 			<Histogram
+				mode="overlay"
 				edges={data.highsEdges}
 				series={[
 					{ name: 'High tides', color: 'var(--series-1)', counts: data.highsHist },
