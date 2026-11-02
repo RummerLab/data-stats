@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dataset } from '../data';
 import { topFindings } from '../analytics/findings';
+import { seasonRewind } from '../analytics/rewind';
 
 // DATA_DIR points at samples/fixture (synthetic) and DATABASE_PATH at :memory: (vitest.config.ts).
 describe('import of the synthetic fixture', () => {
@@ -37,5 +38,12 @@ describe('import of the synthetic fixture', () => {
 
 	it('computes findings without throwing', () => {
 		expect(topFindings(d).length).toBeGreaterThan(3);
+	});
+
+	it('builds a season rewind', () => {
+		const ids = seasonRewind(d, '2021-2022').map((f) => f.id);
+		expect(ids).toContain('rewind-busiest');
+		expect(ids).toContain('rewind-cpue');
+		expect(ids).toContain('rewind-crew');
 	});
 });
