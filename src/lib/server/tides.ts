@@ -51,7 +51,11 @@ export function findExtrema(points: HourlyPoint[]): Extremum[] {
 }
 
 /** Linear interpolation of the hourly series at a fractional epoch hour. */
-export function interpolate(points: HourlyPoint[], index: Map<number, number>, hour: number): number | null {
+export function interpolate(
+	points: HourlyPoint[],
+	index: Map<number, number>,
+	hour: number
+): number | null {
 	const h0 = Math.floor(hour);
 	const i0 = index.get(h0);
 	const i1 = index.get(h0 + 1);

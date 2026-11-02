@@ -103,7 +103,10 @@ export interface RawSet {
 	ref: SourceRef;
 }
 
-const eq = (...names: string[]): Matcher => (k: string) => names.includes(k);
+const eq =
+	(...names: string[]): Matcher =>
+	(k: string) =>
+		names.includes(k);
 
 const CAPTURE_SPEC = {
 	site: [eq('site', 'location')],
@@ -200,18 +203,32 @@ function harmoniseUnits(rows: RawCapture[], log: IssueLog, ref: SourceRef) {
 		}
 		log.add('info', 'units', `Girths recorded in cm (median ${gMed}); converted to mm`, ref);
 	}
-	const claspers = rows.flatMap((r) => [r.clasperL, r.clasperR]).filter((v): v is number => v != null);
+	const claspers = rows
+		.flatMap((r) => [r.clasperL, r.clasperR])
+		.filter((v): v is number => v != null);
 	const cMed = median(claspers);
 	if (cMed != null && cMed < 12) {
 		for (const r of rows) {
 			if (r.clasperL != null) r.clasperL *= 10;
 			if (r.clasperR != null) r.clasperR *= 10;
 		}
-		log.add('info', 'units', `Clasper lengths recorded in cm (median ${cMed}); converted to mm`, ref);
+		log.add(
+			'info',
+			'units',
+			`Clasper lengths recorded in cm (median ${cMed}); converted to mm`,
+			ref
+		);
 	}
 	for (const r of rows) {
 		if (r.massKg != null && r.massKg > 40 && (r.tlMm ?? 0) < 1200) {
-			log.add('warning', 'units', `Mass ${r.massKg} looks like grams; ÷1000`, r.ref, 'mass', r.massKg);
+			log.add(
+				'warning',
+				'units',
+				`Mass ${r.massKg} looks like grams; ÷1000`,
+				r.ref,
+				'mass',
+				r.massKg
+			);
 			r.massKg /= 1000;
 		}
 	}
@@ -220,15 +237,36 @@ function harmoniseUnits(rows: RawCapture[], log: IssueLog, ref: SourceRef) {
 /** Sanity checks that never change values, only report them. */
 function checkCapture(r: RawCapture, log: IssueLog) {
 	if (r.tlMm != null && r.flMm != null && r.tlMm < r.flMm)
-		log.add('warning', 'morphometrics', `TL (${r.tlMm}) shorter than FL (${r.flMm})`, r.ref, 'TL', r.tlMm);
+		log.add(
+			'warning',
+			'morphometrics',
+			`TL (${r.tlMm}) shorter than FL (${r.flMm})`,
+			r.ref,
+			'TL',
+			r.tlMm
+		);
 	if (r.flMm != null && r.pclMm != null && r.flMm < r.pclMm)
-		log.add('warning', 'morphometrics', `FL (${r.flMm}) shorter than PCL (${r.pclMm})`, r.ref, 'FL', r.flMm);
+		log.add(
+			'warning',
+			'morphometrics',
+			`FL (${r.flMm}) shorter than PCL (${r.pclMm})`,
+			r.ref,
+			'FL',
+			r.flMm
+		);
 	if (r.kind === 'field' && r.tlMm != null && (r.tlMm < 300 || r.tlMm > 2200))
 		log.add('warning', 'morphometrics', `Unusual TL ${r.tlMm} mm`, r.ref, 'TL', r.tlMm);
 	if (r.massKg != null && r.tlMm != null && r.tlMm < 1000) {
 		const expected = 3.2e-9 * r.tlMm ** 3.1;
 		if (r.massKg > expected * 2.2 || r.massKg < expected / 2.2)
-			log.add('warning', 'morphometrics', `Mass ${r.massKg} kg unusual for TL ${r.tlMm} mm`, r.ref, 'mass', r.massKg);
+			log.add(
+				'warning',
+				'morphometrics',
+				`Mass ${r.massKg} kg unusual for TL ${r.tlMm} mm`,
+				r.ref,
+				'mass',
+				r.massKg
+			);
 	}
 }
 
@@ -242,7 +280,14 @@ export function parseCaptureSheet(
 	// 2015-16 carries recaptures as extra column blocks: "1st Recap Site", "2nd Recap Site", …
 	const recapStarts: number[] = [];
 	header.forEach((_, i) => {
-		if (/^\d+(st|nd|rd|th) recap site$/.test(String(header[i] ?? '').trim().toLowerCase().replace(/\s+/g, ' ')))
+		if (
+			/^\d+(st|nd|rd|th) recap site$/.test(
+				String(header[i] ?? '')
+					.trim()
+					.toLowerCase()
+					.replace(/\s+/g, ' ')
+			)
+		)
 			recapStarts.push(i);
 	});
 	const mainEnd = recapStarts[0] ?? header.length;
@@ -267,7 +312,14 @@ export function parseCaptureSheet(
 		if (date) {
 			const fixed = fixSeasonYear(date, season);
 			if (fixed.fixed) {
-				log.add('warning', 'dates', `Date ${date} outside season ${season}; read as ${fixed.date}`, ref, 'date', date);
+				log.add(
+					'warning',
+					'dates',
+					`Date ${date} outside season ${season}; read as ${fixed.date}`,
+					ref,
+					'date',
+					date
+				);
 				date = fixed.date;
 			}
 		}
@@ -350,7 +402,11 @@ export function parseCaptureSheet(
 			log.add('info', 'values', `Unrecognised sex value`, ref, 'sex', cell(row, c.sex));
 		if (!rec.siteId && rec.siteRaw)
 			log.add('warning', 'sites', `Unknown site "${rec.siteRaw}"`, ref, 'site', rec.siteRaw);
-		if (rec.workupMin == null && rec.releaseMin != null && (rec.landingMin ?? rec.captureMin) != null) {
+		if (
+			rec.workupMin == null &&
+			rec.releaseMin != null &&
+			(rec.landingMin ?? rec.captureMin) != null
+		) {
 			const w = rec.releaseMin - (rec.landingMin ?? rec.captureMin)!;
 			if (w >= 0 && w < 180) rec.workupMin = w;
 		}
@@ -435,7 +491,12 @@ export function parseRecaptures2014(
 		notes: [eq('comments')]
 	});
 	const out: RawCapture[] = [];
-	let first: { species: SpeciesCode; sex: 'M' | 'F' | null; sharkNo: string | null; tags: string[] } | null = null;
+	let first: {
+		species: SpeciesCode;
+		sex: 'M' | 'F' | null;
+		sharkNo: string | null;
+		tags: string[];
+	} | null = null;
 	for (const { r, cells } of sheet.rows.slice(1)) {
 		const catchNo = int(cell(cells, cols.catchNo));
 		if (catchNo == null) continue;
@@ -455,7 +516,14 @@ export function parseRecaptures2014(
 		if (date) {
 			const fixed = fixSeasonYear(date, season);
 			if (fixed.fixed) {
-				log.add('warning', 'dates', `Date ${date} outside season ${season}; read as ${fixed.date}`, ref, 'date', date);
+				log.add(
+					'warning',
+					'dates',
+					`Date ${date} outside season ${season}; read as ${fixed.date}`,
+					ref,
+					'date',
+					date
+				);
 				date = fixed.date;
 			}
 		}
@@ -569,29 +637,57 @@ export function parseSetSheet(sheet: Sheet, season: string, file: string, log: I
 		const siteRaw = str(cell(cells, cols.site));
 		if (!date && !siteRaw) continue;
 		if (!date) {
-			log.add('warning', 'dates', 'Set without a readable date', ref, 'date', cell(cells, cols.date));
+			log.add(
+				'warning',
+				'dates',
+				'Set without a readable date',
+				ref,
+				'date',
+				cell(cells, cols.date)
+			);
 			continue;
 		}
 		const fixed = fixSeasonYear(date, season);
 		if (fixed.fixed) {
-			log.add('warning', 'dates', `Date ${date} outside season ${season}; read as ${fixed.date}`, ref, 'date', date);
+			log.add(
+				'warning',
+				'dates',
+				`Date ${date} outside season ${season}; read as ${fixed.date}`,
+				ref,
+				'date',
+				date
+			);
 			date = fixed.date;
 		}
 		const startMin = timeOf(cell(cells, cols.start));
 		let endMin = timeOf(cell(cells, cols.end));
 		if (startMin != null && endMin != null && endMin < startMin) endMin += 1440;
 		let durationMin =
-			startMin != null && endMin != null ? endMin - startMin : durationOf(cell(cells, cols.duration));
+			startMin != null && endMin != null
+				? endMin - startMin
+				: durationOf(cell(cells, cols.duration));
 		if (durationMin != null && (durationMin <= 0 || durationMin > 12 * 60)) {
-			log.add('warning', 'effort', `Implausible set duration ${durationMin} min`, ref, 'duration', durationMin);
+			log.add(
+				'warning',
+				'effort',
+				`Implausible set duration ${durationMin} min`,
+				ref,
+				'duration',
+				durationMin
+			);
 			durationMin = null;
 		}
 		const crewRaw = text(cell(cells, cols.crew));
 		const gearRaw = text(cell(cells, cols.gear));
-		const gear = boat ? 'Hook and line' : gearRaw && /hook/i.test(gearRaw) ? 'Hook and line' : 'Gillnet';
+		const gear = boat
+			? 'Hook and line'
+			: gearRaw && /hook/i.test(gearRaw)
+				? 'Hook and line'
+				: 'Gillnet';
 		const cpueCell = cell(cells, cols.cpueTotal) ?? null;
 		const siteId = resolveSite(siteRaw);
-		if (!siteId && siteRaw) log.add('warning', 'sites', `Unknown site "${siteRaw}"`, ref, 'site', siteRaw);
+		if (!siteId && siteRaw)
+			log.add('warning', 'sites', `Unknown site "${siteRaw}"`, ref, 'site', siteRaw);
 		out.push({
 			season,
 			setNo: boat ? null : int(cell(cells, cols.setNo)),

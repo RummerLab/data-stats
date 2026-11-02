@@ -1,0 +1,171 @@
+<script lang="ts">
+	import { compact } from '#lib/format';
+	import Legend from './Legend.svelte';
+	import Tip, { type TipState } from './Tip.svelte';
+	import { linear, nice, ticks } from './scale';
+
+	let {
+		edges,
+		series,
+		height = 240,
+		xLabel = '',
+		yLabel = 'Count',
+		xFormat = compact,
+		markers = []
+	}: {
+		/** Bin edges (n + 1 values). */
+		edges: number[];
+		series: { name: string; color: string; counts: number[] }[];
+		height?: number;
+		xLabel?: string;
+		yLabel?: string;
+		xFormat?: (v: number) => string;
+		markers?: { x: number; label: string }[];
+	} = $props();
+
+	let width = $state(640);
+	const m = $derived({
+		top: markers.length ? 18 : 10,
+		right: 14,
+		bottom: xLabel ? 44 : 28,
+		left: 46
+	});
+	const totals = $derived(
+		edges.slice(0, -1).map((_, i) => series.reduce((a, s) => a + (s.counts[i] ?? 0), 0))
+	);
+	const yExt = $derived(nice(0, Math.max(1, ...totals), 5, true));
+	const sx = $derived(
+		linear(
+			[edges[0] ?? 0, edges[edges.length - 1] ?? 1],
+			[m.left, Math.max(m.left + 10, width - m.right)]
+		)
+	);
+	const sy = $derived(linear(yExt, [height - m.bottom, m.top]));
+	const xt = $derived(
+		ticks(edges[0] ?? 0, edges[edges.length - 1] ?? 1, Math.max(3, Math.floor(width / 80)))
+	);
+	let tip = $state<TipState | null>(null);
+	function show(e: PointerEvent, i: number) {
+		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+		tip = {
+			x: e.clientX - wrap.left,
+			y: e.clientY - wrap.top,
+			title: `${xFormat(edges[i])} – ${xFormat(edges[i + 1])}`,
+			lines: series.map((s) => ({
+				label: series.length > 1 ? s.name : undefined,
+				value: String(s.counts[i] ?? 0),
+				color: s.color
+			}))
+		};
+	}
+</script>
+
+<Legend items={series.map((s) => ({ label: s.name, color: s.color }))} />
+<div class="wrap" bind:clientWidth={width}>
+	<svg
+		class="chart-svg"
+		viewBox={`0 0 ${width} ${height}`}
+		{width}
+		{height}
+		role="img"
+		aria-label={`Distribution of ${xLabel}`}
+		onpointerleave={() => (tip = null)}
+	>
+		{#each ticks(yExt[0], yExt[1], 4) as t (t)}
+			<line x1={m.left} x2={width - m.right} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" />
+			<text
+				x={m.left - 8}
+				y={sy(t)}
+				dy="0.32em"
+				text-anchor="end"
+				font-size="11"
+				fill="var(--muted)">{compact(t)}</text
+			>
+		{/each}
+		{#each edges.slice(0, -1) as e0, i (i)}
+			{@const x0 = sx(e0) + 1}
+			{@const x1 = sx(edges[i + 1]) - 1}
+			{#each series as s, k (s.name)}
+				{@const below = series.slice(0, k).reduce((a, q) => a + (q.counts[i] ?? 0), 0)}
+				{@const v = s.counts[i] ?? 0}
+				{#if v > 0}
+					<rect
+						x={x0}
+						width={Math.max(0.5, x1 - x0)}
+						y={sy(below + v)}
+						height={Math.max(0, sy(below) - sy(below + v) - (k ? 1 : 0))}
+						fill={s.color}
+						rx={k === series.length - 1 ? 2 : 0}
+					/>
+				{/if}
+			{/each}
+			<rect
+				x={sx(e0)}
+				width={Math.max(0, sx(edges[i + 1]) - sx(e0))}
+				y={m.top}
+				height={height - m.top - m.bottom}
+				fill="transparent"
+				role="presentation"
+				onpointermove={(e) => show(e, i)}
+			/>
+		{/each}
+		<line
+			x1={m.left}
+			x2={width - m.right}
+			y1={height - m.bottom}
+			y2={height - m.bottom}
+			stroke="var(--axis)"
+		/>
+		{#each xt as t (t)}
+			<text
+				x={sx(t)}
+				y={height - m.bottom + 16}
+				text-anchor="middle"
+				font-size="11"
+				fill="var(--muted)">{xFormat(t)}</text
+			>
+		{/each}
+		{#each markers as mk (mk.label)}
+			<line
+				x1={sx(mk.x)}
+				x2={sx(mk.x)}
+				y1={m.top}
+				y2={height - m.bottom}
+				stroke="var(--ink)"
+				stroke-dasharray="3 3"
+			/>
+			<text x={sx(mk.x)} y={m.top - 5} text-anchor="middle" font-size="10.5" fill="var(--ink-2)"
+				>{mk.label}</text
+			>
+		{/each}
+		{#if yLabel}
+			<text
+				transform={`translate(12 ${(height - m.bottom + m.top) / 2}) rotate(-90)`}
+				text-anchor="middle"
+				font-size="11"
+				fill="var(--ink-2)">{yLabel}</text
+			>
+		{/if}
+		{#if xLabel}
+			<text
+				x={(m.left + width - m.right) / 2}
+				y={height - 6}
+				text-anchor="middle"
+				font-size="11"
+				fill="var(--ink-2)">{xLabel}</text
+			>
+		{/if}
+	</svg>
+	<Tip {tip} {width} />
+</div>
+
+<style>
+	.wrap {
+		position: relative;
+		width: 100%;
+	}
+	svg {
+		display: block;
+		overflow: visible;
+	}
+</style>

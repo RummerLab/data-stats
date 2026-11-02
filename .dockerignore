@@ -1,0 +1,25 @@
+# Host dependencies and generated output must not overwrite the Linux build.
+node_modules
+.svelte-kit
+build
+.output
+
+# NEVER send the spreadsheets or derived caches to the build context.
+data
+cache
+**/*.xlsx
+**/*.sqlite
+**/*.sqlite-*
+
+# Local configuration and tooling.
+.env
+.env.*
+.git
+.github
+.claude
+.worktrees
+e2e/.tmp
+test-results
+playwright-report
+samples
+*.log

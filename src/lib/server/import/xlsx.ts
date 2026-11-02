@@ -142,7 +142,9 @@ export function readWorkbook(bytes: Uint8Array): Workbook {
 	}
 
 	const shared: string[] = [];
-	for (const m of text('xl/sharedStrings.xml').matchAll(/<si\b[^>]*>([\s\S]*?)<\/si>|<si\b[^>]*\/>/g)) {
+	for (const m of text('xl/sharedStrings.xml').matchAll(
+		/<si\b[^>]*>([\s\S]*?)<\/si>|<si\b[^>]*\/>/g
+	)) {
 		shared.push(m[1] ? textOf(m[1]) : '');
 	}
 

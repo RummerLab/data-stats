@@ -131,7 +131,9 @@ export function sexOf(v: CellValue | undefined): 'M' | 'F' | null {
 export type SpeciesCode = 'Cm' | 'Na' | 'Nf' | 'Gf' | 'Unknown';
 
 export function speciesOf(v: CellValue | undefined): SpeciesCode | null {
-	const s = str(v)?.toLowerCase().replace(/[^a-z]/g, '');
+	const s = str(v)
+		?.toLowerCase()
+		.replace(/[^a-z]/g, '');
 	if (!s) return null;
 	if (s === 'cm' || s.includes('melanopterus') || s === 'blacktip') return 'Cm';
 	if (s === 'na' || s.includes('acutidens') || s.includes('lemon')) return 'Na';

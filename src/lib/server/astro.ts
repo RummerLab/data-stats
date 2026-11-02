@@ -54,7 +54,11 @@ const hourAngle = (h: number, phi: number, d: number) =>
 	Math.acos((Math.sin(h) - Math.sin(phi) * Math.sin(d)) / (Math.cos(phi) * Math.cos(d)));
 
 /** UTC epoch ms for a local date + local minutes. */
-export function localToUtcMs(date: string, minutes: number, offsetMin = MOOREA.utcOffsetMin): number {
+export function localToUtcMs(
+	date: string,
+	minutes: number,
+	offsetMin = MOOREA.utcOffsetMin
+): number {
 	return Date.parse(`${date}T00:00:00Z`) + (minutes - offsetMin) * 60_000;
 }
 
@@ -71,7 +75,11 @@ export interface SunTimes {
 	solarNoon: number;
 }
 
-export function sunTimes(date: string, lat: number = MOOREA.lat, lon: number = MOOREA.lon): SunTimes {
+export function sunTimes(
+	date: string,
+	lat: number = MOOREA.lat,
+	lon: number = MOOREA.lon
+): SunTimes {
 	const lw = rad * -lon;
 	const phi = rad * lat;
 	const ms = localToUtcMs(date, 12 * 60);
@@ -82,7 +90,8 @@ export function sunTimes(date: string, lat: number = MOOREA.lat, lon: number = M
 	const L = eclipticLongitude(M);
 	const dec = declination(L, 0);
 	const Jnoon = solarTransitJ(ds, M, L);
-	const setJ = (h: number) => solarTransitJ(approxTransit(hourAngle(h * rad, phi, dec), lw, n), M, L);
+	const setJ = (h: number) =>
+		solarTransitJ(approxTransit(hourAngle(h * rad, phi, dec), lw, n), M, L);
 	const local = (j: number) => utcMsToLocalMinutes(fromJulian(j), date);
 	const sunsetJ = setJ(-0.833);
 	return {

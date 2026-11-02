@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+# A newer push to the same PR makes the older run obsolete. Runs on main always finish.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# The real spreadsheets never reach CI: tests, e2e and the container smoke test use the
+# synthetic workbooks in samples/fixture (scripts/make-fixture.mjs).
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      # Install packageManager directly: Node 26 does not bundle Corepack.
+      - name: Install pinned pnpm
+        run: |
+          npm install --global "$(node -p "require('./package.json').packageManager")"
+          pnpm --version
+
+      - name: Install build deps for better-sqlite3
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - run: pnpm install --frozen-lockfile
+      - name: Lint (Prettier + ESLint)
+        run: pnpm lint
+      - run: pnpm check
+      - name: Unit tests
+        run: pnpm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Install pinned pnpm
+        run: |
+          npm install --global "$(node -p "require('./package.json').packageManager")"
+          pnpm --version
+
+      - name: Install build deps for better-sqlite3
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: playwright-cache
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+      - name: Install Playwright Chromium
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+      - name: E2E tests (Playwright + axe)
+        run: pnpm test:e2e
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
+
+  # Exercise the native SQLite module and startup on both release architectures before publishing.
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - name: Build image (no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          load: true
+          tags: data-stats:ci-${{ matrix.arch }}
+          platforms: linux/${{ matrix.arch }}
+          cache-from: |
+            type=gha,scope=docker-${{ matrix.arch }}
+            type=gha
+          cache-to: type=gha,mode=max,scope=docker-${{ matrix.arch }}
+      - name: Smoke test (import synthetic workbooks, serve /health and /)
+        run: |
+          set -euo pipefail
+          docker run -d --name smoke --platform linux/${{ matrix.arch }} -p 3000:3000 \
+            --mount type=bind,src="$PWD/samples/fixture",dst=/data,readonly \
+            data-stats:ci-${{ matrix.arch }}
+          for i in $(seq 1 90); do
+            if curl -fsS http://127.0.0.1:3000/health | tee /tmp/health.json | grep -q '"ok":true'; then break; fi
+            sleep 2
+          done
+          cat /tmp/health.json
+          grep -q '"captures":[1-9]' /tmp/health.json
+          curl -fsS -o /dev/null http://127.0.0.1:3000/
+          curl -fsS -o /dev/null http://127.0.0.1:3000/tides
+          docker logs smoke
+          docker rm -f smoke

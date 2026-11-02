@@ -27,7 +27,10 @@ const START = '2013-08-01';
 const LAT = -17.53;
 const LON = -149.83;
 const TZ = 'Pacific/Tahiti';
-const only = (process.argv.find((a) => a.startsWith('--only=')) ?? '').slice(7).split(',').filter(Boolean);
+const only = (process.argv.find((a) => a.startsWith('--only=')) ?? '')
+	.slice(7)
+	.split(',')
+	.filter(Boolean);
 const want = (name) => only.length === 0 || only.includes(name);
 
 mkdirSync(OUT, { recursive: true });
@@ -39,7 +42,11 @@ const daysAgo = (n) => isoDay(new Date(Date.now() - n * 86_400_000));
 async function get(url, { json = false, tries = 5 } = {}) {
 	for (let i = 0; i < tries; i++) {
 		try {
-			const res = await fetch(url, { headers: { 'user-agent': 'physioshark-data-stats (+https://github.com/RummerLab/data-stats)' } });
+			const res = await fetch(url, {
+				headers: {
+					'user-agent': 'physioshark-data-stats (+https://github.com/RummerLab/data-stats)'
+				}
+			});
 			if (res.ok) return json ? res.json() : res.text();
 			if (res.status === 404) throw new Error(`404 ${url}`);
 			console.warn(`[external] ${res.status} ${url}`);
@@ -65,7 +72,8 @@ function chunks(start, end) {
 	return out;
 }
 
-const fmt = (v, dp = 2) => (v == null || Number.isNaN(v) ? '' : String(Math.round(v * 10 ** dp) / 10 ** dp));
+const fmt = (v, dp = 2) =>
+	v == null || Number.isNaN(v) ? '' : String(Math.round(v * 10 ** dp) / 10 ** dp);
 
 function writeCsv(name, header, rows, gzip = false) {
 	const body = [header.join(','), ...rows.map((r) => r.join(','))].join('\n') + '\n';
@@ -122,17 +130,39 @@ async function weather() {
 	}
 	writeCsv(
 		'weather-daily.csv',
-		['date', 'tmax', 'tmin', 'tmean', 'precip', 'wind_max', 'gust_max', 'wind_dir', 'radiation', 'cloud', 'pressure', 'humidity', 'sunshine_h'],
+		[
+			'date',
+			'tmax',
+			'tmin',
+			'tmean',
+			'precip',
+			'wind_max',
+			'gust_max',
+			'wind_dir',
+			'radiation',
+			'cloud',
+			'pressure',
+			'humidity',
+			'sunshine_h'
+		],
 		daily
 	);
-	writeCsv('weather-hourly.csv', ['ts', 'temp', 'precip', 'cloud', 'wind', 'wind_dir', 'gust', 'pressure'], hourly, true);
+	writeCsv(
+		'weather-hourly.csv',
+		['ts', 'temp', 'precip', 'cloud', 'wind', 'wind_dir', 'gust', 'pressure'],
+		hourly,
+		true
+	);
 }
 
 async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = false) {
 	const rows = new Map();
-	for (const [s, e] of chunks(start, end)) {
+	const all = chunks(start, end);
+	for (const [s, e] of all) {
+		// The final chunk ends at `last` so a dataset that lags a day or two never 404s.
+		const stop = e === all[all.length - 1][1] ? 'last' : `${e}T12:00:00Z`;
 		const sel = (v) =>
-			`${v}%5B(${s}T12:00:00Z):1:(${e}T12:00:00Z)%5D${zlev ? '%5B(0.0)%5D' : ''}%5B(${lat})%5D%5B(${lon})%5D`;
+			`${v}%5B(${s}T12:00:00Z):1:(${stop})%5D${zlev ? '%5B(0.0)%5D' : ''}%5B(${lat})%5D%5B(${lon})%5D`;
 		const url = `${base}/griddap/${dataset}.csv?${vars.map(sel).join(',')}`;
 		let text;
 		try {
@@ -179,7 +209,12 @@ async function ocean() {
 		START,
 		end
 	);
-	const waveVars = ['wave_height_max', 'wave_period_max', 'wave_direction_dominant', 'swell_wave_height_max'];
+	const waveVars = [
+		'wave_height_max',
+		'wave_period_max',
+		'wave_direction_dominant',
+		'swell_wave_height_max'
+	];
 	const waves = new Map();
 	for (const model of ['era5_ocean', 'best_match']) {
 		const from = model === 'era5_ocean' ? START : '2021-10-01';
@@ -206,7 +241,19 @@ async function ocean() {
 	const dates = [...new Set([...oisst.keys(), ...crw.keys(), ...waves.keys()])].sort();
 	writeCsv(
 		'ocean-daily.csv',
-		['date', 'oisst', 'crw_sst', 'crw_anom', 'crw_hotspot', 'crw_dhw', 'crw_baa', 'wave_max', 'wave_period', 'wave_dir', 'swell_max'],
+		[
+			'date',
+			'oisst',
+			'crw_sst',
+			'crw_anom',
+			'crw_hotspot',
+			'crw_dhw',
+			'crw_baa',
+			'wave_max',
+			'wave_period',
+			'wave_dir',
+			'swell_max'
+		],
 		dates.map((d) => {
 			const o = oisst.get(d) ?? {};
 			const c = crw.get(d) ?? {};
@@ -244,8 +291,23 @@ async function tide() {
 
 async function climate() {
 	const oni = new Map();
-	const seasons = ['DJF', 'JFM', 'FMA', 'MAM', 'AMJ', 'MJJ', 'JJA', 'JAS', 'ASO', 'SON', 'OND', 'NDJ'];
-	for (const line of (await get('https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt')).split('\n')) {
+	const seasons = [
+		'DJF',
+		'JFM',
+		'FMA',
+		'MAM',
+		'AMJ',
+		'MJJ',
+		'JJA',
+		'JAS',
+		'ASO',
+		'SON',
+		'OND',
+		'NDJ'
+	];
+	for (const line of (await get('https://www.cpc.ncep.noaa.gov/data/indices/oni.ascii.txt')).split(
+		'\n'
+	)) {
 		const [seas, yr, , anom] = line.trim().split(/\s+/);
 		const i = seasons.indexOf(seas);
 		if (i < 0 || Number(yr) < 2012) continue;
@@ -264,7 +326,11 @@ async function climate() {
 		});
 	}
 	const yms = [...new Set([...oni.keys(), ...soi.keys()])].sort();
-	writeCsv('climate-monthly.csv', ['ym', 'oni', 'soi'], yms.map((ym) => [ym, fmt(oni.get(ym)), fmt(soi.get(ym))]));
+	writeCsv(
+		'climate-monthly.csv',
+		['ym', 'oni', 'soi'],
+		yms.map((ym) => [ym, fmt(oni.get(ym)), fmt(soi.get(ym))])
+	);
 }
 
 const jobs = { weather, ocean, tide, climate };

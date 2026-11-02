@@ -66,14 +66,14 @@ export function pairs<T>(rows: T[], fx: (r: T) => Num, fy: (r: T) => Num): [numb
 
 function logGamma(x: number): number {
 	const c = [
-		76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155,
-		0.1208650973866179e-2, -0.5395239384953e-5
+		76.1800917294715, -86.5053203294168, 24.0140982408309, -1.23173957245016, 0.00120865097386618,
+		-0.5395239384953e-5
 	];
 	let y = x;
 	const tmp = x + 5.5 - (x + 0.5) * Math.log(x + 5.5);
-	let ser = 1.000000000190015;
+	let ser = 1.00000000019002;
 	for (const ci of c) ser += ci / ++y;
-	return -tmp + Math.log((2.5066282746310005 * ser) / x);
+	return -tmp + Math.log((2.506628274631 * ser) / x);
 }
 
 function betacf(a: number, b: number, x: number): number {
@@ -111,8 +111,12 @@ function betacf(a: number, b: number, x: number): number {
 export function incompleteBeta(x: number, a: number, b: number): number {
 	if (x <= 0) return 0;
 	if (x >= 1) return 1;
-	const bt = Math.exp(logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x));
-	return x < (a + 1) / (a + b + 2) ? (bt * betacf(a, b, x)) / a : 1 - (bt * betacf(b, a, 1 - x)) / b;
+	const bt = Math.exp(
+		logGamma(a + b) - logGamma(a) - logGamma(b) + a * Math.log(x) + b * Math.log(1 - x)
+	);
+	return x < (a + 1) / (a + b + 2)
+		? (bt * betacf(a, b, x)) / a
+		: 1 - (bt * betacf(b, a, 1 - x)) / b;
 }
 
 /** Two-sided p-value for a t statistic with `df` degrees of freedom. */
@@ -162,7 +166,7 @@ export function linearFit(xy: [number, number][]): Fit | null {
 function ranks(v: number[]): number[] {
 	const idx = v.map((x, i) => [x, i] as const).sort((a, b) => a[0] - b[0]);
 	const out = new Array<number>(v.length);
-	for (let i = 0; i < idx.length; ) {
+	for (let i = 0; i < idx.length;) {
 		let j = i;
 		while (j + 1 < idx.length && idx[j + 1][0] === idx[i][0]) j++;
 		const rank = (i + j) / 2 + 1;
@@ -184,14 +188,20 @@ export function spearman(xy: [number, number][]): { n: number; rho: number; p: n
 
 /** Log–log fit W = a·L^b (used for length–mass). */
 export function powerFit(xy: [number, number][]): (Fit & { a: number; b: number }) | null {
-	const logged = xy.filter(([x, y]) => x > 0 && y > 0).map(([x, y]) => [Math.log10(x), Math.log10(y)] as [number, number]);
+	const logged = xy
+		.filter(([x, y]) => x > 0 && y > 0)
+		.map(([x, y]) => [Math.log10(x), Math.log10(y)] as [number, number]);
 	const fit = linearFit(logged);
 	if (!fit) return null;
 	return { ...fit, a: 10 ** fit.intercept, b: fit.slope };
 }
 
 /** Wilson score interval for a binomial proportion. */
-export function wilson(successes: number, n: number, z = 1.96): { p: number; lo: number; hi: number } | null {
+export function wilson(
+	successes: number,
+	n: number,
+	z = 1.96
+): { p: number; lo: number; hi: number } | null {
 	if (n === 0) return null;
 	const p = successes / n;
 	const denom = 1 + (z * z) / n;
@@ -203,7 +213,8 @@ export function wilson(successes: number, n: number, z = 1.96): { p: number; lo:
 /** Exact two-sided binomial test against p = 0.5 (sex ratios). */
 export function binomTestHalf(k: number, n: number): number {
 	if (n === 0) return 1;
-	const logC = (n2: number, k2: number) => logGamma(n2 + 1) - logGamma(k2 + 1) - logGamma(n2 - k2 + 1);
+	const logC = (n2: number, k2: number) =>
+		logGamma(n2 + 1) - logGamma(k2 + 1) - logGamma(n2 - k2 + 1);
 	const pk = (i: number) => Math.exp(logC(n, i) - n * Math.log(2));
 	const obs = pk(k);
 	let p = 0;
@@ -215,7 +226,10 @@ export function binomTestHalf(k: number, n: number): number {
 }
 
 /** Welch's t-test for two independent samples. */
-export function welch(a: Num[], b: Num[]): { t: number; df: number; p: number; diff: number } | null {
+export function welch(
+	a: Num[],
+	b: Num[]
+): { t: number; df: number; p: number; diff: number } | null {
 	const x = finite(a);
 	const y = finite(b);
 	if (x.length < 2 || y.length < 2) return null;
@@ -231,7 +245,10 @@ export function welch(a: Num[], b: Num[]): { t: number; df: number; p: number; d
 
 // --- grouping ----------------------------------------------------------------------------------
 
-export function groupBy<T, K extends string | number>(rows: T[], key: (r: T) => K | null | undefined): Map<K, T[]> {
+export function groupBy<T, K extends string | number>(
+	rows: T[],
+	key: (r: T) => K | null | undefined
+): Map<K, T[]> {
 	const m = new Map<K, T[]>();
 	for (const r of rows) {
 		const k = key(r);
@@ -243,7 +260,10 @@ export function groupBy<T, K extends string | number>(rows: T[], key: (r: T) => 
 	return m;
 }
 
-export function countBy<T, K extends string | number>(rows: T[], key: (r: T) => K | null | undefined): Map<K, number> {
+export function countBy<T, K extends string | number>(
+	rows: T[],
+	key: (r: T) => K | null | undefined
+): Map<K, number> {
 	const m = new Map<K, number>();
 	for (const r of rows) {
 		const k = key(r);
@@ -287,5 +307,15 @@ export function boxStats(xs: Num[]) {
 	const iqr = q3 - q1;
 	const lo = v.find((x) => x >= q1 - 1.5 * iqr) ?? v[0];
 	const hi = [...v].reverse().find((x) => x <= q3 + 1.5 * iqr) ?? v[v.length - 1];
-	return { n: v.length, min: v[0], q1, median: quantile(v, 0.5)!, q3, max: v[v.length - 1], lo, hi, mean: mean(v)! };
+	return {
+		n: v.length,
+		min: v[0],
+		q1,
+		median: quantile(v, 0.5)!,
+		q3,
+		max: v[v.length - 1],
+		lo,
+		hi,
+		mean: mean(v)!
+	};
 }

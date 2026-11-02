@@ -59,11 +59,12 @@ import {
 	type SitePressure,
 	type SiteGps
 } from './reference';
+import { crewKey } from './crew';
 import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '1';
+export const IMPORTER_VERSION = '2';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -115,8 +116,10 @@ export function listWorkbooks(dir: string): SourceFile[] {
 export function importHash(opts: ImportOptions): string {
 	const h = createHash('sha256');
 	h.update(`importer:${IMPORTER_VERSION}\n`);
-	for (const [name, sql] of Object.entries(MIGRATIONS).sort()) h.update(`${name}:${sql.length}:${sql}\n`);
-	for (const f of listWorkbooks(opts.dataDir)) h.update(`${relative(opts.dataDir, f.path)}:${f.size}:${f.mtime}\n`);
+	for (const [name, sql] of Object.entries(MIGRATIONS).sort())
+		h.update(`${name}:${sql.length}:${sql}\n`);
+	for (const f of listWorkbooks(opts.dataDir))
+		h.update(`${relative(opts.dataDir, f.path)}:${f.size}:${f.mtime}\n`);
 	for (const name of EXTERNAL_FILES) {
 		for (const p of [join(opts.externalDir, name), join(opts.externalDir, `${name}.gz`)]) {
 			if (existsSync(p)) {
@@ -177,7 +180,10 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 		try {
 			wb = readWorkbook(readFileSync(f.path));
 		} catch (err) {
-			log.add('error', 'files', `Could not read workbook: ${(err as Error).message}`, { file: rel, sheet: '' });
+			log.add('error', 'files', `Could not read workbook: ${(err as Error).message}`, {
+				file: rel,
+				sheet: ''
+			});
 			continue;
 		}
 		const seasonMatch = base.match(/(20\d\d)\s*[-–_]\s*(20\d\d)/);
@@ -208,9 +214,14 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 				else if (kind === 'adult_samples') p.adultSamples.push(...parseAdultSamples(sheet));
 				else if (kind === 'location_names') p.descriptions.push(...parseLocationNames(sheet, log));
 				else if (!SKIPPED_SHEETS.has(name))
-					log.add('info', 'sheets', `Sheet not imported (unknown layout)`, { file: rel, sheet: sheet.name });
+					log.add('info', 'sheets', `Sheet not imported (unknown layout)`, {
+						file: rel,
+						sheet: sheet.name
+					});
 			}
-			if (groups) for (const c of caps) if (c.sharkNo && groups.has(c.sharkNo)) c.group = groups.get(c.sharkNo);
+			if (groups)
+				for (const c of caps)
+					if (c.sharkNo && groups.has(c.sharkNo)) c.group = groups.get(c.sharkNo);
 			// The lab-diff sheet repeats the lab log for 2016-17: keep the richer of the two per shark.
 			p.captures.push(...caps);
 		} else if (/adult/i.test(base)) {
@@ -272,7 +283,11 @@ export interface ImportSummary {
 }
 
 /** Run a full import into a fresh SQLite file at `outPath`. */
-export function runImport(opts: ImportOptions, outPath: string, hash = importHash(opts)): ImportSummary {
+export function runImport(
+	opts: ImportOptions,
+	outPath: string,
+	hash = importHash(opts)
+): ImportSummary {
 	const t0 = performance.now();
 	const log = new IssueLog();
 	const p = parseAll(opts.dataDir, log);
@@ -280,7 +295,26 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		log.add('warning', 'files', `No spreadsheets found in DATA_DIR (${opts.dataDir})`);
 
 	// --- sets: ids, crew ----------------------------------------------------------------------
-	const sets = p.sets.map((s, i) => ({ ...s, id: i + 1, linked: { Cm: 0, Na: 0, Nf: 0, other: 0 } }));
+	// One display spelling per person: "Felicie"/"Félicie" or "Isa"/"ISA" become the most common form.
+	const spellings = new Map<string, Map<string, number>>();
+	for (const s of p.sets)
+		for (const name of s.crew) {
+			const m = spellings.get(crewKey(name)) ?? new Map<string, number>();
+			m.set(name, (m.get(name) ?? 0) + 1);
+			spellings.set(crewKey(name), m);
+		}
+	const display = new Map(
+		[...spellings.entries()].map(([k, m]) => [
+			k,
+			[...m.entries()].sort((a, b) => b[1] - a[1] || b[0].length - a[0].length)[0][0]
+		])
+	);
+	for (const s of p.sets) s.crew = [...new Set(s.crew.map((n) => display.get(crewKey(n)) ?? n))];
+	const sets = p.sets.map((s, i) => ({
+		...s,
+		id: i + 1,
+		linked: { Cm: 0, Na: 0, Nf: 0, other: 0 }
+	}));
 	const bySeasonNo = new Map<string, typeof sets>();
 	const byDateSite = new Map<string, typeof sets>();
 	const byDate = new Map<string, typeof sets>();
@@ -296,7 +330,12 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 	}
 
 	// --- captures: link to sets -----------------------------------------------------------------
-	const caps = p.captures.map((c, i) => ({ ...c, id: i + 1, setId: null as number | null, individualId: '' }));
+	const caps = p.captures.map((c, i) => ({
+		...c,
+		id: i + 1,
+		setId: null as number | null,
+		individualId: ''
+	}));
 	let unlinked = 0;
 	for (const c of caps) {
 		if (c.kind === 'lab_release') continue;
@@ -321,7 +360,11 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		} else if (c.kind === 'field' && c.date) unlinked++;
 	}
 	if (unlinked)
-		log.add('info', 'linking', `${unlinked} field captures could not be matched to a set (no set log row for that date/site)`);
+		log.add(
+			'info',
+			'linking',
+			`${unlinked} field captures could not be matched to a set (no set log row for that date/site)`
+		);
 
 	// --- individuals --------------------------------------------------------------------------
 	const uf = new UnionFind(caps.length);
@@ -343,7 +386,9 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 	caps.forEach((_, i) => push(comps as unknown as Map<string, number[]>, String(uf.find(i)), i));
 	const individuals: (typeof schema.individuals.$inferInsert)[] = [];
 	for (const members of (comps as unknown as Map<string, number[]>).values()) {
-		const list = members.map((i) => caps[i]).sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
+		const list = members
+			.map((i) => caps[i])
+			.sort((a, b) => (a.date ?? '').localeCompare(b.date ?? ''));
 		const tags = [...new Set(list.flatMap((c) => c.tags))];
 		const best = [...tags].sort((a, b) => tagRank(a) - tagRank(b))[0];
 		const first = list[0];
@@ -359,10 +404,16 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 			if (a != null && b != null && b < a - 50) conflicts.push('length');
 		}
 		if (conflicts.length)
-			log.add('warning', 'identity', `Shark ${id}: captures disagree on ${[...new Set(conflicts)].join(', ')}`, first.ref);
+			log.add(
+				'warning',
+				'identity',
+				`Shark ${id}: captures disagree on ${[...new Set(conflicts)].join(', ')}`,
+				first.ref
+			);
 		for (const c of list) c.individualId = id;
 		const siteSeq: string[] = [];
-		for (const c of list) if (c.siteId && siteSeq[siteSeq.length - 1] !== c.siteId) siteSeq.push(c.siteId);
+		for (const c of list)
+			if (c.siteId && siteSeq[siteSeq.length - 1] !== c.siteId) siteSeq.push(c.siteId);
 		const withTl = list.filter((c) => c.tlMm != null);
 		individuals.push({
 			id,
@@ -401,17 +452,25 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		r.hi = Math.max(r.hi, e.mm);
 		tideRange.set(d, r);
 	}
-	const dayHour = (date: string, minutes: number) => Date.parse(`${date}T00:00:00Z`) / 3_600_000 + minutes / 60;
-	const tideAt = (date: string, minutes: number) => interpolate(tidePts, tideIdx, dayHour(date, minutes));
+	const dayHour = (date: string, minutes: number) =>
+		Date.parse(`${date}T00:00:00Z`) / 3_600_000 + minutes / 60;
+	const tideAt = (date: string, minutes: number) =>
+		interpolate(tidePts, tideIdx, dayHour(date, minutes));
 	const trendAt = (date: string, minutes: number) => {
 		const a = tideAt(date, minutes - 30);
 		const b = tideAt(date, minutes + 30);
 		return a == null || b == null ? null : b > a + 2 ? 'rising' : b < a - 2 ? 'falling' : 'slack';
 	};
-	const hourlyMean = (date: string, from: number, to: number, key: string, agg: 'mean' | 'sum' = 'mean') => {
+	const hourlyMean = (
+		date: string,
+		from: number,
+		to: number,
+		key: string,
+		agg: 'mean' | 'sum' = 'mean'
+	) => {
 		const vals: number[] = [];
 		for (let m = Math.floor(from / 60) * 60; m <= to; m += 60) {
-			const h = new Date((dayHour(date, m)) * 3_600_000).toISOString().slice(0, 13);
+			const h = new Date(dayHour(date, m) * 3_600_000).toISOString().slice(0, 13);
 			const v = val(wHourly.get(h)?.[key]);
 			if (v != null) vals.push(v);
 		}
@@ -423,13 +482,20 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 
 	const setRows: (typeof schema.sets.$inferInsert)[] = sets.map((s) => {
 		const linkedTotal = s.linked.Cm + s.linked.Na + s.linked.Nf + s.linked.other;
-		const sheetTotal = s.nTotal ?? (s.nCm != null || s.nNa != null ? (s.nCm ?? 0) + (s.nNa ?? 0) + (s.nNf ?? 0) : null);
+		const sheetTotal =
+			s.nTotal ??
+			(s.nCm != null || s.nNa != null ? (s.nCm ?? 0) + (s.nNa ?? 0) + (s.nNf ?? 0) : null);
 		const nTotal = Math.max(sheetTotal ?? 0, linkedTotal);
 		const nCm = Math.max(s.nCm ?? 0, s.linked.Cm);
 		const nNa = Math.max(s.nNa ?? 0, s.linked.Na);
 		const hours = s.durationMin ? s.durationMin / 60 : null;
 		if (sheetTotal != null && sheetTotal !== linkedTotal && linkedTotal > 0)
-			log.add('info', 'counts', `Set log says ${sheetTotal} sharks, shark logs have ${linkedTotal}`, s.ref);
+			log.add(
+				'info',
+				'counts',
+				`Set log says ${sheetTotal} sharks, shark logs have ${linkedTotal}`,
+				s.ref
+			);
 		let env: Partial<typeof schema.sets.$inferInsert> = {};
 		if (s.date) {
 			const sun = sunTimes(s.date);
@@ -642,24 +708,82 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 	// --- field notes ----------------------------------------------------------------------------
 	const notes: (typeof schema.fieldNotes.$inferInsert)[] = [];
 	for (const s of setRows)
-		if (s.notes) notes.push({ season: s.season, date: s.date, siteId: s.siteId, kind: 'set', refId: s.id, text: s.notes });
+		if (s.notes)
+			notes.push({
+				season: s.season,
+				date: s.date,
+				siteId: s.siteId,
+				kind: 'set',
+				refId: s.id,
+				text: s.notes
+			});
 	for (const s of setRows)
 		if (s.weatherRaw && s.weatherRaw.length > 25)
-			notes.push({ season: s.season, date: s.date, siteId: s.siteId, kind: 'set', refId: s.id, text: s.weatherRaw });
+			notes.push({
+				season: s.season,
+				date: s.date,
+				siteId: s.siteId,
+				kind: 'set',
+				refId: s.id,
+				text: s.weatherRaw
+			});
 	for (const c of captureRows)
 		if (c.notes)
-			notes.push({ season: c.season, date: c.date, siteId: c.siteId, kind: 'capture', refId: c.id, species: c.species, text: c.notes });
+			notes.push({
+				season: c.season,
+				date: c.date,
+				siteId: c.siteId,
+				kind: 'capture',
+				refId: c.id,
+				species: c.species,
+				text: c.notes
+			});
 	for (const l of labRows)
-		if (l.notes) notes.push({ season: l.season, date: l.arrivalDate, siteId: l.siteId, kind: 'lab', refId: l.id, species: l.species, text: l.notes });
+		if (l.notes)
+			notes.push({
+				season: l.season,
+				date: l.arrivalDate,
+				siteId: l.siteId,
+				kind: 'lab',
+				refId: l.id,
+				species: l.species,
+				text: l.notes
+			});
 	for (const h of p.hobo)
-		if (h.notes) notes.push({ season: h.season, date: h.deployed, siteId: h.siteId, kind: 'hobo', text: `Logger ${h.logger}: ${h.notes}` });
+		if (h.notes)
+			notes.push({
+				season: h.season,
+				date: h.deployed,
+				siteId: h.siteId,
+				kind: 'hobo',
+				text: `Logger ${h.logger}: ${h.notes}`
+			});
 	p.adults.forEach((a, i) => {
-		if (a.comments) notes.push({ season: a.date ? seasonOf(a.date) : null, date: a.date, kind: 'adult', refId: i + 1, species: 'Cm', text: a.comments });
+		if (a.comments)
+			notes.push({
+				season: a.date ? seasonOf(a.date) : null,
+				date: a.date,
+				kind: 'adult',
+				refId: i + 1,
+				species: 'Cm',
+				text: a.comments
+			});
 	});
 	for (const e of p.adultEffort)
-		if (e.comments) notes.push({ season: e.date ? seasonOf(e.date) : null, date: e.date, kind: 'adult', text: e.comments });
+		if (e.comments)
+			notes.push({
+				season: e.date ? seasonOf(e.date) : null,
+				date: e.date,
+				kind: 'adult',
+				text: e.comments
+			});
 	for (const pr of p.prey)
-		notes.push({ season: pr.season, date: pr.date, kind: 'prey', text: [pr.name, pr.size, pr.location, pr.notes].filter(Boolean).join(' · ') });
+		notes.push({
+			season: pr.season,
+			date: pr.date,
+			kind: 'prey',
+			text: [pr.name, pr.size, pr.location, pr.notes].filter(Boolean).join(' · ')
+		});
 
 	// --- write ------------------------------------------------------------------------------------
 	const sqlite = new Database(outPath);
@@ -669,11 +793,14 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		for (const stmt of sql.split('--> statement-breakpoint')) if (stmt.trim()) sqlite.exec(stmt);
 	}
 	const db = drizzle(sqlite, { schema });
-	const insert = <T extends Record<string, unknown>>(table: Parameters<typeof db.insert>[0], rows: T[]) => {
+	const insert = <T extends object>(table: Parameters<typeof db.insert>[0], rows: T[]) => {
 		if (!rows.length) return;
 		const cols = Object.keys(rows[0]).length || 1;
 		const size = Math.max(1, Math.floor(30_000 / cols));
-		for (let i = 0; i < rows.length; i += size) db.insert(table).values(rows.slice(i, i + size) as never).run();
+		for (let i = 0; i < rows.length; i += size)
+			db.insert(table)
+				.values(rows.slice(i, i + size) as never)
+				.run();
 	};
 
 	const counts: Record<string, number> = {
@@ -704,7 +831,13 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		insert(schema.prey, p.prey);
 		insert(
 			schema.adultCaptures,
-			p.adults.map(({ ref, ...a }, i) => ({ id: i + 1, ...a, sourceFile: ref.file, sourceSheet: ref.sheet, sourceRow: ref.row }))
+			p.adults.map(({ ref, ...a }, i) => ({
+				id: i + 1,
+				...a,
+				sourceFile: ref.file,
+				sourceSheet: ref.sheet,
+				sourceRow: ref.row
+			}))
 		);
 		insert(
 			schema.adultEffort,
@@ -761,7 +894,10 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 		);
 		insert(
 			schema.tideHourly,
-			tidePts.map((pt) => ({ ts: new Date(pt.t * 3_600_000).toISOString().slice(0, 13), mm: pt.mm }))
+			tidePts.map((pt) => ({
+				ts: new Date(pt.t * 3_600_000).toISOString().slice(0, 13),
+				mm: pt.mm
+			}))
 		);
 		insert(schema.tideExtrema, extrema);
 		insert(
@@ -778,7 +914,9 @@ export function runImport(opts: ImportOptions, outPath: string, hash = importHas
 			external: JSON.stringify({
 				weather: [...wDaily.keys()].sort().at(-1) ?? null,
 				ocean: [...ocean.keys()].sort().at(-1) ?? null,
-				tide: tidePts.length ? new Date(tidePts[tidePts.length - 1].t * 3_600_000).toISOString().slice(0, 10) : null,
+				tide: tidePts.length
+					? new Date(tidePts[tidePts.length - 1].t * 3_600_000).toISOString().slice(0, 10)
+					: null,
 				climate: [...climate.keys()].sort().at(-1) ?? null
 			})
 		};

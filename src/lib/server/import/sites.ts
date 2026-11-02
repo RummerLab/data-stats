@@ -215,9 +215,21 @@ export const SITE_DEFS: SiteDef[] = [
 		kind: 'other',
 		match: [/^motu$/, /^entre 2 motus/]
 	},
-	{ id: 'lagoon', name: 'Lagoon (unspecified)', island: 'Moorea', kind: 'other', match: [/^lagoon$/] },
+	{
+		id: 'lagoon',
+		name: 'Lagoon (unspecified)',
+		island: 'Moorea',
+		kind: 'other',
+		match: [/^lagoon$/]
+	},
 	{ id: 'lab', name: 'CRIOBE lab', island: 'Moorea', kind: 'lab', match: [/^lab$/] },
-	{ id: 'tetiaroa', name: 'Tetiaroa', island: 'Tetiaroa', kind: 'other', match: [/tetiaroa|oroatera|tauini|tavini/] },
+	{
+		id: 'tetiaroa',
+		name: 'Tetiaroa',
+		island: 'Tetiaroa',
+		kind: 'other',
+		match: [/tetiaroa|oroatera|tauini|tavini/]
+	},
 	{ id: 'tahiti', name: 'Tahiti', island: 'Tahiti', kind: 'other', match: [/^tahiti$/] }
 ];
 

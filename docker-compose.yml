@@ -1,0 +1,20 @@
+# Local build (development / contribution)
+#   cp .env.example .env    # optional
+#   docker compose up --build
+services:
+  app:
+    build: .
+    image: data-stats:local
+    ports:
+      - '${HOST_BIND:-127.0.0.1}:${HOST_PORT:-8098}:3000'
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      # Spreadsheets: read-only. The app never writes to them.
+      - ${DATA_PATH:-./data}:/data:ro
+      - cache:/cache
+    restart: unless-stopped
+
+volumes:
+  cache:

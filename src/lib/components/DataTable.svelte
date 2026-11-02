@@ -1,0 +1,48 @@
+<script lang="ts" module>
+	export interface Column {
+		key: string;
+		label: string;
+		num?: boolean;
+		dp?: number;
+		href?: string; // key holding a link for this cell
+	}
+</script>
+
+<script lang="ts">
+	import { num } from '#lib/format';
+	let {
+		columns,
+		rows,
+		max = 200
+	}: { columns: Column[]; rows: Record<string, unknown>[]; max?: number } = $props();
+	const shown = $derived(rows.slice(0, max));
+	const fmt = (v: unknown, c: Column) =>
+		v == null || v === ''
+			? '–'
+			: typeof v === 'number'
+				? num(v, c.dp ?? (Number.isInteger(v) ? 0 : 2))
+				: String(v);
+</script>
+
+<div class="table-scroll">
+	<table class="data">
+		<thead>
+			<tr>
+				{#each columns as c (c.key)}<th class:num={c.num} scope="col">{c.label}</th>{/each}
+			</tr>
+		</thead>
+		<tbody>
+			{#each shown as r, i (i)}
+				<tr>
+					{#each columns as c (c.key)}
+						<td class:num={c.num}>
+							{#if c.href && r[c.href]}<a href={String(r[c.href])}>{fmt(r[c.key], c)}</a
+								>{:else}{fmt(r[c.key], c)}{/if}
+						</td>
+					{/each}
+				</tr>
+			{/each}
+		</tbody>
+	</table>
+	{#if rows.length > max}<p class="muted small">Showing {max} of {rows.length} rows.</p>{/if}
+</div>

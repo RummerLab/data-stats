@@ -8,7 +8,10 @@ import { dateOf, dmsToDecimal, durationOf, int, num, sexOf, str, text, timeOf } 
 import { resolveSite } from './sites';
 import type { Workbook } from './xlsx';
 
-const eq = (...names: string[]): Matcher => (k: string) => names.includes(k);
+const eq =
+	(...names: string[]): Matcher =>
+	(k: string) =>
+		names.includes(k);
 
 export interface SiteGps {
 	siteId: string;
@@ -24,7 +27,12 @@ export function parseNurseryGps(wb: Workbook, log: IssueLog, file: string): Site
 		const raw = str(cells[0]);
 		const siteId = resolveSite(raw);
 		if (!siteId) {
-			if (raw) log.add('warning', 'sites', `GPS sheet: unknown site "${raw}"`, { file, sheet: sheet.name, row: r });
+			if (raw)
+				log.add('warning', 'sites', `GPS sheet: unknown site "${raw}"`, {
+					file,
+					sheet: sheet.name,
+					row: r
+				});
 			continue;
 		}
 		const lat = dmsToDecimal(cells[3], true);
@@ -63,7 +71,12 @@ export function parsePressure(wb: Workbook, log: IssueLog, file: string): SitePr
 		const raw = str(cell(cells, c.site));
 		const siteId = resolveSite(raw);
 		if (!siteId) {
-			if (raw) log.add('warning', 'sites', `Pressure sheet: unknown site "${raw}"`, { file, sheet: sheet.name, row: r });
+			if (raw)
+				log.add('warning', 'sites', `Pressure sheet: unknown site "${raw}"`, {
+					file,
+					sheet: sheet.name,
+					row: r
+				});
 			continue;
 		}
 		out.push({
@@ -199,7 +212,8 @@ export function parseAdults(
 				boatMin: boat,
 				releasedMin: released,
 				fightMin: hooked != null && boat != null ? boat - hooked : null,
-				handlingMin: boat != null && released != null ? released - boat : durationOf(cell(cells, c.duration)),
+				handlingMin:
+					boat != null && released != null ? released - boat : durationOf(cell(cells, c.duration)),
 				lat: num(cell(cells, c.lat)),
 				lon: num(cell(cells, c.lon)),
 				site: str(cell(cells, c.site)),
@@ -245,7 +259,9 @@ export function parseAdults(
 			total: [/^total no sharks/],
 			comments: [eq('comments')]
 		});
-		const sharkCols = h.map((x, i) => (/shark on/i.test(String(x ?? '')) ? i : -1)).filter((i) => i >= 0);
+		const sharkCols = h
+			.map((x, i) => (/shark on/i.test(String(x ?? '')) ? i : -1))
+			.filter((i) => i >= 0);
 		for (const { cells } of eff.rows.slice(1)) {
 			const date = dateOf(cell(cells, c.date));
 			if (!date) continue;

@@ -1,0 +1,82 @@
+# Weekly refresh of the public environmental snapshots in external/ (#22): weather, waves,
+# SST, Coral Reef Watch heat stress, Papeete tides and ENSO indices. When anything changed,
+# commit it to main, cut a patch release and publish the image so servers pick up fresh data.
+# No spreadsheet data is involved.
+
+name: Refresh environmental data
+
+on:
+  schedule:
+    - cron: '40 15 * * 1' # Mondays ~01:40 AEST
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-external-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      changed: ${{ steps.diff.outputs.changed }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+
+      - name: Fetch snapshots
+        run: node scripts/fetch-external.mjs
+
+      - name: Detect changes
+        id: diff
+        run: |
+          if git diff --quiet -- external; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No new environmental data."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat -- external
+          fi
+
+      - name: Bump patch version
+        if: steps.diff.outputs.changed == 'true'
+        id: version
+        run: |
+          NEW_VERSION="$(npm version patch --no-git-tag-version)"
+          echo "version=${NEW_VERSION#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag and release
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add external package.json
+          git commit -m "chore(data): weekly environmental data refresh (v${VERSION})"
+          git pull --rebase origin main
+          git tag "v${VERSION}"
+          git push origin HEAD:main "v${VERSION}"
+          gh release create "v${VERSION}" --target main --title "v${VERSION}" --notes "Weekly refresh of weather, ocean, tide and ENSO snapshots."
+
+  docker:
+    needs: refresh
+    if: needs.refresh.outputs.changed == 'true'
+    uses: ./.github/workflows/docker-release.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      ref: v${{ needs.refresh.outputs.version }}

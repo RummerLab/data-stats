@@ -19,10 +19,24 @@ const ALIASES: Record<string, string> = {
 	loric: 'Lauric'
 };
 
-const GROUPS = new Set(['everyone', 'upf', 'criobe', 'family', 'kid', 'b', 'nao (no crew)']);
+const GROUPS = new Set(['everyone', 'upf', 'criobe', 'family', 'kid', 'b', 'nao (no crew)', 'com']);
+
+/** All-caps tokens that are initials rather than shouted names. */
+const INITIALISMS = new Set(['MGX', 'MC', 'J-L']);
+
+/** Accent- and case-insensitive key used to merge spellings of one name. */
+export const crewKey = (name: string) =>
+	name
+		.normalize('NFD')
+		.replace(/[̀-ͯ]/g, '')
+		.toLowerCase()
+		.replace(/[^a-z\s-]/g, '')
+		.trim();
 
 function titleCase(s: string) {
-	return s.toLowerCase().replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
+	return s
+		.toLowerCase()
+		.replace(/(^|[\s-])(\p{L})/gu, (_, sep: string, ch: string) => sep + ch.toUpperCase());
 }
 
 /** Split a crew cell into normalised person names (deduplicated, order kept). */
@@ -30,18 +44,19 @@ export function parseCrew(raw: string | null): string[] {
 	if (!raw) return [];
 	const out: string[] = [];
 	for (let part of raw.split(/[,;&+/\n]|\s+and\s+|\s+et\s+/i)) {
-		part = part.replace(/\(.*?\)/g, '').replace(/\s+/g, ' ').trim();
-		if (!part) continue;
-		const lower = part
-			.normalize('NFD')
-			.replace(/[̀-ͯ]/g, '')
-			.toLowerCase();
+		part = part
+			.replace(/\(.*?\)/g, '')
+			.replace(/[….]+$/u, '')
+			.replace(/\s+/g, ' ')
+			.trim();
+		if (!part || /^\d+$/.test(part)) continue;
+		const lower = part.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 		if (GROUPS.has(lower)) continue;
 		let name = ALIASES[lower];
 		if (!name) {
 			// "TUI" / "CATHY" → "Tui" / "Cathy"; keep short initialisms like "MGX".
 			const allCaps = part === part.toUpperCase() && /\p{L}/u.test(part);
-			name = allCaps && (part.length > 3 || part === 'TUI') ? titleCase(part) : part;
+			name = allCaps && part.length >= 3 && !INITIALISMS.has(part) ? titleCase(part) : part;
 			if (part === part.toLowerCase()) name = titleCase(part);
 		}
 		if (!out.includes(name)) out.push(name);

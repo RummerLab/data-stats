@@ -20,7 +20,10 @@ import {
 import { resolveSite } from './sites';
 import { ExcelDate, type Sheet } from './xlsx';
 
-const eq = (...names: string[]): Matcher => (k: string) => names.includes(k);
+const eq =
+	(...names: string[]): Matcher =>
+	(k: string) =>
+		names.includes(k);
 
 export type SheetKind =
 	| 'lab_sharks'
@@ -99,7 +102,17 @@ export function parseLabSharks(sheet: Sheet, season: string, file: string): LabS
 	const arr = mapColumns(header, LAB_SPEC, 0, releaseIdx >= 0 ? releaseIdx : header.length);
 	const rel =
 		releaseIdx >= 0
-			? mapColumns(header, { fl: [/^fl\b/], tl: [/^tl\b/], mass: [/^mass kg/], days: [/^days/], notes: [eq('notes')] }, releaseIdx + 1)
+			? mapColumns(
+					header,
+					{
+						fl: [/^fl\b/],
+						tl: [/^tl\b/],
+						mass: [/^mass kg/],
+						days: [/^days/],
+						notes: [eq('notes')]
+					},
+					releaseIdx + 1
+				)
 			: {};
 	const out: LabShark[] = [];
 	for (const { r, cells } of sheet.rows.slice(1)) {
@@ -108,7 +121,11 @@ export function parseLabSharks(sheet: Sheet, season: string, file: string): LabS
 		if (!arrivalDate && !sharkNo) continue;
 		const releaseCell = releaseIdx >= 0 ? cells[releaseIdx] : null;
 		const releaseDate = dateOf(releaseCell);
-		const notes = [text(cell(cells, arr.notes)), text(cell(cells, rel.notes)), releaseDate ? null : text(releaseCell)]
+		const notes = [
+			text(cell(cells, arr.notes)),
+			text(cell(cells, rel.notes)),
+			releaseDate ? null : text(releaseCell)
+		]
 			.filter(Boolean)
 			.join('; ');
 		let days = num(cell(cells, rel.days)) ?? num(cell(cells, arr.days));
@@ -119,7 +136,9 @@ export function parseLabSharks(sheet: Sheet, season: string, file: string): LabS
 			season,
 			sharkNo,
 			tags: [...tagsOf(cell(cells, arr.pit)), ...tagsOf(cell(cells, arr.externalTag))],
-			species: speciesOf(cell(cells, arr.species)) ?? (sharkNo?.match(/^(cm|na)/i) ? speciesOf(sharkNo.slice(0, 2)) : null),
+			species:
+				speciesOf(cell(cells, arr.species)) ??
+				(sharkNo?.match(/^(cm|na)/i) ? speciesOf(sharkNo.slice(0, 2)) : null),
 			sex: sexOf(cell(cells, arr.sex)),
 			siteId: resolveSite(str(cell(cells, arr.site))),
 			arrivalDate,
@@ -241,7 +260,14 @@ export function parseLabWq(sheet: Sheet, season: string): LabWqRow[] {
 			recorder: str(cell(cells, c.recorder)),
 			notes: text(cell(cells, c.notes))
 		};
-		if (row.temp == null && row.ph == null && row.doMg == null && row.doPct == null && row.salinity == null) continue;
+		if (
+			row.temp == null &&
+			row.ph == null &&
+			row.doMg == null &&
+			row.doPct == null &&
+			row.salinity == null
+		)
+			continue;
 		// Plausibility: drop sensor typos that would wreck the charts.
 		if (row.temp != null && (row.temp < 15 || row.temp > 40)) row.temp = null;
 		if (row.ph != null && (row.ph < 6 || row.ph > 9.5)) row.ph = null;
@@ -575,7 +601,8 @@ export function parseLocationNames(sheet: Sheet, log: IssueLog): SiteDescription
 	for (const { cells } of sheet.rows.slice(1)) {
 		const siteId = resolveSite(str(cells[1]));
 		if (!siteId) {
-			if (str(cells[1])) log.add('info', 'sites', `Site description for unknown site "${str(cells[1])}"`);
+			if (str(cells[1]))
+				log.add('info', 'sites', `Site description for unknown site "${str(cells[1])}"`);
 			continue;
 		}
 		out.push({ siteId, directions: text(cells[3]), habitat: text(cells[4]) });
