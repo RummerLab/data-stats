@@ -167,7 +167,7 @@ importers:
   .:
     dependencies:
       '@fontsource-variable/inter':
-        specifier: ^5.2.8
+        specifier: ^5.3.0
         version: 5.3.0
       better-sqlite3:
         specifier: ^13.0.3
@@ -176,7 +176,7 @@ importers:
         specifier: ^0.45.4
         version: 0.45.4(@types/better-sqlite3@9.6.0)(better-sqlite3@13.0.3)
       fflate:
-        specifier: ^0.8.2
+        specifier: ^0.8.3
         version: 0.8.3
     devDependencies:
       '@axe-core/playwright':
@@ -189,10 +189,10 @@ importers:
         specifier: ^1.64.1
         version: 1.64.1
       '@sveltejs/adapter-node':
-        specifier: ^6.0.0
+        specifier: ^6.0.1
         version: 6.0.1(@sveltejs/kit@3.1.1(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.3(@typescript-eslint/types@8.72.1))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)))(svelte@5.57.3(@typescript-eslint/types@8.72.1))(typescript@6.0.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)))
       '@sveltejs/kit':
-        specifier: ^3.1.0
+        specifier: ^3.1.1
         version: 3.1.1(@sveltejs/vite-plugin-svelte@7.3.1(svelte@5.57.3(@typescript-eslint/types@8.72.1))(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)))(svelte@5.57.3(@typescript-eslint/types@8.72.1))(typescript@6.0.3)(vite@8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
       '@sveltejs/vite-plugin-svelte':
         specifier: ^7.3.1
@@ -210,7 +210,7 @@ importers:
         specifier: ^0.31.11
         version: 0.31.11
       eslint:
-        specifier: ^10.13.0
+        specifier: ^10.14.0
         version: 10.14.0(jiti@2.7.0)
       eslint-config-prettier:
         specifier: ^10.1.8
