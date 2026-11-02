@@ -121,6 +121,12 @@
 				</li>
 			{/each}
 		</ul>
+		<p>
+			Full and up-to-date lists: <a href="https://physioshark.org/#publications"
+				>Physioshark publications</a
+			>
+			and <a href="https://rummerlab.com/publications">RummerLab publications</a>.
+		</p>
 	</section>
 
 	<section class="section">

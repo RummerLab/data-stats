@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { NAV } from '#lib/nav';
 	import { date, season } from '#lib/format';
+	import PhysiosharkIcon from '#lib/components/PhysiosharkIcon.svelte';
 	import type { LayoutProps } from './$types';
 
 	let { children, data }: LayoutProps = $props();
@@ -46,6 +47,7 @@
 
 	const active = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
+	const version = __APP_VERSION__;
 	const current = $derived(NAV.flatMap((g) => g.items).find((i) => active(i.href)));
 </script>
 
@@ -61,7 +63,14 @@
 <header class="site-header">
 	<div class="container bar">
 		<a class="brand" href="/" aria-label="Physioshark Data home">
-			<span class="word">PHYSIO<span class="fin" aria-hidden="true">⟆</span>SHARK</span>
+			<img
+				class="logo"
+				src="/logo-physioshark.png"
+				alt=""
+				width="498"
+				height="174"
+				decoding="async"
+			/>
 			<span class="data">Data</span>
 		</a>
 		<button
@@ -153,7 +162,7 @@
 <footer class="site-footer">
 	<div class="container cols">
 		<div>
-			<p class="fbrand">Physioshark Data</p>
+			<p class="fbrand"><PhysiosharkIcon size={36} /> Physioshark Data</p>
 			<p>
 				An open window onto the Physioshark project's shark-nursery surveys in Mo'orea, French
 				Polynesia, led by Dr Jodie Rummer (RummerLab, James Cook University) with CRIOBE.
@@ -164,12 +173,16 @@
 					)}.{/if}
 				{#if data.importedAt}Data imported {date(data.importedAt)}.{/if}
 			</p>
+			<p class="small">
+				<a href={`https://github.com/RummerLab/data-stats/releases/tag/v${version}`}>v{version}</a>
+			</p>
 		</div>
 		<div>
 			<p class="fh">Physioshark</p>
 			<ul>
 				<li><a href="https://physioshark.org/">physioshark.org</a></li>
-				<li><a href="https://physioshark.org/#publications">Publications</a></li>
+				<li><a href="https://physioshark.org/#publications">Physioshark publications</a></li>
+				<li><a href="https://rummerlab.com/publications">RummerLab publications</a></li>
 				<li><a href="https://github.com/RummerLab/data-stats">Source code on GitHub</a></li>
 			</ul>
 		</div>
@@ -220,20 +233,24 @@
 	}
 	.brand {
 		display: flex;
-		align-items: baseline;
+		align-items: center;
 		gap: 10px;
 		text-decoration: none;
 		color: var(--ink);
 	}
-	.word {
-		font-weight: 300;
-		letter-spacing: 0.12em;
-		font-size: 1.05rem;
+	.logo {
+		display: block;
+		height: 40px;
+		width: auto;
 	}
-	.fin {
-		color: var(--accent);
-		font-weight: 600;
-		margin: 0 1px;
+	/* The two-tone logo is navy on transparent: show it in light ink on dark surfaces. */
+	@media (prefers-color-scheme: dark) {
+		:global(:root:not([data-theme='light'])) .logo {
+			filter: brightness(0) invert(0.94);
+		}
+	}
+	:global(:root[data-theme='dark']) .logo {
+		filter: brightness(0) invert(0.94);
 	}
 	.data {
 		font-weight: 700;
@@ -378,6 +395,11 @@
 		}
 	}
 	.fbrand {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		--mark-light: #6bb4d5;
+		--mark-dark: var(--on-navy);
 		color: var(--on-navy);
 		font-weight: 650;
 		font-size: 1.05rem;

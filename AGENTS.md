@@ -2,7 +2,7 @@
 
 > **Living document.** Future AI agents (and humans) should read this before changing the repo, and **update it** when they learn something new, correct a mistake, or retire outdated guidance. Prefer short, actionable notes over essays. Remove stale info rather than commenting it out.
 
-Web app for **http://data.physioshark.org/**: thirteen seasons (2013-14 → 2025-26) of Mo'orea shark-nursery surveys from the [Physioshark project](https://physioshark.org/) (Dr Jodie Rummer, RummerLab / JCU, with CRIOBE), joined with weather, ocean, tide, climate and sun/moon data to surface interesting, quirky, fun and informative findings. Modelled on [crag-stats](https://github.com/Luen/crag-stats).
+Web app for **http://data.physioshark.org/**: thirteen seasons (2013-14 → 2025-26) of Mo'orea shark-nursery surveys from the [Physioshark project](https://physioshark.org/) (Dr Jodie Rummer, RummerLab / JCU, with CRIOBE), joined with weather, ocean, tide, climate and sun/moon data to surface interesting, quirky, fun and informative findings.
 
 ---
 
@@ -27,7 +27,7 @@ Web app for **http://data.physioshark.org/**: thirteen seasons (2013-14 → 2025
 | Node            | 26 (CI, Docker, `.nvmrc`, `engines`)                                                           |
 | Deploy          | Docker multi-arch → `ghcr.io/rummerlab/data-stats`, distroless non-root runner                 |
 
-Import alias: `#lib/...` → `src/lib/...`. Env vars are declared in `src/env.ts`; server code reads `process.env` (Docker/runtime).
+Import alias: `#lib/...` → `src/lib/...`. The footer shows `__APP_VERSION__` (package.json version, injected by `define` in `vite.config.ts`); release workflows bump it before tagging, so it matches the GitHub release. Env vars are declared in `src/env.ts`; server code reads `process.env` (Docker/runtime).
 
 ## Repository map
 

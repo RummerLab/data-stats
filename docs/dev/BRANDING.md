@@ -6,7 +6,8 @@ Matches [physioshark.org](https://physioshark.org/): clean, corporate, ocean-blu
 
 - **Inter** (variable, bundled via `@fontsource-variable/inter`; no font CDN).
 - Page titles 700, section titles 650, body 400 at 16 px / 1.6. Hero headline uppercase like the main site.
-- Wordmark: light, letter-spaced `PHYSIO⟆SHARK` in ink with the fin glyph in accent blue, followed by a `DATA` chip (white on `#1d5fb8` in both themes for contrast).
+- Logo: the Physioshark project logo (`static/logo-physioshark.png`, from [RummerLab/physioshark-project](https://github.com/RummerLab/physioshark-project)) followed by a `DATA` chip (white on `#1d5fb8` in both themes for contrast). On dark surfaces it is shown as a light monochrome (`filter`), since the navy half would vanish.
+- Icon: `static/favicon.svg` is the project's shark mark (with a lighter navy under `prefers-color-scheme: dark`). `PhysiosharkIcon.svelte` inlines it with `--mark-light` / `--mark-dark` colours for the navy footer. Don't redraw or recolour the mark beyond that.
 
 ## Colour tokens (`src/app.css`)
 
