@@ -1,9 +1,16 @@
 import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
+import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
 
+// Release version shown in the footer. Release workflows bump package.json before tagging.
+const { version } = JSON.parse(readFileSync('package.json', 'utf8')) as { version: string };
+
 export default defineConfig({
+	define: {
+		__APP_VERSION__: JSON.stringify(version)
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({

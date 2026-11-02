@@ -2,7 +2,7 @@
 
 **http://data.physioshark.org/** · thirteen seasons of [Physioshark](https://physioshark.org/) shark-nursery surveys in Mo'orea, French Polynesia, joined with weather, ocean, tide, climate and sun/moon data, and turned into charts, findings and profiles.
 
-Led by Dr Jodie Rummer (RummerLab, James Cook University) in collaboration with CRIOBE. Built with SvelteKit, Drizzle and SQLite; modelled on [crag-stats](https://github.com/Luen/crag-stats).
+Led by Dr Jodie Rummer (RummerLab, James Cook University) in collaboration with CRIOBE. Built with SvelteKit, Drizzle and SQLite.
 
 ## What's in it
 
