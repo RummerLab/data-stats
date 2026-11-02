@@ -64,7 +64,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '2';
+export const IMPORTER_VERSION = '3';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -95,16 +95,35 @@ export interface SourceFile {
 	mtime: number;
 }
 
-export function listWorkbooks(dir: string): SourceFile[] {
+/**
+ * Every workbook under `dir`. Folders or files the app can't read (e.g. EACCES when the host
+ * folder isn't readable by the container user) are skipped and reported through `onError`, so a
+ * permissions slip shows up on the Data quality page instead of taking the site down (#83).
+ */
+export function listWorkbooks(
+	dir: string,
+	onError?: (path: string, err: NodeJS.ErrnoException) => void
+): SourceFile[] {
 	if (!existsSync(dir)) return [];
 	const out: SourceFile[] = [];
 	const walk = (d: string) => {
-		for (const ent of readdirSync(d, { withFileTypes: true })) {
+		let entries;
+		try {
+			entries = readdirSync(d, { withFileTypes: true });
+		} catch (err) {
+			onError?.(d, err as NodeJS.ErrnoException);
+			return;
+		}
+		for (const ent of entries) {
 			const p = join(d, ent.name);
 			if (ent.isDirectory()) walk(p);
 			else if (/\.xlsx$/i.test(ent.name) && !ent.name.startsWith('~$')) {
-				const st = statSync(p);
-				out.push({ path: p, size: st.size, mtime: Math.round(st.mtimeMs) });
+				try {
+					const st = statSync(p);
+					out.push({ path: p, size: st.size, mtime: Math.round(st.mtimeMs) });
+				} catch (err) {
+					onError?.(p, err as NodeJS.ErrnoException);
+				}
 			}
 		}
 	};
@@ -118,7 +137,10 @@ export function importHash(opts: ImportOptions): string {
 	h.update(`importer:${IMPORTER_VERSION}\n`);
 	for (const [name, sql] of Object.entries(MIGRATIONS).sort())
 		h.update(`${name}:${sql.length}:${sql}\n`);
-	for (const f of listWorkbooks(opts.dataDir))
+	// Unreadable paths are part of the fingerprint, so fixing their permissions triggers a rebuild.
+	const unreadable = (p: string, err: NodeJS.ErrnoException) =>
+		h.update(`!${relative(opts.dataDir, p)}:${err.code}\n`);
+	for (const f of listWorkbooks(opts.dataDir, unreadable))
 		h.update(`${relative(opts.dataDir, f.path)}:${f.size}:${f.mtime}\n`);
 	for (const name of EXTERNAL_FILES) {
 		for (const p of [join(opts.externalDir, name), join(opts.externalDir, `${name}.gz`)]) {
@@ -173,7 +195,15 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 		adultEffort: [],
 		files: []
 	};
-	for (const f of listWorkbooks(dataDir)) {
+	const unreadable = (path: string, err: NodeJS.ErrnoException) =>
+		log.add(
+			'error',
+			'files',
+			`Could not read ${path === dataDir ? 'the data folder' : 'this path'} (${err.code ?? err.message}). ` +
+				'Make it readable by the app (in Docker, uid 65532), e.g. chmod -R o+rX on the host folder.',
+			{ file: relative(dataDir, path).replace(/\\/g, '/') || '.', sheet: '' }
+		);
+	for (const f of listWorkbooks(dataDir, unreadable)) {
 		const rel = relative(dataDir, f.path).replace(/\\/g, '/');
 		const base = basename(f.path);
 		let wb;

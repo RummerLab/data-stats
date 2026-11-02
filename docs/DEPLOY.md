@@ -38,4 +38,4 @@ Set `ORIGIN` in `.env` to the public URL if the proxy does not send `X-Forwarded
 
 - `docker logs physioshark-data` shows `[import] rebuilt in … ms: {...}` after each import, or the error that stopped it.
 - The cache is disposable: `docker compose -f docker-compose.ghcr.yml down && docker volume rm physioshark-data_cache` forces a clean rebuild.
-- The image is distroless and runs as uid 65532 with no shell. The data folder must be readable by that user (default `644` files are fine).
+- The image is distroless and runs as uid 65532 with no shell. The data folder must be readable by that user (default `644` files are fine). If the host umask makes new folders private (e.g. `drwxr-x---`), the Data quality page lists "Could not read the data folder (EACCES)" and the site shows no survey data. Fix it on the host with `chmod -R o+rX data`. The next check (within a minute) rebuilds without a restart.
