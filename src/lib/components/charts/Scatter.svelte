@@ -15,6 +15,7 @@
 </script>
 
 <script lang="ts">
+	import { isoDay, registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
@@ -52,6 +53,11 @@
 		jitter?: number;
 		opacity?: number;
 	} = $props();
+
+	registerCsv(() => ({
+		columns: [xLabel || (xDate ? 'date' : 'x'), yLabel || 'y', 'group', 'label'],
+		rows: points.map((p) => [xDate ? isoDay(p.x) : p.x, p.y, p.g, p.label])
+	}));
 
 	let width = $state(640);
 	const m = $derived({ top: 10, right: 16, bottom: xLabel ? 44 : 28, left: 54 });

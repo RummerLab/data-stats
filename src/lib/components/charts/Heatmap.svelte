@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
 
@@ -24,6 +25,11 @@
 		yTitle?: string;
 		domain?: [number, number];
 	} = $props();
+
+	registerCsv(() => ({
+		columns: [yTitle || 'row', ...xLabels],
+		rows: yLabels.map((y, i) => [y, ...xLabels.map((_, j) => values[i]?.[j])])
+	}));
 
 	let width = $state(640);
 	const longestY = $derived(Math.max(0, ...yLabels.map((l) => l.length)));

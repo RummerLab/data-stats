@@ -1,6 +1,7 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import DataTable, { type Column } from './DataTable.svelte';
+	import { collectCsv, slug, toCsv, type CsvTable } from './charts/csv';
 
 	let {
 		title,
@@ -19,6 +20,31 @@
 		table?: { columns: Column[]; rows: Record<string, unknown>[] };
 		children: Snippet;
 	} = $props();
+
+	// Charts inside the card register their data; the button needs JS, so it appears on mount.
+	const sources = collectCsv();
+	let canDownload = $state(false);
+	onMount(() => (canDownload = sources.length > 0 || !!table?.rows.length));
+
+	function download() {
+		const tables: CsvTable[] = table?.rows.length
+			? [
+					{
+						columns: table.columns.map((c) => c.label),
+						rows: table.rows.map((r) =>
+							table.columns.map((c) => r[c.key] as CsvTable['rows'][0][0])
+						)
+					}
+				]
+			: sources.map((s) => s());
+		const url = URL.createObjectURL(new Blob([toCsv(tables)], { type: 'text/csv;charset=utf-8' }));
+		const a = Object.assign(document.createElement('a'), {
+			href: url,
+			download: `physioshark-${slug(title)}.csv`
+		});
+		a.click();
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
+	}
 </script>
 
 <figure class="card chart-card" {id}>
@@ -33,6 +59,11 @@
 			<summary>Show data ({table.rows.length} rows)</summary>
 			<DataTable columns={table.columns} rows={table.rows} max={500} />
 		</details>
+	{/if}
+	{#if canDownload}
+		<button type="button" class="csv" onclick={download}>
+			Download CSV<span class="sr"> for {title}</span>
+		</button>
 	{/if}
 	{#if source}<p class="source">Source: {source}</p>{/if}
 </figure>
@@ -72,6 +103,26 @@
 	.tbl {
 		margin-top: 10px;
 		font-size: 0.85rem;
+	}
+	.csv {
+		align-self: flex-start;
+		margin-top: 8px;
+		padding: 0;
+		background: none;
+		border: 0;
+		color: var(--accent-ink);
+		font: inherit;
+		font-size: 0.8rem;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 2px;
+	}
+	.sr {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		overflow: hidden;
+		clip: rect(0 0 0 0);
 	}
 	.tbl summary {
 		cursor: pointer;

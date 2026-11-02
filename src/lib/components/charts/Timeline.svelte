@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { isoDay, registerCsv } from './csv';
 	import Tip, { type TipState } from './Tip.svelte';
 	import { dateTicks, linear } from './scale';
 
@@ -7,6 +8,13 @@
 	}: {
 		rows: { label: string; items: { start: number; end: number; color?: string; tip: string }[] }[];
 	} = $props();
+
+	registerCsv(() => ({
+		columns: ['row', 'start', 'end', 'detail'],
+		rows: rows.flatMap((r) =>
+			r.items.map((it) => [r.label, isoDay(it.start), isoDay(it.end), it.tip])
+		)
+	}));
 
 	let width = $state(640);
 	const longest = $derived(Math.max(0, ...rows.map((r) => r.label.length)));

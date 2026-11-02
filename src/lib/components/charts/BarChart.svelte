@@ -7,6 +7,7 @@
 </script>
 
 <script lang="ts">
+	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
@@ -37,6 +38,15 @@
 		/** Optional [lo, hi] interval per category (single series). */
 		errors?: ([number, number] | null)[];
 	} = $props();
+
+	registerCsv(() => ({
+		columns: ['category', ...series.map((s) => s.name), ...(errors ? ['ci_low', 'ci_high'] : [])],
+		rows: categories.map((c, i) => [
+			c,
+			...series.map((s) => s.values[i]),
+			...(errors ? [errors[i]?.[0], errors[i]?.[1]] : [])
+		])
+	}));
 
 	let width = $state(640);
 	const h = $derived(height ?? (horizontal ? Math.max(120, categories.length * 26 + 40) : 260));
