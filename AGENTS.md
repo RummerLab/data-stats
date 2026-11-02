@@ -128,6 +128,7 @@ Don't silently fix unrelated things and don't let them go unrecorded: **file a G
 
 ## Changelog for agents
 
-| When    | Note                                                                                                                                                             |
-| ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11 | v0.1.0: importer for all 13 seasons + adults + GPS + pressure ranking; external snapshots; 25 pages / 130+ charts; Docker, CI, release workflows; issues #1–#75. |
+| When    | Note                                                                                                                                                                                      |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11 | v0.1.0: importer for all 13 seasons + adults + GPS + pressure ranking; external snapshots; 25 pages / 130+ charts; Docker, CI, release workflows; issues #1–#75.                          |
+| 2026-11 | v0.2.0: Physioshark logo/icon, footer version, OG image, CSV download on every chart, histogram overlay, busy-day (holiday) analysis, season rewind; unreadable DATA_DIR no longer fatal. |
