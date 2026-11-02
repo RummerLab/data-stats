@@ -82,6 +82,7 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 - `docker-release.yml`: builds linux/amd64 + arm64 and pushes on `v*` tag pushes, manual dispatch or `workflow_call`. Image name is lower-cased from the repo (`rummerlab/data-stats`).
 - `nightly-minor-deps-release.yml`: `npm-check-updates --target semver --cooldown 3`, full suite, then a patch release + image **only when a package that reaches the image moved** (tooling list in `scripts/nightlyRelease.mjs`; add new lint/test devDependencies there). It pushes to `main`, so branch protection needs a bypass for Actions.
 - `refresh-external.yml`: weekly `fetch-external.mjs`; when `external/` changed it commits, tags a patch release and publishes the image.
+- Dependabot covers GitHub Actions only: its pnpm runs on Node < 26 and `engineStrict` fails every npm job. npm majors are upgraded by hand.
 - `ci.yml`: lint + check + unit tests, build + Playwright/axe, and a Docker build + smoke test (synthetic fixture) on both architectures.
 - Runner is distroless `cc-debian13:nonroot` (uid 65532) with the build stage's Node binary: no shell. Debug with `node -e`.
 
