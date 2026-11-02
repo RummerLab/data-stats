@@ -48,15 +48,30 @@
 	const active = (href: string) =>
 		href === '/' ? page.url.pathname === '/' : page.url.pathname.startsWith(href);
 	const version = __APP_VERSION__;
+	const description =
+		"Thirteen seasons of Physioshark shark-nursery surveys in Mo'orea, French Polynesia, joined with weather, ocean, tide and climate data.";
 	const current = $derived(NAV.flatMap((g) => g.items).find((i) => active(i.href)));
+	const title = $derived(
+		`${current && current.href !== '/' ? `${current.label} · ` : ''}Physioshark Data`
+	);
 </script>
 
 <svelte:head>
-	<title>{current && current.href !== '/' ? `${current.label} · ` : ''}Physioshark Data</title>
+	<title>{title}</title>
+	<meta name="description" content={description} />
+	<meta property="og:type" content="website" />
+	<meta property="og:site_name" content="Physioshark Data" />
+	<meta property="og:title" content={title} />
+	<meta property="og:description" content={description} />
+	<meta property="og:url" content={`${page.url.origin}${page.url.pathname}`} />
+	<meta property="og:image" content={`${page.url.origin}/og-image.png`} />
+	<meta property="og:image:width" content="1200" />
+	<meta property="og:image:height" content="630" />
 	<meta
-		name="description"
-		content="Thirteen seasons of Physioshark shark-nursery surveys in Mo'orea, French Polynesia, joined with weather, ocean, tide and climate data."
+		property="og:image:alt"
+		content="Physioshark Data: thirteen seasons of baby sharks, in numbers"
 	/>
+	<meta name="twitter:card" content="summary_large_image" />
 </svelte:head>
 
 <a class="skip" href="#main">Skip to content</a>
