@@ -10,6 +10,7 @@ import {
 	seasonDay,
 	siteName
 } from '#lib/server/analytics/common';
+import { seasonRewind } from '#lib/server/analytics/rewind';
 import { histogram } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -84,6 +85,7 @@ export const load: PageServerLoad = ({ params }) => {
 			newborns: first.filter(isNeonate).length,
 			recaps: caps.filter((c) => (c.captureNo ?? 1) > 1).length
 		},
+		rewind: seasonRewind(d, season),
 		bySite,
 		weekly,
 		edges,

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
+	import FindingCard from '#lib/components/FindingCard.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Histogram from '#lib/components/charts/Histogram.svelte';
@@ -46,6 +47,17 @@
 		/>
 		<StatTile label="Recaptures" value={num(data.kpi.recaps)} sub="within this season" />
 	</div>
+
+	{#if data.rewind.length}
+		<section class="section">
+			<h2>Season rewind</h2>
+			<div class="grid-3">
+				{#each data.rewind as f (f.id)}
+					<FindingCard finding={f} />
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	<section class="section grid-2">
 		<ChartCard title="Captures by nursery" subtitle="Stacked by species">
