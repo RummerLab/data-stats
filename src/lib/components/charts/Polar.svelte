@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
 
@@ -16,6 +17,11 @@
 		/** Degrees clockwise from 12 o'clock for the first sector's centre. */
 		startAngle?: number;
 	} = $props();
+
+	registerCsv(() => ({
+		columns: ['sector', 'value', 'note'],
+		rows: sectors.map((s) => [s.label, s.value, s.sub])
+	}));
 
 	let width = $state(400);
 	const size = $derived(Math.min(width, height));

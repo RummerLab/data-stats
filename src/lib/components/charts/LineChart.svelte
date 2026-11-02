@@ -10,6 +10,7 @@
 </script>
 
 <script lang="ts">
+	import { isoDay, registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
@@ -40,6 +41,23 @@
 		refs?: { y: number; label: string }[];
 		yDomain?: [number, number];
 	} = $props();
+
+	registerCsv(() => ({
+		columns: [
+			'series',
+			xLabel || (xType === 'date' ? 'date' : 'x'),
+			...(xFormat && xType !== 'date' ? ['x_label'] : []),
+			yLabel || 'y'
+		],
+		rows: series.flatMap((s) =>
+			s.points.map((p) => [
+				s.name,
+				xType === 'date' ? isoDay(p.x) : p.x,
+				...(xFormat && xType !== 'date' ? [xFormat(p.x)] : []),
+				p.y
+			])
+		)
+	}));
 
 	let width = $state(640);
 	const m = $derived({ top: 12, right: 16, bottom: xLabel ? 44 : 30, left: 52 });

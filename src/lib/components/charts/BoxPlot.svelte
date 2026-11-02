@@ -15,6 +15,7 @@
 </script>
 
 <script lang="ts">
+	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
 	import { linear, nice, ticks } from './scale';
@@ -25,6 +26,20 @@
 		yLabel = '',
 		yFormat = compact
 	}: { boxes: Box[]; height?: number; yLabel?: string; yFormat?: (v: number) => string } = $props();
+
+	registerCsv(() => ({
+		columns: ['group', 'n', 'low', 'q1', 'median', 'q3', 'high', 'mean'],
+		rows: boxes.map((b) => [
+			b.name,
+			b.stats?.n,
+			b.stats?.lo,
+			b.stats?.q1,
+			b.stats?.median,
+			b.stats?.q3,
+			b.stats?.hi,
+			b.stats?.mean
+		])
+	}));
 
 	let width = $state(640);
 	const longest = $derived(Math.max(0, ...boxes.map((b) => b.name.length)));

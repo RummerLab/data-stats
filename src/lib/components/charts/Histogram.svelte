@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
@@ -22,6 +23,11 @@
 		xFormat?: (v: number) => string;
 		markers?: { x: number; label: string }[];
 	} = $props();
+
+	registerCsv(() => ({
+		columns: ['bin_start', 'bin_end', ...series.map((s) => s.name)],
+		rows: edges.slice(0, -1).map((e, i) => [e, edges[i + 1], ...series.map((s) => s.counts[i])])
+	}));
 
 	let width = $state(640);
 	const m = $derived({
