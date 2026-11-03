@@ -78,6 +78,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Cleaning: trim 2 h at the start of each file and 2 h (EnvLogger) or 24 h (HOBO, read out back at the station) at the end; drop readings outside 15–40 °C; merge repeated downloads of one logger by timestamp. Days need ≥ 18 site-hours. Tables: `logger_files`, `logger_daily`, `logger_diel`, plus `sets.insitu_temp`.
 - Comparisons between nurseries only use those logged ≥ 1 year with both seasons covered (a summer-only logger looks hottest).
 
+### Cloud cover (#104)
+
+- ERA5 `cloud_evening` covers every set; the crew's 1–4 `cloud_cover` score exists only in 2020–22 and tracks ERA5 (score 1 ≈ 43%, 4 ≈ 94%). `moonlight()` in `analytics/cloud.ts` = illumination × sin(moon altitude) × clear-sky fraction.
+- Cloud vs water temperature must be compared within the same month: the cloudy wet season is also the warmest, so raw correlations are ~0 while within-month ones are strongly negative.
+
 ### Adding a new season
 
 Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (the `YYYY-YYYY` in the file name sets the season). Check the Data quality page for unknown sites, unmatched headers ("Sheet not imported") and unit warnings, and extend aliases if needed. Never rename columns in the workbook to make the importer happy.
@@ -86,6 +91,7 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 
 - Follow the dataviz method: categorical slots in fixed order (`--series-1…8`, validated light and dark), sequential = one hue (`--seq-*`), diverging = blue ↔ red with a neutral midpoint, one y-axis only (never dual axes), legends for ≥ 2 series, text in ink tokens (never the series colour), 4 px rounded bar ends, 2 px lines, hover tooltips, data tables via `ChartCard table`.
 - Every chart registers its data with the enclosing `ChartCard` (`registerCsv` in `charts/csv.ts`), which shows **Download CSV**. A new chart component must call `registerCsv` too. An explicit `ChartCard table` takes precedence.
+- Cite the study behind a chart with `<ChartCard papers={['debaere2024lunar']}>` (ids in `src/lib/publications.ts`). Link only papers that analysed the same question with this dataset; check the abstract first. PDFs are served at `rummerlab.com/papers/<file>` (metadata in the rummerlab-website repo, `data/papers.json`).
 - Species colours come from `src/lib/species.ts` (blacktip = slot 1, sicklefin lemon = slot 2).
 - Charts measure their width (`bind:clientWidth`) and carry a `viewBox` so pre-hydration renders scale down instead of overflowing.
 - Interactive marks (links) inside an SVG → the SVG gets `role="group"`, not `img` (axe `nested-interactive`). Only put `aria-label` on elements that are links.

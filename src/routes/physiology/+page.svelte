@@ -39,6 +39,7 @@
 		<div class="grid-2">
 			<ChartCard
 				title="Haematocrit by nursery"
+				papers={['schwieterman2019blood']}
 				subtitle="% packed red cells: oxygen-carrying capacity"
 			>
 				<BoxPlot
@@ -86,7 +87,7 @@
 				: ''}
 		</p>
 		<div class="grid-2">
-			<ChartCard title="Days in captivity">
+			<ChartCard title="Days in captivity" papers={['bouyoucos2018deadtired']}>
 				<Histogram
 					edges={data.daysEdges}
 					series={[{ name: 'Sharks', color: 'var(--series-1)', counts: data.daysHist }]}
@@ -135,7 +136,11 @@
 					yDomain={[0, 100]}
 				/>
 			</ChartCard>
-			<ChartCard title="Tank temperature" subtitle="Daily mean across tanks, by season">
+			<ChartCard
+				title="Tank temperature"
+				papers={['bouyoucos2020thermal']}
+				subtitle="Daily mean across tanks, by season"
+			>
 				<LineChart
 					series={data.wqSeries.map((s, i) => ({
 						name: season(s.season),
@@ -155,6 +160,7 @@
 			{#if data.preyTop.length}
 				<ChartCard
 					title="Prey species logged (2013–14)"
+					papers={['debaere2024lunar']}
 					subtitle="Fish found in nets or recovered by gastric lavage"
 				>
 					<BarChart

@@ -8,6 +8,7 @@ import {
 	versusSst,
 	withGaps
 } from '#lib/server/analytics/insitu';
+import { cloudWater } from '#lib/server/analytics/cloud';
 import { linearFit, mean, pairs } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -120,6 +121,7 @@ export const load: PageServerLoad = () =>
 					diel,
 					dielAmp: { warm: amp(diel.warm), cool: amp(diel.cool) },
 					dailyMax: dailyMaxBySite(d),
+					cloud: cloudWater(d),
 					coverage: coverage(d)
 				}
 			: null;

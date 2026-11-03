@@ -62,7 +62,7 @@ test('nursery links open a profile and the menu works on mobile', async ({ page 
 	await page.setViewportSize({ width: 375, height: 800 });
 	await page.goto('/');
 	await page.getByRole('button', { name: 'Menu' }).click();
-	await page.getByText('Biology').click();
+	await page.getByText('Biology', { exact: true }).click();
 	await page.getByRole('link', { name: /Growth/ }).click();
 	await expect(page.locator('h1')).toHaveText('Growth');
 	const overflow = await page.evaluate(

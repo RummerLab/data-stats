@@ -26,6 +26,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Sea-surface temperature"
+			papers={['bouyoucos2020sharkparks']}
 			subtitle="Weekly mean, NOAA OISST v2.1 (0.25° cell south-west of Mo'orea)"
 			source="NOAA OISST v2.1 via ERDDAP"
 		>
@@ -38,6 +39,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Marine heat stress"
+			papers={['schoen2021heatwave', 'bouyoucos2020sharkparks']}
 			subtitle="Degree heating weeks (DHW): accumulated heat above the bleaching threshold. 4 = significant bleaching likely, 8 = severe."
 			note={data.peak
 				? `Peak ${num(data.peak.dhw, 1)} °C-weeks on ${date(data.peak.date)}; ${num(data.dhwDays)} days at or above 4.`
@@ -126,7 +128,11 @@
 			One point per season. With only thirteen seasons, these are hints rather than conclusions.
 		</p>
 		<div class="grid-3">
-			<ChartCard title="Sea temperature vs catch rate" note={fitNote(data.fitSstCpue)}>
+			<ChartCard
+				title="Sea temperature vs catch rate"
+				papers={['bouyoucos2024abiotic', 'eustache2024density']}
+				note={fitNote(data.fitSstCpue)}
+			>
 				<Scatter
 					points={rows
 						.filter((r) => r.sst != null && r.cpue != null)
@@ -156,6 +162,7 @@
 			</ChartCard>
 			<ChartCard
 				title="Heat stress before pupping vs newborn condition"
+				papers={['schoen2021heatwave']}
 				subtitle="Max DHW in Jan–Jun (while mothers are pregnant) vs mean K of newborn blacktips"
 				note={fitNote(data.fitDhwK)}
 			>

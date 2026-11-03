@@ -18,6 +18,7 @@ import {
 	seasonDayLabel,
 	siteName
 } from './common';
+import { cloudWater } from './cloud';
 import { dailyMaxBySite, versusSst } from './insitu';
 
 export interface Finding {
@@ -316,6 +317,18 @@ function compute(d: Dataset): Finding[] {
 			href: '/water-quality'
 		});
 	}
+
+	// Cloud cover and nursery water (#104): within-month contrast, so season doesn't confound it.
+	const cw = cloudWater(d).overcastVsClear;
+	if (cw?.max != null && cw.swing != null && cw.months >= 30 && cw.max < 0)
+		out.push({
+			id: 'cloud-cools-nursery',
+			kind: 'pattern',
+			title: 'Clouds take the edge off nursery afternoons',
+			value: `−${num(Math.abs(cw.max), 2)} °C`,
+			text: `Compared with clear days in the same month, overcast days peak ${num(Math.abs(cw.max), 2)} °C cooler on the nursery sand, and the day–night swing is ${num(Math.abs(cw.swing), 2)} °C ${cw.swing <= 0 ? 'smaller' : 'larger'}. Shallow water heats fast under full sun.`,
+			href: '/water-quality'
+		});
 
 	// Earliest newborn
 	const openScar = caps.filter((c) => c.umbilical === 'open' && c.date);

@@ -9,6 +9,7 @@
 
 	let { data }: PageProps = $props();
 	const t = $derived(data.timing);
+	const mc = $derived(data.moonCloud);
 </script>
 
 <div class="container">
@@ -25,6 +26,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Catch rate around the lunar cycle"
+			papers={['debaere2024lunar']}
 			subtitle="Sharks per net-hour by moon phase (wedge area ∝ catch rate). New moon at the top, full moon at the bottom."
 		>
 			<Polar
@@ -39,6 +41,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Catch rate by phase and species"
+			papers={['debaere2024lunar']}
 			table={{
 				columns: [
 					{ key: 'name', label: 'Phase' },
@@ -70,6 +73,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Catch rate by moon illumination"
+			papers={['debaere2024lunar', 'bouyoucos2024abiotic']}
 			subtitle="Whiskers: 95% confidence intervals"
 		>
 			<BarChart
@@ -87,6 +91,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Is the moon up?"
+			papers={['debaere2024lunar']}
 			subtitle="Catch rate when the moon is above or below the horizon at mid-set"
 		>
 			<BarChart
@@ -103,7 +108,27 @@
 			/>
 		</ChartCard>
 		<ChartCard
+			title="Does cloud hide the moon?"
+			papers={['debaere2024lunar']}
+			subtitle="Catch rate on dark nights and on bright-moon nights (≥ 60% lit, moon above 10° at mid-set) under a clear (< 40% cloud) or overcast (≥ 70%) sky. Whiskers: 95% confidence intervals."
+			note={`${mc.groups[1].mean != null && mc.groups[2].mean != null ? `Bright-moon nights averaged ${num(mc.groups[1].mean, 2)} sharks per net-hour under a clear sky and ${num(mc.groups[2].mean, 2)} under cloud (Welch ${pValue(mc.p)}). ` : ''}Moonlight reaching the water (illumination × moon height × clear sky) against catch rate: Spearman ρ = ${num(mc.rho, 2)} over ${num(mc.n)} sets.${mc.p != null && mc.p > 0.05 && mc.rho != null && Math.abs(mc.rho) < 0.1 ? ' Accounting for cloud does not reveal a moonlight effect.' : ''}`}
+		>
+			<BarChart
+				categories={mc.groups.map((g) => `${g.k} (${g.n})`)}
+				series={[
+					{
+						name: 'Sharks / net-hour',
+						color: 'var(--series-7)',
+						values: mc.groups.map((g) => g.mean)
+					}
+				]}
+				errors={mc.groups.map((g) => (g.lo != null && g.hi != null ? [g.lo, g.hi] : null))}
+				valueFormat={(v) => num(v, 2)}
+			/>
+		</ChartCard>
+		<ChartCard
 			title="Bright nights vs dark nights: when do sharks hit the net?"
+			papers={['debaere2024lunar']}
 			subtitle="Capture time after sunset on dark (< 25% illuminated) and bright (> 75%) nights"
 			note={`Median ${num(t.dark)} min after sunset on dark nights (n = ${num(t.nDark)}) vs ${num(t.bright)} min on bright nights (n = ${num(t.nBright)}); Welch ${pValue(t.p)}.`}
 		>

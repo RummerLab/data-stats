@@ -29,6 +29,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Share of pups with an unhealed scar, week by week"
+			papers={['debaere2023umbilicus', 'debaere2025injuries']}
 			subtitle="Open or healing umbilical scars among first captures (weeks with ≥ 5 sharks)"
 		>
 			<LineChart
@@ -96,6 +97,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Birth window by season"
+			papers={['debaere2023umbilicus']}
 			subtitle="When open-scar pups were caught: 10th, 50th and 90th percentile dates (seasons with ≥ 5 open-scar pups)"
 		>
 			<LineChart
@@ -161,6 +163,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Size by scar stage"
+			papers={['debaere2023umbilicus']}
 			subtitle="Mean TL at first capture: open → healing → healed"
 		>
 			<BarChart

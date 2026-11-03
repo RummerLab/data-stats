@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { PUBLICATIONS } from '#lib/publications';
+	import { PUBLICATIONS, paperHref } from '#lib/publications';
 	import { date } from '#lib/format';
 	import type { PageProps } from './$types';
 
@@ -115,11 +115,15 @@
 
 	<section class="section">
 		<h2>Publications from the Mo'orea fieldwork</h2>
+		<p class="small muted">
+			Charts that answer the same question as one of these papers link to it under the chart.
+		</p>
 		<ul class="pubs">
 			{#each moorea as p (p.doi)}
 				<li>
 					{p.authors} ({p.year}). <a href={`https://doi.org/${p.doi}`}>{p.title}</a>.
-					<i>{p.journal}</i>.
+					<i>{p.journal}</i>.{#if p.pdf}
+						<a href={paperHref(p)}>PDF</a>.{/if}
 					<span class="tag">See: <a href={p.moorea!.href}>{p.moorea!.label}</a></span>
 				</li>
 			{/each}
@@ -129,7 +133,8 @@
 			{#each other as p (p.doi)}
 				<li>
 					{p.authors} ({p.year}). <a href={`https://doi.org/${p.doi}`}>{p.title}</a>.
-					<i>{p.journal}</i>.
+					<i>{p.journal}</i>.{#if p.pdf}
+						<a href={paperHref(p)}>PDF</a>.{/if}
 				</li>
 			{/each}
 		</ul>

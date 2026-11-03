@@ -65,6 +65,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Days between captures"
+			papers={['bouyoucos2020homerange']}
 			subtitle="Consecutive captures of the same shark, weekly bins (first 20 weeks)"
 		>
 			<Histogram
@@ -75,6 +76,7 @@
 		</ChartCard>
 		<ChartCard
 			title="How many times is a shark caught?"
+			papers={['lionnet2025photoid']}
 			subtitle="Individuals by number of captures (6 = six or more)"
 		>
 			<BarChart
@@ -90,6 +92,7 @@
 	<section class="section">
 		<ChartCard
 			title="Where recaptured sharks move"
+			papers={['bouyoucos2020homerange']}
 			subtitle="Rows: nursery of the earlier capture. Columns: nursery of the next. The diagonal is site fidelity."
 		>
 			<Heatmap
