@@ -34,6 +34,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Most common words"
+			papers={['chin2015wounds', 'debaere2025injuries']}
 			subtitle="Words of four or more letters, common English/French words removed"
 		>
 			<BarChart

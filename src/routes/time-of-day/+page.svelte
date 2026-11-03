@@ -41,7 +41,11 @@
 				markers={[{ x: 0, label: 'sunset' }]}
 			/>
 		</ChartCard>
-		<ChartCard title="Captures by clock time" subtitle="15-minute bins">
+		<ChartCard
+			title="Captures by clock time"
+			papers={['mcinturf2025aggregation']}
+			subtitle="15-minute bins"
+		>
 			<Histogram
 				edges={data.clockEdges}
 				series={[{ name: 'Captures', color: 'var(--series-1)', counts: data.clock }]}

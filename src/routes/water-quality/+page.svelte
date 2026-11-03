@@ -68,6 +68,7 @@
 		<section class="section grid-2">
 			<ChartCard
 				title="Nursery water vs offshore sea temperature"
+				papers={['trujillo2025shallows']}
 				subtitle="Monthly means: all logged nurseries, and satellite SST (OISST) on the same days"
 				note={ins.diff != null
 					? `Over ${num(ins.nPairs)} days with both, nursery water averaged ${num(Math.abs(ins.diff), 2)} °C ${ins.diff >= 0 ? 'warmer' : 'cooler'} than the satellite reading offshore.`
@@ -85,6 +86,7 @@
 			</ChartCard>
 			<ChartCard
 				title="The daily cycle"
+				papers={['trujillo2025shallows', 'bouyoucos2022nursery']}
 				subtitle="Mean temperature by hour, all nurseries, warm (Nov–Apr) and cool (May–Oct) months"
 				note={ins.dielAmp.warm && ins.dielAmp.cool
 					? `In the warm months nursery water swings ${num(ins.dielAmp.warm.range, 1)} °C, coolest around ${hour(ins.dielAmp.warm.coolest)} and warmest around ${hour(ins.dielAmp.warm.warmest)}; in the cool months the swing is ${num(ins.dielAmp.cool.range, 1)} °C.`
@@ -103,6 +105,7 @@
 			</ChartCard>
 			<ChartCard
 				title="Daily maximum by nursery"
+				papers={['bouyoucos2020thermal', 'eustache2024density']}
 				subtitle="Hottest hour of each logged day, warmest nurseries first. Nurseries with at least a year of logging in both seasons."
 			>
 				<BoxPlot
@@ -164,14 +167,18 @@
 				r={4}
 			/>
 		</ChartCard>
-		<ChartCard title="pH">
+		<ChartCard title="pH" papers={['bouyoucos2024abiotic']}>
 			<BoxPlot
 				boxes={data.ph.map((b) => ({ ...b, color: 'var(--series-7)' }))}
 				yLabel="pH"
 				yFormat={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Salinity" subtitle="ppt; freshwater runoff lowers it near streams">
+		<ChartCard
+			title="Salinity"
+			papers={['bouyoucos2024abiotic']}
+			subtitle="ppt; freshwater runoff lowers it near streams"
+		>
 			<BoxPlot
 				boxes={data.sal.map((b) => ({ ...b, color: 'var(--series-1)' }))}
 				yLabel="ppt"
@@ -179,7 +186,11 @@
 			/>
 		</ChartCard>
 		{#if data.doMg.length}
-			<ChartCard title="Dissolved oxygen" subtitle="mg/L">
+			<ChartCard
+				title="Dissolved oxygen"
+				papers={['bouyoucos2021oxygen', 'bouyoucos2024abiotic']}
+				subtitle="mg/L"
+			>
 				<BoxPlot
 					boxes={data.doMg.map((b) => ({ ...b, color: 'var(--series-3)' }))}
 					yLabel="mg/L"

@@ -30,6 +30,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Correlation with catch rate"
+			papers={['bouyoucos2024abiotic']}
 			subtitle="Spearman ρ between each variable and sharks per net-hour; bars to the right mean more sharks when the variable is higher"
 			table={{
 				columns: [
