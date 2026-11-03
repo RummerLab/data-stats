@@ -57,6 +57,10 @@
 				<b>El Niño:</b> NOAA Climate Prediction Center Oceanic Niño Index and Southern Oscillation Index.
 			</li>
 			<li>
+				<b>Cyclones:</b> NOAA IBTrACS v04r01 South Pacific best tracks, positions within 750 km of Mo'orea.
+				A heavy-rain day is one of the wettest 1% of days in the ERA5 daily series.
+			</li>
+			<li>
 				<b>Sun and moon:</b> computed for Mo'orea (17.53° S, 149.83° W, UTC−10) from standard astronomical
 				formulas.
 			</li>

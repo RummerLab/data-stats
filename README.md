@@ -23,7 +23,7 @@ More than 130 server-rendered SVG charts and maps (several repeat per season, nu
 - Raw temperature logger exports (HOBO and EnvLogger `.csv` files) can sit anywhere under `data/`, e.g. `data/Temperature loggers/`. They are read the same way: never edited, never committed.
 - The app imports them into a derived SQLite cache on startup and re-imports automatically (within a minute) whenever a workbook is added or changed. Drop in next season's `Physioshark_Shark Log 2026-2027.xlsx` and the site updates.
 - Anything odd the importer notices (unit conversions, impossible measurements, out-of-season dates, tag conflicts, unknown sites) is listed on the **Data quality** page for the lab to fix in the source sheets.
-- Environmental data are public and live in `external/` (Open-Meteo ERA5 weather and waves, NOAA OISST, NOAA Coral Reef Watch via PacIOOS, UHSLC Papeete tide gauge, NOAA CPC ENSO indices). `scripts/fetch-external.mjs` refreshes them; a weekly workflow commits updates and publishes a new image.
+- Environmental data are public and live in `external/` (Open-Meteo ERA5 weather and waves, NOAA OISST, NOAA Coral Reef Watch via PacIOOS, UHSLC Papeete tide gauge, NOAA CPC ENSO indices, NOAA IBTrACS cyclone tracks). `scripts/fetch-external.mjs` refreshes them; a weekly workflow commits updates and publishes a new image.
 - Tests, CI and the container smoke test use **synthetic** workbooks in `samples/fixture/` (`pnpm fixture` regenerates them).
 
 ## Run locally
@@ -87,4 +87,4 @@ Read [AGENTS.md](AGENTS.md) before changing the importer, charts or release proc
 
 ## Credits
 
-Survey data © the Physioshark project. Environmental data: Open-Meteo (CC BY 4.0, ERA5 © Copernicus/ECMWF), NOAA OISST v2.1, NOAA Coral Reef Watch (via PacIOOS), University of Hawaii Sea Level Center, NOAA Climate Prediction Center. Coastline and street map tiles © OpenStreetMap contributors (ODbL). Satellite imagery © Esri, Maxar, Earthstar Geographics.
+Survey data © the Physioshark project. Environmental data: Open-Meteo (CC BY 4.0, ERA5 © Copernicus/ECMWF), NOAA OISST v2.1, NOAA Coral Reef Watch (via PacIOOS), University of Hawaii Sea Level Center, NOAA Climate Prediction Center, NOAA IBTrACS. Coastline and street map tiles © OpenStreetMap contributors (ODbL). Satellite imagery © Esri, Maxar, Earthstar Geographics.

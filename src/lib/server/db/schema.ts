@@ -485,6 +485,19 @@ export const tideExtrema = sqliteTable('tide_extrema', {
 	mm: real('mm').notNull()
 });
 
+/** Tropical cyclone track points within 750 km of Moorea (IBTrACS, UTC, #24). */
+export const cyclonePoints = sqliteTable('cyclone_points', {
+	id: integer('id').primaryKey(),
+	sid: text('sid').notNull(),
+	name: text('name').notNull(),
+	ts: text('ts').notNull(), // ISO UTC
+	lat: real('lat').notNull(),
+	lon: real('lon').notNull(),
+	windKt: real('wind_kt'),
+	presHpa: real('pres_hpa'),
+	distKm: real('dist_km').notNull()
+});
+
 export const climateMonthly = sqliteTable('climate_monthly', {
 	ym: text('ym').primaryKey(), // YYYY-MM
 	oni: real('oni'),

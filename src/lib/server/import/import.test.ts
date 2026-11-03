@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { dataset } from '../data';
 import { diet } from '../analytics/diet';
+import { weatherEvents } from '../analytics/events';
 import { topFindings } from '../analytics/findings';
 import { seasonRewind } from '../analytics/rewind';
 
@@ -67,6 +68,18 @@ describe('import of the synthetic fixture', () => {
 		const r = diet(d)!;
 		expect(r.nCm).toBe(checked.length);
 		expect(r.prey.map((p) => p.key)).toEqual(['fish']);
+	});
+
+	it('loads cyclone tracks and heavy-rain days (#24)', () => {
+		// external/ is the committed public snapshot, not synthetic data.
+		expect(d.cyclones.length).toBeGreaterThan(10);
+		const ev = weatherEvents(d)!;
+		const niko = ev.storms.find((s) => s.name === 'Niko');
+		expect(niko?.date).toBe('2015-01-21');
+		expect(niko!.distKm).toBeLessThan(200);
+		expect(ev.byMonth).toHaveLength(12);
+		expect(ev.heavyDays).toBe(ev.byMonth.reduce((a, b) => a + b, 0));
+		expect(ev.threshold).toBeGreaterThan(20);
 	});
 
 	it('computes findings without throwing', () => {
