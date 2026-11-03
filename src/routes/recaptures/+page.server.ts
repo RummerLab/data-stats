@@ -6,7 +6,8 @@ import {
 	round,
 	siteName
 } from '#lib/server/analytics/common';
-import { histogram, median } from '#lib/stats';
+import { schnabel } from '#lib/server/analytics/population';
+import { histogram, median, pairs as xy, spearman } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -70,7 +71,20 @@ export const load: PageServerLoad = () =>
 			n: d.individuals.filter((i) => (k === 6 ? i.nCaptures >= 6 : i.nCaptures === k)).length
 		}));
 
+		// Schnabel estimates per nursery, season and species (#43), against that nursery-season's CPUE.
+		const est = schnabel(d).map((e) => ({ ...e, site: siteName(d, e.siteId) }));
+		const rho = (sp: string) => {
+			const r = spearman(
+				xy(
+					est.filter((e) => e.species === sp),
+					(e) => e.cpue,
+					(e) => e.n
+				)
+			);
+			return r && r.n >= 8 ? { rho: round(r.rho, 2), p: r.p, n: r.n } : null;
+		};
 		return {
+			abundance: { rows: est, cm: rho('Cm'), na: rho('Na') },
 			bySeason: rateBy((c) => c.season, d.seasons),
 			bySite: rateBy((c) => c.siteId, nurseries).map((r) => ({ ...r, name: siteName(d, r.key) })),
 			bySpecies: rateBy((c) => c.species, ['Cm', 'Na']),
