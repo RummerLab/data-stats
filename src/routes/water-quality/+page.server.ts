@@ -1,7 +1,17 @@
 import { memo } from '#lib/server/data';
 import { activeNurseries, boxOf, round, siteName } from '#lib/server/analytics/common';
-import { linearFit, pairs } from '#lib/stats';
+import {
+	coverage,
+	dailyMaxBySite,
+	dielBySeason,
+	summary,
+	versusSst,
+	withGaps
+} from '#lib/server/analytics/insitu';
+import { linearFit, mean, pairs } from '#lib/stats';
 import type { PageServerLoad } from './$types';
+
+const dayNum = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
 
 const toDay = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
 
@@ -72,7 +82,50 @@ export const load: PageServerLoad = () =>
 			});
 			rows.set(h.label, r);
 		}
+		// In-situ loggers (#10): island-wide monthly means against offshore SST on the same days.
+		const vs = versusSst(d);
+		const months = new Map<string, { logger: number[]; sst: number[] }>();
+		for (const p of vs.pairs) {
+			const m = months.get(p.date.slice(0, 7)) ?? { logger: [], sst: [] };
+			m.logger.push(p.logger);
+			m.sst.push(p.sst);
+			months.set(p.date.slice(0, 7), m);
+		}
+		const monthRows = [...months]
+			.filter(([, m]) => m.logger.length >= 10)
+			.sort(([a], [b]) => a.localeCompare(b))
+			.map(([ym, m]) => ({
+				x: dayNum(`${ym}-15`),
+				logger: round(mean(m.logger)),
+				sst: round(mean(m.sst))
+			}));
+		const sum = summary(d);
+		const diel = dielBySeason(d);
+		const amp = (c: { x: number; y: number | null }[]) => {
+			const ps = c.filter((p): p is { x: number; y: number } => p.y != null);
+			if (!ps.length) return null;
+			const lo = ps.reduce((a, b) => (b.y < a.y ? b : a));
+			const hi = ps.reduce((a, b) => (b.y > a.y ? b : a));
+			return { range: round(hi.y - lo.y, 1)!, coolest: lo.x, warmest: hi.x };
+		};
+		const insitu = sum
+			? {
+					summary: sum,
+					monthly: {
+						logger: withGaps(monthRows.map((r) => ({ x: r.x, y: r.logger }))),
+						sst: withGaps(monthRows.map((r) => ({ x: r.x, y: r.sst })))
+					},
+					diff: vs.diff,
+					nPairs: vs.pairs.length,
+					diel,
+					dielAmp: { warm: amp(diel.warm), cool: amp(diel.cool) },
+					dailyMax: dailyMaxBySite(d),
+					coverage: coverage(d)
+				}
+			: null;
+
 		return {
+			insitu,
 			temp: by('temp', 20, 40),
 			ph: by('ph', 7, 9),
 			doMg: by('doMg', 1, 15),

@@ -48,6 +48,24 @@ describe.skipIf(!dir)('real data import', () => {
 				`SELECT 'lab' t, count(*) FROM lab_sharks UNION ALL SELECT 'labwq', count(*) FROM lab_wq UNION ALL SELECT 'feeding', count(*) FROM lab_feeding UNION ALL SELECT 'fieldwq', count(*) FROM field_wq UNION ALL SELECT 'hobo', count(*) FROM hobo UNION ALL SELECT 'blood', count(*) FROM blood UNION ALL SELECT 'adult', count(*) FROM adult_captures UNION ALL SELECT 'effort', count(*) FROM adult_effort UNION ALL SELECT 'notes', count(*) FROM field_notes UNION ALL SELECT 'tideext', count(*) FROM tide_extrema`
 			)
 		);
+		console.table(
+			q(
+				`SELECT site_id, system, count(*) files, sum(kept) kept, min(start) first, max("end") last FROM logger_files GROUP BY 1,2 ORDER BY 1,2`
+			)
+		);
+		console.table(
+			q(
+				`SELECT site_id, count(*) days, round(avg(mean),2) mean, round(avg(max),2) max, round(max(max),2) hottest, round(min(min),2) coolest FROM logger_daily GROUP BY 1`
+			)
+		);
+		console.table(
+			q(
+				`SELECT season, count(insitu_temp) sets_with_logger, round(avg(insitu_temp),2) insitu, round(avg(sst),2) sst FROM sets GROUP BY 1`
+			)
+		);
+		console.table(
+			q(`SELECT severity, message, file FROM data_issues WHERE category = 'loggers' LIMIT 60`)
+		);
 		expect(summary.counts.captures).toBeGreaterThan(3000);
 		db.close();
 	});

@@ -8,6 +8,13 @@
       "when": 1793598512189,
       "tag": "0000_striped_big_bertha",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793664398906,
+      "tag": "0001_slow_clint_barton",
+      "breakpoints": true
     }
   ]
 }

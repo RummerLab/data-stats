@@ -11,7 +11,7 @@ Led by Dr Jodie Rummer (RummerLab, James Cook University) in collaboration with 
 | Explore     | Overview, season report cards, nursery map and profiles, every tagged shark, auto-generated findings                    |
 | Biology     | Body size & condition, newborns and birth timing, growth, recaptures & site fidelity, adult blacktips, physiology & lab |
 | Environment | What drives catches, ocean & heat stress (SST, DHW, ENSO, waves), weather, tides, moon, time of day, human pressure     |
-| Fieldwork   | Sampling effort, crew leaderboards, water quality and logger deployments, searchable field notes                        |
+| Fieldwork   | Sampling effort, crew leaderboards, water quality and in-situ logger temperatures, searchable field notes               |
 | About       | Methods, data sources, publications, data-quality report                                                                |
 
 More than 130 server-rendered SVG charts and maps (several repeat per season, nursery or shark), with hover tooltips, legends and data tables, in light and dark themes.
@@ -20,6 +20,7 @@ More than 130 server-rendered SVG charts and maps (several repeat per season, nu
 
 - **The spreadsheets are the source of truth and are never edited by this app.**
 - **They are never committed to this public repository, and never baked into the Docker image.** `data/` and `*.xlsx` are git- and docker-ignored. On the server they are mounted read-only into the container.
+- Raw temperature logger exports (HOBO and EnvLogger `.csv` files) can sit anywhere under `data/`, e.g. `data/Temperature loggers/`. They are read the same way: never edited, never committed.
 - The app imports them into a derived SQLite cache on startup and re-imports automatically (within a minute) whenever a workbook is added or changed. Drop in next season's `Physioshark_Shark Log 2026-2027.xlsx` and the site updates.
 - Anything odd the importer notices (unit conversions, impossible measurements, out-of-season dates, tag conflicts, unknown sites) is listed on the **Data quality** page for the lab to fix in the source sheets.
 - Environmental data are public and live in `external/` (Open-Meteo ERA5 weather and waves, NOAA OISST, NOAA Coral Reef Watch via PacIOOS, UHSLC Papeete tide gauge, NOAA CPC ENSO indices). `scripts/fetch-external.mjs` refreshes them; a weekly workflow commits updates and publishes a new image.

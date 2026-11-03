@@ -11,6 +11,7 @@ import {
 	round,
 	siteName
 } from '#lib/server/analytics/common';
+import { dielBySeason, islandDaily, monthly, withGaps } from '#lib/server/analytics/insitu';
 import { histogram, mean } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -42,6 +43,33 @@ export const load: PageServerLoad = ({ params }) => {
 		const other = p.a.siteId === site.id ? p.b.siteId : p.a.siteId;
 		const k = other === site.id ? 'Same nursery' : siteName(d, other);
 		moves.set(k, (moves.get(k) ?? 0) + 1);
+	}
+
+	// In-situ loggers (#10): this nursery against the mean of all nurseries logged the same day.
+	const days = d.loggerDaily.filter((r) => r.siteId === site.id);
+	let insitu = null;
+	if (days.length >= 30) {
+		const island = islandDaily(d);
+		const vsIsland = days
+			.map((r) => {
+				const all = island.get(r.date);
+				return all && all.sites >= 3 ? r.mean - all.mean : null;
+			})
+			.filter((x): x is number => x != null);
+		const m = monthly(days);
+		insitu = {
+			days: days.length,
+			first: days[0].date,
+			last: days[days.length - 1].date,
+			mean: round(mean(days.map((r) => r.mean)), 1),
+			vsIsland: vsIsland.length >= 30 ? round(mean(vsIsland), 2) : null,
+			monthly: {
+				max: withGaps(m.map((r) => ({ x: r.x, y: r.max }))),
+				mean: withGaps(m.map((r) => ({ x: r.x, y: r.mean }))),
+				min: withGaps(m.map((r) => ({ x: r.x, y: r.min })))
+			},
+			diel: dielBySeason(d, site.id)
+		};
 	}
 
 	const sex = {
@@ -88,6 +116,7 @@ export const load: PageServerLoad = ({ params }) => {
 		moves: [...moves.entries()].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n })),
 		sex,
 		map: others,
+		insitu,
 		hobo: d.hobo
 			.filter((h) => h.siteId === site.id)
 			.map((h) => ({

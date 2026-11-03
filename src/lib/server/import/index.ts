@@ -60,11 +60,20 @@ import {
 	type SiteGps
 } from './reference';
 import { crewKey } from './crew';
+import {
+	isLoggerRegister,
+	parseLoggerCsv,
+	parseLoggerRegister,
+	type LoggerFile,
+	type ParsedCsv,
+	type RegisterRow
+} from './loggers';
+import { buildLoggerTables } from './insitu';
 import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '3';
+export const IMPORTER_VERSION = '4';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -96,11 +105,12 @@ export interface SourceFile {
 }
 
 /**
- * Every workbook under `dir`. Folders or files the app can't read (e.g. EACCES when the host
- * folder isn't readable by the container user) are skipped and reported through `onError`, so a
- * permissions slip shows up on the Data quality page instead of taking the site down (#83).
+ * Every workbook and logger CSV under `dir`. Folders or files the app can't read (e.g. EACCES
+ * when the host folder isn't readable by the container user) are skipped and reported through
+ * `onError`, so a permissions slip shows up on the Data quality page instead of taking the site
+ * down (#83).
  */
-export function listWorkbooks(
+export function listDataFiles(
 	dir: string,
 	onError?: (path: string, err: NodeJS.ErrnoException) => void
 ): SourceFile[] {
@@ -117,7 +127,7 @@ export function listWorkbooks(
 		for (const ent of entries) {
 			const p = join(d, ent.name);
 			if (ent.isDirectory()) walk(p);
-			else if (/\.xlsx$/i.test(ent.name) && !ent.name.startsWith('~$')) {
+			else if (/\.(xlsx|csv)$/i.test(ent.name) && !ent.name.startsWith('~$')) {
 				try {
 					const st = statSync(p);
 					out.push({ path: p, size: st.size, mtime: Math.round(st.mtimeMs) });
@@ -131,6 +141,11 @@ export function listWorkbooks(
 	return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 
+export const listWorkbooks = (
+	dir: string,
+	onError?: (path: string, err: NodeJS.ErrnoException) => void
+) => listDataFiles(dir, onError).filter((f) => /\.xlsx$/i.test(f.path));
+
 /** Fingerprint of everything an import depends on. */
 export function importHash(opts: ImportOptions): string {
 	const h = createHash('sha256');
@@ -140,7 +155,7 @@ export function importHash(opts: ImportOptions): string {
 	// Unreadable paths are part of the fingerprint, so fixing their permissions triggers a rebuild.
 	const unreadable = (p: string, err: NodeJS.ErrnoException) =>
 		h.update(`!${relative(opts.dataDir, p)}:${err.code}\n`);
-	for (const f of listWorkbooks(opts.dataDir, unreadable))
+	for (const f of listDataFiles(opts.dataDir, unreadable))
 		h.update(`${relative(opts.dataDir, f.path)}:${f.size}:${f.mtime}\n`);
 	for (const name of EXTERNAL_FILES) {
 		for (const p of [join(opts.externalDir, name), join(opts.externalDir, `${name}.gz`)]) {
@@ -172,6 +187,8 @@ interface Parsed {
 	pressure: SitePressure[];
 	adults: AdultCapture[];
 	adultEffort: AdultEffort[];
+	loggers: LoggerFile[];
+	register: RegisterRow[];
 	files: { file: string; kind: string; sheets: number }[];
 }
 
@@ -193,6 +210,8 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 		pressure: [],
 		adults: [],
 		adultEffort: [],
+		loggers: [],
+		register: [],
 		files: []
 	};
 	const unreadable = (path: string, err: NodeJS.ErrnoException) =>
@@ -203,9 +222,42 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 				'Make it readable by the app (in Docker, uid 65532), e.g. chmod -R o+rX on the host folder.',
 			{ file: relative(dataDir, path).replace(/\\/g, '/') || '.', sheet: '' }
 		);
-	for (const f of listWorkbooks(dataDir, unreadable)) {
+	const loggerFolders = new Map<string, { kinds: Set<string>; n: number }>();
+	for (const f of listDataFiles(dataDir, unreadable)) {
 		const rel = relative(dataDir, f.path).replace(/\\/g, '/');
 		const base = basename(f.path);
+		if (/\.csv$/i.test(base)) {
+			let parsed: ParsedCsv;
+			try {
+				parsed = parseLoggerCsv(readFileSync(f.path), rel);
+			} catch (err) {
+				log.add('error', 'files', `Could not read CSV: ${(err as Error).message}`, {
+					file: rel,
+					sheet: ''
+				});
+				continue;
+			}
+			if ('skip' in parsed) {
+				if (parsed.skip === 'unknown')
+					log.add('info', 'files', 'CSV not recognised as a logger export; skipped', {
+						file: rel,
+						sheet: ''
+					});
+				else if (parsed.skip === 'empty')
+					log.add('info', 'loggers', 'Logger export has no readings; skipped', {
+						file: rel,
+						sheet: ''
+					});
+				continue;
+			}
+			p.loggers.push(parsed);
+			const folder = rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/') + 1) : './';
+			const e = loggerFolders.get(folder) ?? { kinds: new Set<string>(), n: 0 };
+			e.kinds.add(parsed.system);
+			e.n++;
+			loggerFolders.set(folder, e);
+			continue;
+		}
 		let wb;
 		try {
 			wb = readWorkbook(readFileSync(f.path));
@@ -217,7 +269,11 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 			continue;
 		}
 		const seasonMatch = base.match(/(20\d\d)\s*[-–_]\s*(20\d\d)/);
-		if (/shark log/i.test(base) && seasonMatch) {
+		if (isLoggerRegister(wb)) {
+			// Checked first: its name ("…Locations…") would otherwise read as the nursery GPS sheet.
+			p.files.push({ file: rel, kind: 'Temperature logger register', sheets: wb.sheets.length });
+			p.register.push(...parseLoggerRegister(wb));
+		} else if (/shark log/i.test(base) && seasonMatch) {
 			const season = `${seasonMatch[1]}-${seasonMatch[2]}`;
 			p.files.push({ file: rel, kind: `Season log ${season}`, sheets: wb.sheets.length });
 			const caps: RawCapture[] = [];
@@ -270,6 +326,12 @@ function parseAll(dataDir: string, log: IssueLog): Parsed {
 			log.add('info', 'files', 'Workbook not recognised; skipped', { file: rel, sheet: '' });
 		}
 	}
+	for (const [folder, e] of loggerFolders)
+		p.files.push({
+			file: folder,
+			kind: `Temperature logger CSVs (${[...e.kinds].sort().join(', ')})`,
+			sheets: e.n
+		});
 	return p;
 }
 
@@ -510,6 +572,21 @@ export function runImport(
 	};
 	const ymOf = (d: string) => d.slice(0, 7);
 
+	// --- in-situ loggers (#10) ------------------------------------------------------------------
+	const gpsBySite = new Map(p.gps.map((g) => [g.siteId, g]));
+	const insitu = buildLoggerTables(
+		p.loggers,
+		p.register,
+		p.hobo,
+		SITE_DEFS.map((d) => ({
+			id: d.id,
+			kind: d.kind,
+			lat: gpsBySite.get(d.id)?.lat ?? d.lat ?? null,
+			lon: gpsBySite.get(d.id)?.lon ?? d.lon ?? null
+		})),
+		log
+	);
+
 	const setRows: (typeof schema.sets.$inferInsert)[] = sets.map((s) => {
 		const linkedTotal = s.linked.Cm + s.linked.Na + s.linked.Nf + s.linked.other;
 		const sheetTotal =
@@ -558,7 +635,8 @@ export function runImport(
 				dhw: val(o?.crw_dhw),
 				waveHeight: val(o?.wave_max),
 				swellHeight: val(o?.swell_max),
-				oni: val(climate.get(ymOf(s.date))?.oni)
+				oni: val(climate.get(ymOf(s.date))?.oni),
+				insituTemp: insitu.between(s.siteId, dayHour(s.date, start), dayHour(s.date, end))
 			};
 		}
 		return {
@@ -834,12 +912,14 @@ export function runImport(
 	};
 
 	const counts: Record<string, number> = {
-		workbooks: p.files.length,
+		workbooks: p.files.filter((f) => !f.kind.startsWith('Temperature logger CSVs')).length,
 		sets: setRows.length,
 		captures: captureRows.length,
 		individuals: individuals.length,
 		labSharks: labRows.length,
-		adultCaptures: p.adults.length
+		adultCaptures: p.adults.length,
+		loggerFiles: insitu.files.length,
+		loggerDays: insitu.daily.length
 	};
 
 	sqlite.transaction(() => {
@@ -856,6 +936,9 @@ export function runImport(
 		insert(schema.labFeeding, p.feeding);
 		insert(schema.fieldWq, p.fieldWq);
 		insert(schema.hobo, p.hobo);
+		insert(schema.loggerFiles, insitu.files);
+		insert(schema.loggerDaily, insitu.daily);
+		insert(schema.loggerDiel, insitu.diel);
 		insert(schema.blood, p.blood);
 		insert(schema.mouth, p.mouth);
 		insert(schema.prey, p.prey);

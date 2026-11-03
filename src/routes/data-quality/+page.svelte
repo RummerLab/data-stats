@@ -28,9 +28,9 @@
 			<p class="muted small">Last import {date(data.importedAt)}.</p>
 			<DataTable
 				columns={[
-					{ key: 'file', label: 'Workbook' },
+					{ key: 'file', label: 'Workbook or folder' },
 					{ key: 'kind', label: 'Read as' },
-					{ key: 'sheets', label: 'Sheets', num: true }
+					{ key: 'sheets', label: 'Sheets / CSVs', num: true }
 				]}
 				rows={data.files}
 			/>
