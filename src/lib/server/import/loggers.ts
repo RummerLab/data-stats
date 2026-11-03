@@ -3,7 +3,8 @@
  *
  * - Onset HOBO pendants (2015-19), exported from HOBOware as CSV. Exports are in English or
  *   French, comma- or tab-separated, UTF-8 or Mac Roman. Clocks are Moorea local time even when
- *   the header says GMT+10:00 (the light channel peaks at midday), so the label is ignored.
+ *   the header says GMT+10:00 (their daily cycle lines up with the other loggers at the same
+ *   nursery), so the label is ignored.
  * - ElectricBlue EnvLoggers (2019-24), self-describing CSVs with serial number, custom name,
  *   time zone and the phone's GPS at download. Time zones switch between UTC-1000 and UTC+0000.
  *
@@ -30,8 +31,6 @@ export interface LoggerFile {
 	/** Local clock minutes since the epoch, ascending. */
 	t: number[];
 	v: number[];
-	/** Mean light by local hour (HOBO only), to check the clock. */
-	lightPeakHour: number | null;
 	tzLabel: string | null;
 }
 
@@ -111,7 +110,6 @@ function parseHobo(lines: string[], rel: string): LoggerFile | null {
 	const header = splitLine(lines[hi], delim);
 	const di = header.findIndex((h) => /^date/i.test(h));
 	const ti = header.findIndex((h) => /^temp/i.test(h));
-	const li = header.findIndex((h) => /^intens/i.test(h));
 	if (di < 0 || ti < 0) return null;
 	const base = fileBase(rel);
 	const title = lines.slice(0, hi).join(' ');
@@ -120,7 +118,6 @@ function parseHobo(lines: string[], rel: string): LoggerFile | null {
 	if (!label) return null;
 	const t: number[] = [];
 	const v: number[] = [];
-	const light = Array.from({ length: 24 }, () => ({ s: 0, n: 0 }));
 	for (const line of lines.slice(hi + 1)) {
 		if (!line) continue;
 		const c = splitLine(line, delim);
@@ -129,15 +126,7 @@ function parseHobo(lines: string[], rel: string): LoggerFile | null {
 		if (ts == null || temp == null) continue;
 		t.push(ts);
 		v.push(temp);
-		const lux = li >= 0 ? num(c[li]) : null;
-		if (lux != null) {
-			const h = Math.floor((((ts % 1440) + 1440) % 1440) / 60);
-			light[h].s += lux;
-			light[h].n++;
-		}
 	}
-	const means = light.map((b) => (b.n ? b.s / b.n : -1));
-	const peak = Math.max(...means);
 	// The suffix after the date range names the site on a few early files ("…_Intercontinental").
 	const suffix = base.match(/\d{2}\s*_([A-Za-z][A-Za-z ]+)$/)?.[1] ?? null;
 	return {
@@ -151,7 +140,6 @@ function parseHobo(lines: string[], rel: string): LoggerFile | null {
 		lon: null,
 		t,
 		v,
-		lightPeakHour: peak > 0 ? means.indexOf(peak) : null,
 		tzLabel: header[di].match(/GMT\s*([+-]\d{1,2}:?\d{2})/)?.[1] ?? null
 	};
 }
@@ -196,7 +184,6 @@ function parseEnv(lines: string[], rel: string): ParsedCsv {
 		lon: coord(meta.get('long')),
 		t,
 		v,
-		lightPeakHour: null,
 		tzLabel: tz ? tz[0] : null
 	};
 }
@@ -280,6 +267,49 @@ export function hourly(t: number[], v: number[]): Map<number, number> {
 }
 
 export const hourIso = (h: number) => new Date(h * 3_600_000).toISOString().slice(0, 16);
+
+function pearson(a: Map<number, number>, b: Map<number, number>, lag: number) {
+	let n = 0;
+	let sx = 0;
+	let sy = 0;
+	let sxx = 0;
+	let syy = 0;
+	let sxy = 0;
+	for (const [h, x] of a) {
+		const y = b.get(h + lag);
+		if (y == null) continue;
+		n++;
+		sx += x;
+		sy += y;
+		sxx += x * x;
+		syy += y * y;
+		sxy += x * y;
+	}
+	const den = Math.sqrt((n * sxx - sx * sx) * (n * syy - sy * sy));
+	return { n, r: den > 0 ? (n * sxy - sx * sy) / den : 0 };
+}
+
+/**
+ * How well one logger's hourly series tracks a reference (other loggers at the same nursery, or
+ * the rest of the island): correlation at lag 0 and the best lag within ±12 h. A clock that is
+ * off shows as a best lag ≠ 0; a logger out of the water barely correlates at any lag.
+ * Null when the two overlap for fewer than `minHours`.
+ */
+export function compareSeries(
+	a: Map<number, number>,
+	ref: Map<number, number>,
+	minHours = 240
+): { n: number; r0: number; lag: number; r: number } | null {
+	const zero = pearson(a, ref, 0);
+	if (zero.n < minHours) return null;
+	let best = { lag: 0, r: zero.r };
+	for (let lag = -12; lag <= 12; lag++) {
+		if (lag === 0) continue;
+		const p = pearson(a, ref, lag);
+		if (p.n >= minHours && p.r > best.r) best = { lag, r: p.r };
+	}
+	return { n: zero.n, r0: zero.r, ...best };
+}
 
 /** Great-circle distance in metres. */
 export function distanceM(lat1: number, lon1: number, lat2: number, lon2: number) {

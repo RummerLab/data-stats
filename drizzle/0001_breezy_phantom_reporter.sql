@@ -32,7 +32,8 @@ CREATE TABLE `logger_files` (
 	`samples` integer NOT NULL,
 	`kept` integer NOT NULL,
 	`lat` real,
-	`lon` real
+	`lon` real,
+	`excluded` text
 );
 --> statement-breakpoint
 ALTER TABLE `sets` ADD `insitu_temp` real;

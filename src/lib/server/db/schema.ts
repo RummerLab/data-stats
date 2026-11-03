@@ -287,7 +287,8 @@ export const loggerFiles = sqliteTable('logger_files', {
 	samples: integer('samples').notNull(),
 	kept: integer('kept').notNull(),
 	lat: real('lat'),
-	lon: real('lon')
+	lon: real('lon'),
+	excluded: text('excluded') // why the readings were left out, e.g. not tracking the lagoon
 });
 
 /** Daily in-situ water temperature per nursery, from site-hourly means (days with ≥ 18 h). */

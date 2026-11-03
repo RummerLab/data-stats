@@ -85,7 +85,7 @@ export function coverage(d: Dataset) {
 		{ label: string; items: { start: number; end: number; tip: string; color: string }[] }
 	>();
 	for (const f of d.loggerFiles) {
-		if (!f.siteId || !f.start || !f.end) continue;
+		if (!f.siteId || !f.start || !f.end || f.excluded) continue;
 		const label = siteName(d, f.siteId);
 		const r = rows.get(label) ?? { label, items: [] };
 		r.items.push({
@@ -137,7 +137,7 @@ export function versusSst(d: Dataset) {
 export function summary(d: Dataset) {
 	const days = d.loggerDaily;
 	if (!days.length) return null;
-	const used = d.loggerFiles.filter((f) => f.siteId && f.kept > 0);
+	const used = d.loggerFiles.filter((f) => f.siteId && f.kept > 0 && !f.excluded);
 	const hottest = days.reduce((a, b) => (b.max > a.max ? b : a));
 	const coolest = days.reduce((a, b) => (b.min < a.min ? b : a));
 	const years = (system: string) => {

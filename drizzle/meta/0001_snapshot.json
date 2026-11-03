@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5f739692-d58f-4d91-a743-7533d2fb0298",
+  "id": "cbc44ba9-81dd-4198-816c-0e17c202c1f1",
   "prevId": "d3f3a3c7-eef9-406b-9271-6bba5746dee9",
   "tables": {
     "adult_captures": {
@@ -1915,6 +1915,13 @@
         "lon": {
           "name": "lon",
           "type": "real",
+          "primaryKey": false,
+          "notNull": false,
+          "autoincrement": false
+        },
+        "excluded": {
+          "name": "excluded",
+          "type": "text",
           "primaryKey": false,
           "notNull": false,
           "autoincrement": false

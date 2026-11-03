@@ -6,6 +6,7 @@ import type { HoboRow } from './extras';
 import type { IssueLog } from './issues';
 import {
 	cleanFile,
+	compareSeries,
 	distanceM,
 	hourIso,
 	hourly,
@@ -19,6 +20,12 @@ import { resolveSite } from './sites';
 const GPS_RADIUS_M = 400;
 /** Days with fewer site-hours are left out of daily statistics (half a day biases the mean). */
 const MIN_DAY_HOURS = 18;
+/** Good loggers correlate ~0.8–0.95 hour by hour with the other nurseries; below this, drop. */
+const MIN_TRACK_R = 0.5;
+/** A shifted series must beat lag 0 by this much before a clock is called off. Shifts of 1–2 h
+ *  are normal between nurseries (tides and water exchange differ), so only larger ones count. */
+const CLOCK_GAIN_R = 0.05;
+const MIN_CLOCK_LAG_H = 3;
 
 export interface SiteCoord {
 	id: string;
@@ -92,8 +99,6 @@ export function buildLoggerTables(
 			a.system.localeCompare(b.system) || a.logger.localeCompare(b.logger) || a.t[0] - b.t[0]
 	);
 	const seen = new Map<string, Set<number>>();
-	// site → logger → local clock hour → mean °C
-	const acc = new Map<string, Map<string, Map<number, number>>>();
 	const fileRows: {
 		file: string;
 		system: string;
@@ -107,6 +112,14 @@ export function buildLoggerTables(
 		kept: number;
 		lat: number | null;
 		lon: number | null;
+		excluded: string | null;
+	}[] = [];
+	const entries: {
+		row: (typeof fileRows)[number];
+		label: string;
+		siteId: string;
+		key: string;
+		hours: Map<number, number>;
 	}[] = [];
 	for (const f of files) {
 		const { siteId, basis, conflict } = assignSite(f, nurseries, reg, hobo);
@@ -118,22 +131,13 @@ export function buildLoggerTables(
 				`${label} is named for ${conflict} but was downloaded at ${siteId} (phone GPS); its readings are assigned to ${siteId}`,
 				ref(f.file)
 			);
-		if (f.system === 'HOBO' && f.lightPeakHour != null) {
-			if (f.lightPeakHour < 8 || f.lightPeakHour > 16)
-				log.add(
-					'warning',
-					'loggers',
-					`${label}: light peaks at ${f.lightPeakHour}:00, so the logger clock may be off`,
-					ref(f.file)
-				);
-			else if (f.tzLabel && !/^-10/.test(f.tzLabel))
-				log.add(
-					'info',
-					'loggers',
-					`${label}: header says GMT${f.tzLabel}, but light peaks at ${f.lightPeakHour}:00, so times are read as Moorea local time`,
-					ref(f.file)
-				);
-		}
+		if (f.system === 'HOBO' && f.tzLabel && !/^-10/.test(f.tzLabel))
+			log.add(
+				'info',
+				'loggers',
+				`${label}: header says GMT${f.tzLabel}; times are read as Moorea local time (checked against the other loggers)`,
+				ref(f.file)
+			);
 		const { t, v, stats } = siteId
 			? cleanFile(f, seen)
 			: { t: [], v: [], stats: { kept: 0, trimmed: 0, implausible: 0, duplicate: 0 } };
@@ -151,7 +155,7 @@ export function buildLoggerTables(
 				`${label}: ${stats.implausible} readings outside ${PLAUSIBLE_C[0]}–${PLAUSIBLE_C[1]} °C dropped (logger out of the water?)`,
 				ref(f.file)
 			);
-		fileRows.push({
+		const row = {
 			file: f.file,
 			system: f.system,
 			logger: f.logger,
@@ -163,16 +167,72 @@ export function buildLoggerTables(
 			samples: f.t.length,
 			kept: stats.kept,
 			lat: f.lat,
-			lon: f.lon
-		});
+			lon: f.lon,
+			excluded: null as string | null
+		};
+		fileRows.push(row);
 		if (!siteId || !t.length) continue;
-		const bySite = acc.get(siteId) ?? new Map<string, Map<number, number>>();
-		acc.set(siteId, bySite);
-		const key = `${f.system}:${f.serial ?? f.logger}`;
-		const hours = bySite.get(key) ?? new Map<number, number>();
+		entries.push({
+			row,
+			label,
+			siteId,
+			key: `${f.system}:${f.serial ?? f.logger}`,
+			hours: hourly(t, v)
+		});
+	}
+
+	// Check each download against the loggers at the other nurseries (independent of its own
+	// site, so one bad logger can't drag down its partner): a clock that is off lines up better
+	// when shifted; a logger out of the water barely follows the lagoon at all.
+	const refCache = new Map<string, Map<number, number>>();
+	const elsewhere = (siteId: string) => {
+		let m = refCache.get(siteId);
+		if (!m) {
+			const sum = new Map<number, { s: number; n: number }>();
+			for (const o of entries)
+				if (o.siteId !== siteId)
+					for (const [h, x] of o.hours) {
+						const a = sum.get(h) ?? { s: 0, n: 0 };
+						a.s += x;
+						a.n++;
+						sum.set(h, a);
+					}
+			m = new Map([...sum].map(([h, a]) => [h, a.s / a.n]));
+			refCache.set(siteId, m);
+		}
+		return m;
+	};
+	const r2 = (x: number) => x.toFixed(2);
+	for (const e of entries) {
+		const cmp = compareSeries(e.hours, elsewhere(e.siteId));
+		if (!cmp) continue;
+		if (cmp.r < MIN_TRACK_R) {
+			e.row.excluded = `follows the other nurseries poorly (r = ${r2(cmp.r0)})`;
+			log.add(
+				'warning',
+				'loggers',
+				`${e.label}: readings barely follow the loggers at the other nurseries (r = ${r2(cmp.r0)} over ${Math.round(cmp.n / 24)} days), so they are left out. Was it out of the water or buried?`,
+				ref(e.row.file)
+			);
+		} else if (Math.abs(cmp.lag) >= MIN_CLOCK_LAG_H && cmp.r - cmp.r0 >= CLOCK_GAIN_R)
+			log.add(
+				'warning',
+				'loggers',
+				`${e.label}: its daily cycle lines up best with the other nurseries when shifted ${cmp.lag > 0 ? '+' : ''}${cmp.lag} h (r ${r2(cmp.r0)} → ${r2(cmp.r)}); the logger clock may be off`,
+				ref(e.row.file)
+			);
+	}
+
+	// site → logger → local clock hour → mean °C
+	const acc = new Map<string, Map<string, Map<number, number>>>();
+	for (const e of entries) {
+		if (e.row.excluded) continue;
+		const bySite = acc.get(e.siteId) ?? new Map<string, Map<number, number>>();
+		acc.set(e.siteId, bySite);
+		const hours = bySite.get(e.key) ?? new Map<number, number>();
 		// Files of one logger never share minutes (deduplicated), but can share an hour at a join.
-		for (const [h, m] of hourly(t, v)) hours.set(h, hours.has(h) ? (hours.get(h)! + m) / 2 : m);
-		bySite.set(key, hours);
+		for (const [h, m] of e.hours) hours.set(h, hours.has(h) ? (hours.get(h)! + m) / 2 : m);
+		bySite.set(e.key, hours);
 	}
 
 	// Site-hourly: mean of the loggers at that nursery.

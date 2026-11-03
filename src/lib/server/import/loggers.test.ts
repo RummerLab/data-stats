@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	cleanFile,
+	compareSeries,
 	envDate,
 	hoboDate,
 	hourIso,
@@ -140,7 +141,6 @@ describe('logger cleaning', () => {
 		lon: null,
 		t,
 		v,
-		lightPeakHour: null,
 		tzLabel: null
 	});
 
@@ -154,5 +154,34 @@ describe('logger cleaning', () => {
 		const b = cleanFile(file(t, v), seen);
 		expect(b.stats.kept).toBe(0);
 		expect(b.stats.duplicate).toBe(5);
+	});
+});
+
+describe('cross-checking a logger against the lagoon', () => {
+	// 20 synthetic days: a daily cycle peaking at 14:00 plus a slow drift.
+	const series = (shift: number, f: (h: number) => number) =>
+		new Map(Array.from({ length: 480 }, (_, h) => [h + shift, f(h)]));
+	const lagoon = (h: number) => 28 + 1.5 * Math.sin(((h % 24) - 8) * (Math.PI / 12)) + h / 400;
+
+	it('finds no offset for a logger in step with the reference', () => {
+		const cmp = compareSeries(series(0, lagoon), series(0, lagoon))!;
+		expect(cmp.lag).toBe(0);
+		expect(cmp.r0).toBeCloseTo(1, 6);
+	});
+
+	it('finds a clock that runs 5 h late', () => {
+		const cmp = compareSeries(series(-5, lagoon), series(0, lagoon))!;
+		expect(cmp.lag).toBe(5);
+		expect(cmp.r).toBeGreaterThan(cmp.r0 + 0.05);
+	});
+
+	it('scores a logger that ignores the daily cycle poorly', () => {
+		const flat = (h: number) => 30 + ((h * 7919) % 13) / 10;
+		const cmp = compareSeries(series(0, flat), series(0, lagoon))!;
+		expect(cmp.r).toBeLessThan(0.5);
+	});
+
+	it('needs ten days of overlap', () => {
+		expect(compareSeries(series(0, lagoon), series(300, lagoon))).toBeNull();
 	});
 });
