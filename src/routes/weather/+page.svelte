@@ -118,6 +118,31 @@
 					/>
 				</ChartCard>
 			{/each}
+			{#if data.crewCloud.n >= 30}
+				<ChartCard
+					title="The crew's cloud score vs the reanalysis"
+					subtitle={`Mean ERA5 cloud cover during the ${data.crewCloud.n} sets the crew scored from 1 to 4 (2020–22 set logs). Whiskers: 95% confidence intervals.`}
+					note={data.crewCloud.increasing
+						? `ERA5 cloud cover rises with every step of the crew's score (Spearman ρ = ${num(data.crewCloud.rho, 2)}), so the reanalysis is a fair stand-in on nights nobody scored.`
+						: `Spearman ρ = ${num(data.crewCloud.rho, 2)} between the crew's score and ERA5 cloud cover.`}
+				>
+					<BarChart
+						categories={data.crewCloud.rows.map((r) => `Score ${r.score} (${r.n})`)}
+						series={[
+							{
+								name: 'ERA5 cloud cover (%)',
+								color: 'var(--series-6)',
+								values: data.crewCloud.rows.map((r) => r.mean)
+							}
+						]}
+						errors={data.crewCloud.rows.map((r) =>
+							r.lo != null && r.hi != null ? [r.lo, r.hi] : null
+						)}
+						yLabel="%"
+						valueFormat={(v) => num(v, 0)}
+					/>
+				</ChartCard>
+			{/if}
 			<ChartCard
 				title="What the crew wrote"
 				subtitle="Catch rate on nights whose log mentions each kind of weather (2014–2019 logs)"

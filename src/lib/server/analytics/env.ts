@@ -1,6 +1,7 @@
 /** Per-set explanatory variables used by the drivers, tides, moon and weather pages (#45). */
 import { spearman, pairs } from '#lib/stats';
 import type { SetRow } from '../data';
+import { moonlight } from './cloud';
 import { seasonDay } from './common';
 
 export interface SetVariable {
@@ -31,6 +32,20 @@ export const SET_VARIABLES: SetVariable[] = [
 	{ key: 'rain24h', label: 'Rain in previous 24 h', unit: 'mm', dp: 1, get: (s) => s.rain24h },
 	{ key: 'rainSet', label: 'Rain during the set', unit: 'mm', dp: 1, get: (s) => s.rainEvening },
 	{ key: 'cloud', label: 'Cloud cover', unit: '%', dp: 0, get: (s) => s.cloudEvening },
+	{
+		key: 'cloudCrew',
+		label: 'Cloud cover noted by the crew (1–4)',
+		unit: '',
+		dp: 0,
+		get: (s) => s.cloudCover
+	},
+	{
+		key: 'moonlight',
+		label: 'Moonlight reaching the water',
+		unit: '',
+		dp: 2,
+		get: moonlight
+	},
 	{ key: 'pressure', label: 'Air pressure', unit: 'hPa', dp: 1, get: (s) => s.pressure },
 	{ key: 'waves', label: 'Wave height (offshore)', unit: 'm', dp: 1, get: (s) => s.waveHeight },
 	{ key: 'swell', label: 'Swell height (offshore)', unit: 'm', dp: 1, get: (s) => s.swellHeight },
