@@ -48,7 +48,7 @@ describe('cell parsers', () => {
 		expect(speciesOf('C. melanopterus')).toBe('Cm');
 		expect(speciesOf('NA')).toBe('Na');
 		expect(speciesOf('Nurse')).toBe('Nf');
-		expect(speciesOf('Gf1')).toBe('Gf');
+		expect(speciesOf('Gf1')).toBe('Nf');
 		expect(ageClassOf('Juvenile 1y')).toBe('juvenile');
 		expect(ageClassOf('neonate')).toBe('neonate');
 	});

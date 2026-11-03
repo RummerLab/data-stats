@@ -128,7 +128,7 @@ export function sexOf(v: CellValue | undefined): 'M' | 'F' | null {
 	return null;
 }
 
-export type SpeciesCode = 'Cm' | 'Na' | 'Nf' | 'Gf' | 'Unknown';
+export type SpeciesCode = 'Cm' | 'Na' | 'Nf' | 'Unknown';
 
 export function speciesOf(v: CellValue | undefined): SpeciesCode | null {
 	const s = str(v)
@@ -139,7 +139,8 @@ export function speciesOf(v: CellValue | undefined): SpeciesCode | null {
 	if (s === 'na' || s.includes('acutidens') || s.includes('lemon')) return 'Na';
 	if (s === 'nf' || s.includes('nurse') || s.includes('ferrugineus') || s.includes('nebrius'))
 		return 'Nf';
-	if (s.startsWith('gf')) return 'Gf';
+	// 'GF' / 'Gf1' (2024-25) is the tawny nurse shark; G likely from Ginglymostoma, the Atlantic nurse shark genus (#12).
+	if (s.startsWith('gf')) return 'Nf';
 	if (s.includes('unknown') || s.includes('unknonw')) return 'Unknown';
 	return null;
 }

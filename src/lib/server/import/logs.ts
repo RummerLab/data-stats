@@ -159,8 +159,7 @@ function speciesFromSheetName(name: string): SpeciesCode | null {
 	const n = name.trim().toLowerCase();
 	if (/^cm|catch data cm/.test(n)) return 'Cm';
 	if (/^na|catch data na/.test(n)) return 'Na';
-	if (/^nf|^nurse/.test(n)) return 'Nf';
-	if (/^gf/.test(n)) return 'Gf';
+	if (/^nf|^nurse|^gf/.test(n)) return 'Nf'; // 'GF Log Juv' is tawny nurse sharks (#12)
 	return null;
 }
 

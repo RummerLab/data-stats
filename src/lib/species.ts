@@ -18,12 +18,6 @@ export const SPECIES = {
 		latin: 'Nebrius ferrugineus',
 		color: 'var(--series-3)'
 	},
-	Gf: {
-		code: 'Gf',
-		common: 'Unidentified ("GF")',
-		latin: 'species code GF, see issue #12',
-		color: 'var(--series-4)'
-	},
 	Unknown: { code: 'Unknown', common: 'Unknown', latin: '', color: 'var(--muted)' }
 } as const;
 
