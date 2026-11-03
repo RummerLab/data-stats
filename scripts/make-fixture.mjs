@@ -111,7 +111,10 @@ const cm = [
 		'Release Time',
 		'US',
 		'Photo ',
-		'Notes'
+		'Notes',
+		'Gastic lavage',
+		'Stomach content ',
+		'Stomach sample type '
 	]
 ];
 const na = [cm[0].slice()];
@@ -160,7 +163,15 @@ for (let i = 0; i < 40; i++) {
 			T(start + 30 + k * 25),
 			open ? 'Open' : 'Closed',
 			'Yes',
-			k === 0 && i % 7 === 0 ? 'Synthetic note: ray swimming along the net' : null
+			k === 0 && i % 7 === 0 ? 'Synthetic note: ray swimming along the net' : null,
+			// Gastric lavage on every other blacktip (deterministic, so other values don't shift).
+			...(species === 'Cm' && shark.Cm % 2 === 0
+				? [
+						'yes',
+						['empty', 'traces of food', 'full'][shark.Cm % 3],
+						shark.Cm % 3 === 2 ? 'small fish' : 'na'
+					]
+				: ['no', 'no sample', 'na'])
 		];
 		(species === 'Cm' ? cm : na).push(row);
 		if (species === 'Cm') nCm++;

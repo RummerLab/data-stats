@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { dataset } from '../data';
+import { diet } from '../analytics/diet';
 import { topFindings } from '../analytics/findings';
 import { seasonRewind } from '../analytics/rewind';
 
@@ -51,6 +52,21 @@ describe('import of the synthetic fixture', () => {
 	it('splits crews and keeps notes', () => {
 		expect(d.crew.length).toBeGreaterThanOrEqual(40);
 		expect(d.notes.some((n) => n.text.includes('ray swimming'))).toBe(true);
+	});
+
+	it('reads gastric lavage columns (#40)', () => {
+		const checked = d.captures.filter((c) => c.stomach != null);
+		expect(checked.length).toBeGreaterThan(5);
+		expect(checked.every((c) => c.species === 'Cm' && c.lavage === 1)).toBe(true);
+		expect(new Set(checked.map((c) => c.stomach))).toEqual(new Set(['empty', 'traces', 'full']));
+		// "no sample" and "na" are not contents; only the full stomachs name food.
+		const named = d.captures.filter((c) => c.stomachContents);
+		expect(named.every((c) => c.stomach === 'full' && c.stomachContents === 'small fish')).toBe(
+			true
+		);
+		const r = diet(d)!;
+		expect(r.nCm).toBe(checked.length);
+		expect(r.prey.map((p) => p.key)).toEqual(['fish']);
 	});
 
 	it('computes findings without throwing', () => {

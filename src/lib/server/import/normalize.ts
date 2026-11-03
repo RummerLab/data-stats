@@ -45,6 +45,27 @@ export function text(v: CellValue | undefined): string | null {
 	return /^(#n\/a|na|n\/a|-|\?)$/i.test(s) ? null : s;
 }
 
+export type StomachState = 'full' | 'traces' | 'empty';
+
+/** Lavage / stomach fullness (#40): "full", "empty", "almost empty", "traces of food"… */
+export function stomachOf(v: CellValue | undefined): StomachState | null {
+	const s = text(v)?.toLowerCase();
+	if (!s || /no sample/.test(s)) return null;
+	if (/almost empty|trace/.test(s)) return 'traces';
+	if (/^(empty|no food)\b/.test(s)) return 'empty';
+	if (/^full\b/.test(s)) return 'full';
+	return null;
+}
+
+/** Free-text stomach contents, without the cells that only restate fullness or "no sample". */
+export function contentsOf(v: CellValue | undefined): string | null {
+	const s = text(v);
+	if (!s) return null;
+	return /^(no sample|no food|none|empty|full|almost empty|traces? of food\b.*)$/i.test(s.trim())
+		? null
+		: s;
+}
+
 /** Numbers, including strings like "1,2", "~45", "45 mm", "0.9kg". */
 export function num(v: CellValue | undefined): number | null {
 	if (v == null || typeof v === 'boolean') return null;

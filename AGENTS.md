@@ -43,6 +43,7 @@ src/lib/server/data.ts   loads the whole dataset into memory per import; memo() 
 src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env.ts (per-set variables)
                          findings.ts (live findings) · insitu.ts (logger temperature summaries)
                          population.ts (Schnabel abundance, von Bertalanffy growth)
+                         diet.ts (gastric lavage: fullness, prey groups)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
@@ -64,6 +65,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - 2013-14 `Shark log physioshark` / `Set Log physioshark` duplicate `Catch data` / `Set Log` and are skipped (#9). 2013-14 recaptures are grouped in its `Recaptures` sheet; 2014-15 `Recaptures` holds extra catches; 2015-16 stores recaptures as horizontal column blocks (`1st Recap Site`…).
 - 2016-17 `Shark Log` has a date _value_ as its date header; 2021-22 `Set Log` has a garbled date header (`16(`). Both are handled.
 - Species codes: `Cm` blacktip, `Na` sicklefin lemon, `Nf` tawny nurse shark. 2024-25 writes the nurse shark as `GF` / `Gf1` (`GF Log Juv`), probably from _Ginglymostoma_, the Atlantic nurse shark genus; it is read as `Nf` (confirmed by Jodie Rummer, #12).
+- Diet (#40): `Lavage (y/n)` / `Gastic lavage` → `captures.lavage`; `Lavage (full/empty)` / `Stomach content` → `stomach` (full | traces | empty; "no sample" is null); `Lavage (contents)` / `Stomach sample type` / 2013-14 `State of Stomach` → `stomach_contents` free text. A fullness cell that isn't a fullness word (e.g. "worm found") becomes contents. Analyses in `analytics/diet.ts` (fed = full or traces).
 - Individuals: union-find over tags (PIT 15-digit, `COFA 12345`, re-tags) plus recapture groups. Conflicting sex/species/shrinking length is logged, not fixed.
 - Captures link to sets by season + set number (±1 day), then date + site, then a unique set that date.
 - CPUE = max(set-log count, linked captures) / net-hours. 2013-14 has no set times (no CPUE).

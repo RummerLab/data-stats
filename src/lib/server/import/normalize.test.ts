@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { parseCrew } from './crew';
 import {
 	ageClassOf,
+	contentsOf,
 	dateOf,
 	dmsToDecimal,
 	fixSeasonYear,
@@ -10,6 +11,7 @@ import {
 	seasonOf,
 	sexOf,
 	speciesOf,
+	stomachOf,
 	tagsOf,
 	timeOf,
 	umbilicalFromNotes,
@@ -19,6 +21,19 @@ import { resolveSite } from './sites';
 import { ExcelDate } from './xlsx';
 
 describe('cell parsers', () => {
+	it('reads stomach fullness and contents (#40)', () => {
+		expect(stomachOf('Full')).toBe('full');
+		expect(stomachOf('empty')).toBe('empty');
+		expect(stomachOf('almost empty')).toBe('traces');
+		expect(stomachOf('traces of food')).toBe('traces');
+		expect(stomachOf('no sample')).toBeNull();
+		expect(stomachOf('n/a')).toBeNull();
+		expect(stomachOf('worm found')).toBeNull();
+		expect(contentsOf('small fish, shrimp')).toBe('small fish, shrimp');
+		for (const v of ['na', 'no food', 'traces of food (too small for sample)', 'no sample'])
+			expect(contentsOf(v)).toBeNull();
+	});
+
 	it('parses numbers and rejects NA spellings', () => {
 		expect(num('1,2')).toBe(1.2);
 		expect(num('45 mm')).toBe(45);

@@ -160,6 +160,10 @@ export const captures = sqliteTable(
 		habitat: text('habitat'),
 		tideRaw: text('tide_raw'),
 		notes: text('notes'),
+		// Gastric lavage (#40): done?, fullness (full | traces | empty), free-text contents.
+		lavage: integer('lavage'),
+		stomach: text('stomach'),
+		stomachContents: text('stomach_contents'),
 		// Environment joined at import time.
 		minAfterSunset: real('min_after_sunset'),
 		minAfterNetIn: real('min_after_net_in'),
