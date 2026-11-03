@@ -25,6 +25,7 @@
 	<section class="section">
 		<ChartCard
 			title="Nurseries around the island"
+			papers={['eustache2024density', 'bouyoucos2022nursery']}
 			subtitle="Circles sized by sharks per net-hour (both species). Switch between satellite and street maps, or show adult blacktip capture spots."
 		>
 			<InteractiveMap
@@ -57,6 +58,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Sicklefin lemons vs blacktips"
+			papers={['bouyoucos2022nursery']}
 			subtitle="Catch rate per species: lemon sharks are concentrated in a few southern and western nurseries"
 		>
 			<BarChart
@@ -83,6 +85,7 @@
 	<section class="section">
 		<ChartCard
 			title="Catch rate by nursery and season"
+			papers={['eustache2024density']}
 			subtitle="Sharks per net-hour; darker is busier, grey means not sampled with timed sets"
 			table={{
 				columns: [

@@ -58,7 +58,11 @@
 					xLabel="Total length (mm)"
 				/>
 			</ChartCard>
-			<ChartCard title="Maturity" subtitle="Field maturity assessment">
+			<ChartCard
+				title="Maturity"
+				papers={['eustache2023philopatry']}
+				subtitle="Field maturity assessment"
+			>
 				<BarChart
 					horizontal
 					categories={data.maturity.map((x) => x.k)}
@@ -109,7 +113,11 @@
 					r={5}
 				/>
 			</ChartCard>
-			<ChartCard title="Girth against length" subtitle="Pectoral girth: pregnant females stand out">
+			<ChartCard
+				title="Girth against length"
+				subtitle="Pectoral girth: pregnant females stand out"
+				papers={['eustache2023philopatry']}
+			>
 				<Scatter
 					points={data.girth}
 					groups={[

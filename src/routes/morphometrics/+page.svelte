@@ -45,6 +45,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Length–mass relationship"
+			papers={['weideli2019condition']}
 			subtitle="Log–log axes; lines are fitted power curves W = a·L^b"
 			note={[
 				data.lwCm.fit
@@ -88,6 +89,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Newborn blacktip condition by nursery"
+			papers={['weideli2019condition']}
 			subtitle="Fulton's K = 100·mass(g)/TL(cm)³ for newborns (open or healing umbilical scar)"
 		>
 			<BoxPlot
@@ -96,7 +98,11 @@
 				yFormat={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Newborn condition by season" subtitle="Mean Fulton's K of newborns">
+		<ChartCard
+			title="Newborn condition by season"
+			papers={['weideli2019condition', 'debaere2023umbilicus']}
+			subtitle="Mean Fulton's K of newborns"
+		>
 			<LineChart
 				series={[
 					{

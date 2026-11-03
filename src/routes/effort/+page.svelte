@@ -61,7 +61,11 @@
 				xLabel="Minutes"
 			/>
 		</ChartCard>
-		<ChartCard title="Zero-catch nights by nursery" subtitle="Share of timed sets with no sharks">
+		<ChartCard
+			title="Zero-catch nights by nursery"
+			papers={['mcinturf2025aggregation']}
+			subtitle="Share of timed sets with no sharks"
+		>
 			<BarChart
 				horizontal
 				categories={data.zeroBySite.map((z) => z.name)}

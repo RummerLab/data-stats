@@ -85,6 +85,7 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 
 - Follow the dataviz method: categorical slots in fixed order (`--series-1…8`, validated light and dark), sequential = one hue (`--seq-*`), diverging = blue ↔ red with a neutral midpoint, one y-axis only (never dual axes), legends for ≥ 2 series, text in ink tokens (never the series colour), 4 px rounded bar ends, 2 px lines, hover tooltips, data tables via `ChartCard table`.
 - Every chart registers its data with the enclosing `ChartCard` (`registerCsv` in `charts/csv.ts`), which shows **Download CSV**. A new chart component must call `registerCsv` too. An explicit `ChartCard table` takes precedence.
+- Cite the study behind a chart with `<ChartCard papers={['debaere2024lunar']}>` (ids in `src/lib/publications.ts`). Link only papers that analysed the same question with this dataset; check the abstract first. PDFs are served at `rummerlab.com/papers/<file>` (metadata in the rummerlab-website repo, `data/papers.json`).
 - Species colours come from `src/lib/species.ts` (blacktip = slot 1, sicklefin lemon = slot 2).
 - Charts measure their width (`bind:clientWidth`) and carry a `viewBox` so pre-hydration renders scale down instead of overflowing.
 - Interactive marks (links) inside an SVG → the SVG gets `role="group"`, not `img` (axe `nested-interactive`). Only put `aria-label` on elements that are links.

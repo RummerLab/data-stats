@@ -46,6 +46,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Pressure scores by nursery"
+			papers={['bouyoucos2024abiotic']}
 			subtitle="Each metric min–max normalised to 0–1 and averaged for the composite"
 		>
 			<BarChart
@@ -65,6 +66,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Correlations with shark outcomes"
+			papers={['bouyoucos2024abiotic']}
 			subtitle="Spearman ρ across nurseries (n ≤ 10): blue negative, red positive"
 		>
 			<Heatmap
@@ -77,7 +79,7 @@
 				format={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Fishing effort vs catch rate">
+		<ChartCard title="Fishing effort vs catch rate" papers={['bouyoucos2024abiotic']}>
 			<Scatter
 				points={[
 					...pts(
@@ -100,7 +102,10 @@
 				opacity={0.85}
 			/>
 		</ChartCard>
-		<ChartCard title="Coastal artificialisation vs newborn condition">
+		<ChartCard
+			title="Coastal artificialisation vs newborn condition"
+			papers={['bouyoucos2024abiotic']}
+		>
 			<Scatter
 				points={pts(
 					(r) => r.artif,
@@ -128,7 +133,7 @@
 				opacity={0.85}
 			/>
 		</ChartCard>
-		<ChartCard title="Composite pressure vs blacktip catch rate">
+		<ChartCard title="Composite pressure vs blacktip catch rate" papers={['bouyoucos2024abiotic']}>
 			<Scatter
 				points={pts(
 					(r) => r.composite,

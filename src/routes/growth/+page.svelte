@@ -57,6 +57,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Do pups grow faster in warmer water?"
+			papers={['bouyoucos2022nursery']}
 			subtitle="Blacktip growth against mean sea-surface temperature between the two captures"
 			note={data.sstFit
 				? `Slope ${num(data.sstFit.slope, 2)} mm/day per °C, R² ${num(data.sstFit.r2, 2)}, ${pValue(data.sstFit.p)}, n = ${data.sstFit.n}. Satellite SST is offshore; nursery water is warmer and more variable (in-situ loggers: #10).`
@@ -85,7 +86,11 @@
 				yFormat={(v) => num(v, 1)}
 			/>
 		</ChartCard>
-		<ChartCard title="Growth by nursery" subtitle="Nurseries with ≥ 5 recapture pairs">
+		<ChartCard
+			title="Growth by nursery"
+			papers={['bouyoucos2022nursery']}
+			subtitle="Nurseries with ≥ 5 recapture pairs"
+		>
 			<BoxPlot boxes={data.bySite} yLabel="mm/day" yFormat={(v) => num(v, 2)} />
 		</ChartCard>
 		<ChartCard
