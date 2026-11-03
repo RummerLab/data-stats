@@ -100,6 +100,8 @@ export const sets = sqliteTable(
 		waveHeight: real('wave_height'),
 		swellHeight: real('swell_height'),
 		oni: real('oni'),
+		// Mean in-situ logger temperature at the nursery during the set (#10).
+		insituTemp: real('insitu_temp'),
 		...source
 	},
 	(t) => [index('sets_season').on(t.season), index('sets_site').on(t.siteId)]
@@ -269,6 +271,50 @@ export const hobo = sqliteTable('hobo', {
 	retrieved: text('retrieved'),
 	status: text('status'),
 	notes: text('notes')
+});
+
+/** One row per raw logger CSV (HOBO or EnvLogger) found under DATA_DIR (#10). */
+export const loggerFiles = sqliteTable('logger_files', {
+	id: integer('id').primaryKey(),
+	file: text('file').notNull(),
+	system: text('system').notNull(), // HOBO | EnvLogger
+	logger: text('logger').notNull(), // HOBO label ("12b") or EnvLogger serial
+	serial: text('serial'),
+	siteId: text('site_id'),
+	siteBasis: text('site_basis'), // download GPS | register | logger name | file name | HOBO log
+	start: text('start'), // YYYY-MM-DDTHH:MM local, first kept sample
+	end: text('end'),
+	samples: integer('samples').notNull(),
+	kept: integer('kept').notNull(),
+	lat: real('lat'),
+	lon: real('lon'),
+	excluded: text('excluded') // why the readings were left out, e.g. not tracking the lagoon
+});
+
+/** Daily in-situ water temperature per nursery, from site-hourly means (days with ≥ 18 h). */
+export const loggerDaily = sqliteTable(
+	'logger_daily',
+	{
+		id: integer('id').primaryKey(),
+		siteId: text('site_id').notNull(),
+		date: text('date').notNull(),
+		mean: real('mean').notNull(),
+		min: real('min').notNull(),
+		max: real('max').notNull(),
+		hours: integer('hours').notNull(),
+		loggers: integer('loggers').notNull()
+	},
+	(t) => [index('logger_daily_site').on(t.siteId)]
+);
+
+/** Mean temperature by nursery, calendar month and local hour: the daily cycle. */
+export const loggerDiel = sqliteTable('logger_diel', {
+	id: integer('id').primaryKey(),
+	siteId: text('site_id').notNull(),
+	month: integer('month').notNull(),
+	hour: integer('hour').notNull(),
+	temp: real('temp').notNull(),
+	n: integer('n').notNull()
 });
 
 export const blood = sqliteTable('blood', {

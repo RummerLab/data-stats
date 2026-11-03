@@ -167,6 +167,45 @@
 		</ChartCard>
 	</section>
 
+	{#if data.insitu}
+		{@const t = data.insitu}
+		<section class="section grid-2">
+			<ChartCard
+				title="Water temperature here"
+				subtitle={`In-situ loggers, ${date(t.first)} to ${date(t.last)}: monthly means of the daily high, mean and low`}
+				note={t.vsIsland != null
+					? `Averaged ${num(t.mean, 1)} °C over ${num(t.days)} logged days, ${num(Math.abs(t.vsIsland), 2)} °C ${t.vsIsland >= 0 ? 'warmer' : 'cooler'} than the mean of all nurseries logged on the same days.`
+					: `Averaged ${num(t.mean, 1)} °C over ${num(t.days)} logged days.`}
+			>
+				<LineChart
+					xType="date"
+					yLabel="°C"
+					yFormat={(v) => num(v, 1)}
+					series={[
+						{ name: 'Daily high', color: 'var(--series-2)', points: t.monthly.max },
+						{ name: 'Daily mean', color: 'var(--series-1)', points: t.monthly.mean },
+						{ name: 'Daily low', color: 'var(--series-3)', points: t.monthly.min }
+					]}
+				/>
+			</ChartCard>
+			<ChartCard
+				title="The daily cycle here"
+				subtitle="Mean temperature by hour in the warm (Nov–Apr) and cool (May–Oct) months"
+			>
+				<LineChart
+					xLabel="Hour"
+					yLabel="°C"
+					xFormat={(h) => `${String(h).padStart(2, '0')}:00`}
+					yFormat={(v) => num(v, 1)}
+					series={[
+						{ name: 'Warm months', color: 'var(--series-2)', points: t.diel.warm },
+						{ name: 'Cool months', color: 'var(--series-1)', points: t.diel.cool }
+					]}
+				/>
+			</ChartCard>
+		</section>
+	{/if}
+
 	{#if data.hobo.length}
 		<section class="section card">
 			<h2 class="h">Temperature loggers</h2>
@@ -184,7 +223,11 @@
 					retrievedL: date(h.retrieved)
 				}))}
 			/>
-			<p class="muted small">Raw logger series are not in the workbooks yet (issue #10).</p>
+			<p class="muted small">
+				HOBO deployments as recorded in the season workbooks. The logged temperatures are on the <a
+					href="/water-quality">water-quality page</a
+				>.
+			</p>
 		</section>
 	{/if}
 

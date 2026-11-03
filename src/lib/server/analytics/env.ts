@@ -52,6 +52,13 @@ export const SET_VARIABLES: SetVariable[] = [
 		get: (s) => s.waterTemp
 	},
 	{
+		key: 'insituTemp',
+		label: 'Logger water temperature during the set',
+		unit: '°C',
+		dp: 1,
+		get: (s) => s.insituTemp
+	},
+	{
 		key: 'day',
 		label: 'Day of the season',
 		unit: 'days',

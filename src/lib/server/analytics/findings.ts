@@ -18,6 +18,7 @@ import {
 	seasonDayLabel,
 	siteName
 } from './common';
+import { dailyMaxBySite, versusSst } from './insitu';
 
 export interface Finding {
 	id: string;
@@ -294,6 +295,25 @@ function compute(d: Dataset): Finding[] {
 			value: seasonFmt(hot.s),
 			text: `Mean sea-surface temperature on sampling nights was ${num(hot.sst!, 2)} °C, against ${num(cool.sst!, 2)} °C in ${seasonFmt(cool.s)}.${hot.tl && cool.tl ? ` Newborn blacktips averaged ${num(hot.tl)} mm TL in the warm season and ${num(cool.tl)} mm in the cool one.` : ''}`,
 			href: '/ocean'
+		});
+	}
+
+	// In-situ loggers vs satellite SST (#10)
+	const vs = versusSst(d);
+	const hotSites = dailyMaxBySite(d);
+	if (vs.diff != null && vs.pairs.length >= 100 && hotSites.length >= 2) {
+		const hot = hotSites[0];
+		const cool = hotSites[hotSites.length - 1];
+		out.push({
+			id: 'nursery-vs-ocean',
+			kind: 'pattern',
+			title:
+				vs.diff >= 0
+					? 'Nurseries run warmer than the ocean'
+					: 'Nurseries run cooler than the ocean',
+			value: `${vs.diff >= 0 ? '+' : '−'}${num(Math.abs(vs.diff), 2)} °C`,
+			text: `Loggers on the nursery sand averaged ${num(Math.abs(vs.diff), 2)} °C ${vs.diff >= 0 ? 'above' : 'below'} offshore satellite SST over ${num(vs.pairs.length)} days. ${hot.name} has the hottest afternoons (median daily high ${num(hot.stats!.median, 1)} °C) and ${cool.name} the mildest (${num(cool.stats!.median, 1)} °C).`,
+			href: '/water-quality'
 		});
 	}
 

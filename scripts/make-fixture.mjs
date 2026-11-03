@@ -198,3 +198,65 @@ workbook('Physioshark Moorea nursery location GPS.xlsx', {
 		['Vaiane', '', '', ` 17°34'41.38"S`, `149°51'25.67"W`]
 	]
 });
+
+// Temperature loggers (#10): one HOBO export (site in the file name, local time) and one
+// EnvLogger export (UTC, placed by its download GPS). Invented serials and readings.
+const LOG_DIR = join(OUT, 'loggers');
+mkdirSync(LOG_DIR, { recursive: true });
+const start = Date.UTC(2021, 8, 15, 17); // 15 Sep 2021 17:00 local
+const hours = 24 * 96;
+/** Smooth daily cycle, coolest near 06:00 and warmest near 14:00 local, plus a little noise. */
+const tempAt = (localHour, base) =>
+	Math.round(
+		(base + 1.4 * Math.sin(((localHour - 8) / 24) * 2 * Math.PI) + (rand() - 0.5) * 0.3) * 1000
+	) / 1000;
+const pad = (n) => String(n).padStart(2, '0');
+const hoboStamp = (ms) => {
+	const d = new Date(ms);
+	const h = d.getUTCHours();
+	return `${pad(d.getUTCMonth() + 1)}/${pad(d.getUTCDate())}/${String(d.getUTCFullYear()).slice(2)} ${pad(h % 12 || 12)}:00:00 ${h < 12 ? 'AM' : 'PM'}`;
+};
+const hobo = [
+	'﻿"Plot Title: HOBO7"',
+	'"#","Date Time, GMT-10:00","Temp, °C (LGR S/N: 90000007, SEN S/N: 90000007, LBL: Temp7)","Intensity, Lux (LGR S/N: 90000007, SEN S/N: 90000007, LBL: Light7)"'
+];
+for (let i = 0; i < hours; i++) {
+	const ms = start + i * 3_600_000;
+	const h = new Date(ms).getUTCHours();
+	const lux = h >= 6 && h <= 18 ? Math.round(Math.sin(((h - 6) / 12) * Math.PI) * 20000) : 0;
+	hobo.push(`${i + 1},${hoboStamp(ms)},${tempAt(h, 28.6)},${lux}`);
+}
+mkdirSync(join(LOG_DIR, 'HOBO 7'), { recursive: true });
+writeFileSync(
+	join(LOG_DIR, 'HOBO 7', 'HOBO7_Sep21 - Dec21_Haapiti.csv'),
+	hobo.join('\r\n') + '\r\n'
+);
+
+const env = [
+	'------------------------------,--------------------',
+	'www.electricblue.eu, Portugal',
+	'------------------------------,--------------------',
+	'EnvLogger version, T2.4',
+	'serial number, 0F1E 2D3C 4B5A 69',
+	'custom name, Tiki 1',
+	'temperature, degrees Celsius',
+	'time zone, UTC+0000',
+	'sampling resolution, 0.1',
+	`samples, ${hours}`,
+	'lat, -17.518100',
+	'long, -149.912500',
+	'accuracy (m), 4.7',
+	'------------------------------,--------------------',
+	'time,temp'
+];
+for (let i = 0; i < hours; i++) {
+	const local = start + i * 3_600_000;
+	const utc = new Date(local + 10 * 3_600_000).toISOString().slice(0, 19).replace('T', ' ');
+	const h = new Date(local).getUTCHours();
+	env.push(`${utc},${i === 100 ? 'NA' : i === 200 ? '45.0' : tempAt(h, 28.2).toFixed(1)}`);
+}
+mkdirSync(join(LOG_DIR, '2021-12-20'), { recursive: true });
+writeFileSync(
+	join(LOG_DIR, '2021-12-20', '0F1E 2D3C 4B5A 69-20211220 101500.csv'),
+	env.join('\n') + '\n'
+);

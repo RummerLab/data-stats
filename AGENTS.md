@@ -36,11 +36,12 @@ src/lib/server/import/   xlsx.ts (reader) · normalize.ts (cell parsers) · colu
                          logs.ts (shark + set logs) · extras.ts (lab, WQ, HOBO, blood, mouth, prey…)
                          reference.ts (GPS, pressure ranking, adult datasheet) · sites.ts · crew.ts
                          external.ts (CSV snapshots) · issues.ts (data-quality log)
+                         loggers.ts (HOBO/EnvLogger CSVs, register) · insitu.ts (site, hourly/daily/diel)
                          index.ts (orchestrator: link sets, individuals, env joins, write DB)
 src/lib/server/db/       schema.ts (Drizzle) · index.ts (fingerprint, rebuild, atomic swap)
 src/lib/server/data.ts   loads the whole dataset into memory per import; memo() caches analyses
 src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env.ts (per-set variables)
-                         findings.ts (live findings)
+                         findings.ts (live findings) · insitu.ts (logger temperature summaries)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
@@ -65,6 +66,15 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Sites → `sites.ts` regexes (review in #13). Crew → `crew.ts` aliases plus accent/case merging in the orchestrator (#14).
 - Moorea is **UTC−10, no DST**. Times are minutes after local midnight; captures before 06:00 belong to the previous evening.
 - On Windows the DB swap can fail while another handle has the file open; `db/index.ts` then serves the freshly built file and retries later. The connection lives on `globalThis` so dev hot-reloads close it.
+
+### Temperature loggers (#10)
+
+- Any `.csv` under `DATA_DIR` is a candidate logger export (they are in the fingerprint too). HOBO exports come in English and French, comma or tab, UTF-8 or Mac Roman; dates are always month-first. EnvLogger exports carry serial, custom name, time zone (UTC-1000 early, UTC+0000 later) and the phone's GPS at download (early files drop the minus signs). EnvLogger app logs (`time, action…`) and empty downloads are skipped.
+- HOBO clocks are Moorea local time even when the header says GMT+10:00 (their daily cycle lines up with the other loggers), so the label is ignored. Don't judge clocks by the light channel: shading moves its peak (HOBO 7 and 11 peak at 17:00 and 07:00 with correct clocks).
+- Every download is cross-checked hour by hour against the loggers at the _other_ nurseries (`compareSeries`; not its own site, where one bad logger would drag down its partner). r < 0.5 → left out (`logger_files.excluded`, e.g. a logger out of the water); best alignment shifted ≥ 3 h → clock warning. Shifts of 1–2 h are normal between nurseries.
+- Site: EnvLogger by download GPS (≤ 400 m from a nursery), then custom name, file-name prefix (`PIAENA_2_…`), then the register workbook (detected by its `Serial number` + `Custom name` header, checked before the `/gps|location/` file-name rule). HOBO by the file-name suffix (`…_Intercontinental`), then the season workbooks' HOBO log (logger number + date overlap). A name/GPS disagreement is a warning on the Data quality page.
+- Cleaning: trim 2 h at the start of each file and 2 h (EnvLogger) or 24 h (HOBO, read out back at the station) at the end; drop readings outside 15–40 °C; merge repeated downloads of one logger by timestamp. Days need ≥ 18 site-hours. Tables: `logger_files`, `logger_daily`, `logger_diel`, plus `sets.insitu_temp`.
+- Comparisons between nurseries only use those logged ≥ 1 year with both seasons covered (a summer-only logger looks hottest).
 
 ### Adding a new season
 
@@ -133,3 +143,4 @@ Don't silently fix unrelated things and don't let them go unrecorded: **file a G
 | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11 | v0.1.0: importer for all 13 seasons + adults + GPS + pressure ranking; external snapshots; 25 pages / 130+ charts; Docker, CI, release workflows; issues #1–#75.                          |
 | 2026-11 | v0.2.0: Physioshark logo/icon, footer version, OG image, CSV download on every chart, histogram overlay, busy-day (holiday) analysis, season rewind; unreadable DATA_DIR no longer fatal. |
+| 2026-11 | In-situ temperature loggers (#10): HOBO + EnvLogger CSV importer, water-quality and nursery charts, set variable, finding.                                                                |

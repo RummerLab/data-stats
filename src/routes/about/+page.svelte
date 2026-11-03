@@ -32,6 +32,14 @@
 				workbook is added.
 			</li>
 			<li>
+				<b>In-situ temperature loggers:</b> raw CSV exports from the HOBO pendants and EnvLoggers left
+				in the nurseries, matched to a nursery by the phone's GPS at download, the logger register, the
+				logger's name or the season workbooks' HOBO log. Times are converted to Mo'orea time; downloads
+				of the same logger are merged, and the first and last hours of each deployment and readings outside
+				15–40 °C are dropped. Each download is checked against the loggers at the other nurseries; one
+				that barely follows the lagoon's daily cycle (a logger out of the water, say) is left out.
+			</li>
+			<li>
 				<b>Weather:</b> hourly and daily ERA5 reanalysis via the
 				<a href="https://open-meteo.com/">Open-Meteo</a> Historical Weather API (CC BY 4.0).
 			</li>

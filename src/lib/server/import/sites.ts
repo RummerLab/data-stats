@@ -129,7 +129,7 @@ export const SITE_DEFS: SiteDef[] = [
 		kind: 'nursery',
 		lat: -17.580961,
 		lon: -149.798511,
-		match: [/^valorie/]
+		match: [/^valorie/, /^valeri/]
 	},
 	{
 		id: 'tepee',

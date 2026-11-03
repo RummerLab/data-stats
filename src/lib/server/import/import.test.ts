@@ -31,6 +31,23 @@ describe('import of the synthetic fixture', () => {
 			expect(d.captures.filter((c) => c.individualId === i.id).length).toBe(i.nCaptures);
 	});
 
+	it('imports logger CSVs and joins in-situ temperature to sets', () => {
+		expect(d.loggerFiles.map((f) => [f.system, f.siteId, f.siteBasis]).sort()).toEqual([
+			['EnvLogger', 'tiki', 'download GPS'],
+			['HOBO', 'haapiti', 'file name']
+		]);
+		expect(d.loggerDaily.filter((r) => r.siteId === 'tiki').length).toBeGreaterThan(80);
+		expect(d.loggerDaily.every((r) => r.max <= 40)).toBe(true);
+		// UTC EnvLogger times land on local time: warmest hour near 14:00, coolest near 06:00.
+		const tiki = d.loggerDiel.filter((r) => r.siteId === 'tiki' && r.month === 10);
+		const warmest = tiki.reduce((a, b) => (b.temp > a.temp ? b : a));
+		expect(warmest.hour).toBeGreaterThanOrEqual(12);
+		expect(warmest.hour).toBeLessThanOrEqual(16);
+		const joined = d.sets.filter((s) => s.insituTemp != null);
+		expect(joined.length).toBeGreaterThan(5);
+		expect(joined.every((s) => s.siteId === 'tiki' || s.siteId === 'haapiti')).toBe(true);
+	});
+
 	it('splits crews and keeps notes', () => {
 		expect(d.crew.length).toBeGreaterThanOrEqual(40);
 		expect(d.notes.some((n) => n.text.includes('ray swimming'))).toBe(true);

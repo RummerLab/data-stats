@@ -15,6 +15,7 @@ export type AdultCapture = typeof schema.adultCaptures.$inferSelect;
 export type WeatherDay = typeof schema.weatherDaily.$inferSelect;
 export type OceanDay = typeof schema.oceanDaily.$inferSelect;
 export type DataIssue = typeof schema.dataIssues.$inferSelect;
+export type LoggerDay = typeof schema.loggerDaily.$inferSelect;
 
 export interface Dataset {
 	version: number;
@@ -31,6 +32,9 @@ export interface Dataset {
 	feeding: (typeof schema.labFeeding.$inferSelect)[];
 	fieldWq: (typeof schema.fieldWq.$inferSelect)[];
 	hobo: (typeof schema.hobo.$inferSelect)[];
+	loggerFiles: (typeof schema.loggerFiles.$inferSelect)[];
+	loggerDaily: LoggerDay[];
+	loggerDiel: (typeof schema.loggerDiel.$inferSelect)[];
 	blood: (typeof schema.blood.$inferSelect)[];
 	mouth: (typeof schema.mouth.$inferSelect)[];
 	prey: (typeof schema.prey.$inferSelect)[];
@@ -79,6 +83,9 @@ export function dataset(): Dataset {
 		feeding: db.select().from(schema.labFeeding).all(),
 		fieldWq: db.select().from(schema.fieldWq).all(),
 		hobo: db.select().from(schema.hobo).all(),
+		loggerFiles: db.select().from(schema.loggerFiles).all(),
+		loggerDaily: db.select().from(schema.loggerDaily).orderBy(asc(schema.loggerDaily.date)).all(),
+		loggerDiel: db.select().from(schema.loggerDiel).all(),
 		blood: db.select().from(schema.blood).all(),
 		mouth: db.select().from(schema.mouth).all(),
 		prey: db.select().from(schema.prey).all(),
