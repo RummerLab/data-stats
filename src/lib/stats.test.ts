@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
 	binomTestHalf,
 	boxStats,
+	chiSquare,
+	chiSquareP,
 	histogram,
 	linearFit,
 	median,
@@ -54,5 +56,24 @@ describe('stats', () => {
 		const b = boxStats([1, 2, 3, 4, 100])!;
 		expect(b.median).toBe(3);
 		expect(b.hi).toBe(4);
+	});
+});
+
+describe('chi-square', () => {
+	it('matches textbook critical values', () => {
+		expect(chiSquareP(3.841, 1)).toBeCloseTo(0.05, 3);
+		expect(chiSquareP(5.991, 2)).toBeCloseTo(0.05, 3);
+		expect(chiSquareP(18.307, 10)).toBeCloseTo(0.05, 3);
+		expect(chiSquareP(0, 3)).toBe(1);
+	});
+	it('tests independence in a table of counts', () => {
+		const r = chiSquare([
+			[10, 20],
+			[20, 10]
+		])!;
+		expect(r.df).toBe(1);
+		expect(r.stat).toBeCloseTo(6.667, 3);
+		expect(r.p).toBeCloseTo(0.00982, 4);
+		expect(chiSquare([[5, 5]])).toBeNull();
 	});
 });

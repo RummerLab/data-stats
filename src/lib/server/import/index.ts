@@ -73,7 +73,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '5';
+export const IMPORTER_VERSION = '6';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -743,6 +743,9 @@ export function runImport(
 			habitat: c.habitat,
 			tideRaw: c.tideRaw,
 			notes: c.notes,
+			lavage: c.lavage,
+			stomach: c.stomach,
+			stomachContents: c.stomachContents,
 			...env,
 			sourceFile: c.ref.file,
 			sourceSheet: c.ref.sheet,

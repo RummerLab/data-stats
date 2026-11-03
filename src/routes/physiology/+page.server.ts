@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { diet } from '#lib/server/analytics/diet';
 import { boxOf, fulton, round, seasonDay, siteName } from '#lib/server/analytics/common';
 import { countBy, histogram, linearFit, mean, pairs } from '#lib/stats';
 import type { PageServerLoad } from './$types';
@@ -80,6 +81,7 @@ export const load: PageServerLoad = () =>
 			.filter((s) => s.points.length > 5);
 
 		return {
+			diet: diet(d),
 			nBlood: blood.length,
 			hct: metric('hct'),
 			chol: metric('cholesterol'),

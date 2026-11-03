@@ -19,6 +19,7 @@ import {
 	siteName
 } from './common';
 import { cloudWater } from './cloud';
+import { diet } from './diet';
 import { dailyMaxBySite, versusSst } from './insitu';
 
 export interface Finding {
@@ -390,6 +391,21 @@ function compute(d: Dataset): Finding[] {
 			text: `Spearman ρ = ${num(rhos[0].r!.rho, 2)} across ${num(rhos[0].r!.n)} sets (p ${rhos[0].r!.p < 0.001 ? '< 0.001' : `= ${rhos[0].r!.p.toFixed(3)}`}). Every environmental link with CPUE is weak: nursery catches are noisy night to night.`,
 			href: '/drivers'
 		});
+
+	// Stomach contents (#40)
+	const dt = diet(d);
+	if (dt && dt.nCm >= 30 && dt.cmFed.rate != null) {
+		const items = [...dt.prey].filter((p) => p.key !== 'unknown').sort((a, b) => b.n - a.n);
+		const plastic = dt.prey.find((p) => p.key === 'plastic')?.n ?? 0;
+		out.push({
+			id: 'lavage',
+			kind: 'pattern',
+			title: dt.cmFed.rate < 0.5 ? 'Most pups have an empty stomach' : 'Most pups had eaten',
+			value: `${pct(dt.cmFed.rate)} fed`,
+			text: `Of ${num(dt.nCm)} blacktips checked by gastric lavage, ${num(dt.cmFed.fed)} had food in the stomach.${items.length ? ` ${items[0].label} turn up most often in the samples (${items[0].n})${items[1] ? `, then ${items[1].label.toLowerCase()} (${items[1].n})` : ''}.` : ''}${plastic ? ` ${plastic === 1 ? 'One sample' : `${plastic} samples`} contained plastic.` : ''}`,
+			href: '/physiology'
+		});
+	}
 
 	// Fun totals
 	const totalTl = caps.reduce((a, c) => a + (c.tlMm ?? 0), 0) / 1e6;

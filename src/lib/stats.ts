@@ -119,6 +119,66 @@ export function incompleteBeta(x: number, a: number, b: number): number {
 		: 1 - (bt * betacf(b, a, 1 - x)) / b;
 }
 
+/** Upper regularised incomplete gamma Q(a, x) (Numerical Recipes series / continued fraction). */
+function gammaQ(a: number, x: number): number {
+	if (x <= 0) return 1;
+	const front = Math.exp(-x + a * Math.log(x) - logGamma(a));
+	if (x < a + 1) {
+		let ap = a;
+		let del = 1 / a;
+		let sum = del;
+		for (let n = 0; n < 500; n++) {
+			ap++;
+			del *= x / ap;
+			sum += del;
+			if (Math.abs(del) < Math.abs(sum) * 1e-14) break;
+		}
+		return Math.max(0, 1 - sum * front);
+	}
+	const tiny = 1e-300;
+	let b = x + 1 - a;
+	let c = 1 / tiny;
+	let d = 1 / b;
+	let h = d;
+	for (let i = 1; i < 500; i++) {
+		const an = -i * (i - a);
+		b += 2;
+		d = an * d + b;
+		if (Math.abs(d) < tiny) d = tiny;
+		c = b + an / c;
+		if (Math.abs(c) < tiny) c = tiny;
+		d = 1 / d;
+		const del = d * c;
+		h *= del;
+		if (Math.abs(del - 1) < 1e-14) break;
+	}
+	return front * h;
+}
+
+/** Upper-tail p-value of a chi-square statistic. */
+export const chiSquareP = (stat: number, df: number) => gammaQ(df / 2, stat / 2);
+
+/** Pearson chi-square test of independence for a table of counts (rows × columns). */
+export function chiSquare(table: number[][]): { stat: number; df: number; p: number } | null {
+	const rows = table.filter((r) => r.some((v) => v > 0));
+	const cols = rows[0]?.map((_, j) => rows.reduce((a, r) => a + r[j], 0)) ?? [];
+	const keep = cols.map((c) => c > 0);
+	const t = rows.map((r) => r.filter((_, j) => keep[j]));
+	const colSums = cols.filter((c) => c > 0);
+	const n = colSums.reduce((a, b) => a + b, 0);
+	if (t.length < 2 || colSums.length < 2 || !n) return null;
+	let stat = 0;
+	for (const r of t) {
+		const rs = r.reduce((a, b) => a + b, 0);
+		r.forEach((v, j) => {
+			const e = (rs * colSums[j]) / n;
+			stat += (v - e) ** 2 / e;
+		});
+	}
+	const df = (t.length - 1) * (colSums.length - 1);
+	return { stat, df, p: chiSquareP(stat, df) };
+}
+
 /** Two-sided p-value for a t statistic with `df` degrees of freedom. */
 export function tTestP(t: number, df: number): number {
 	if (!Number.isFinite(t) || df <= 0) return NaN;

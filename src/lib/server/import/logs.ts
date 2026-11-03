@@ -7,6 +7,7 @@ import { parseCrew } from './crew';
 import type { IssueLog, SourceRef } from './issues';
 import {
 	ageClassOf,
+	contentsOf,
 	dateOf,
 	durationOf,
 	fixSeasonYear,
@@ -15,6 +16,7 @@ import {
 	num,
 	sexOf,
 	speciesOf,
+	stomachOf,
 	str,
 	tagsOf,
 	text,
@@ -24,7 +26,8 @@ import {
 	umbilicalOf,
 	yesNo,
 	type AgeClass,
-	type SpeciesCode
+	type SpeciesCode,
+	type StomachState
 } from './normalize';
 import { resolveSite } from './sites';
 import type { CellValue, Sheet } from './xlsx';
@@ -66,6 +69,10 @@ export interface RawCapture {
 	habitat: string | null;
 	tideRaw: string | null;
 	notes: string | null;
+	/** Gastric lavage done (#40). */
+	lavage: number | null;
+	stomach: StomachState | null;
+	stomachContents: string | null;
 	/** Grouping key from a "Recaptures" sheet (2013-15) used to link untagged captures. */
 	group?: string;
 	ref: SourceRef;
@@ -142,7 +149,9 @@ const CAPTURE_SPEC = {
 	tide: [eq('tide')],
 	notes: [eq('notes', 'notes s', 'comments', 'comment')],
 	recapPrev: [/^recap from previous year/],
-	stomach: [/^stomach content/, /^lavage contents/]
+	lavage: [eq('lavage y n', 'gastic lavage', 'gastric lavage', 'eversion lavage')],
+	stomach: [eq('lavage full empty', 'stomach content', 'stomach contents')],
+	contents: [eq('lavage contents', 'stomach sample type', 'state of stomach')]
 } satisfies Record<string, Matcher[]>;
 
 /** Does this sheet hold shark captures (and not lab/set/HOBO/PIT logs)? */
@@ -355,6 +364,13 @@ export function parseCaptureSheet(
 		)
 			kind = 'hook';
 		const notesLower = (notes ?? '').toLowerCase();
+		// Fullness and contents share columns across seasons; whatever isn't a fullness word is content.
+		const stomachCell = cell(row, c.stomach);
+		const stomach = stomachOf(stomachCell);
+		const stomachContents =
+			[contentsOf(cell(row, c.contents)), stomach ? null : contentsOf(stomachCell)]
+				.filter(Boolean)
+				.join('; ') || null;
 		const rec: RawCapture = {
 			season,
 			species,
@@ -395,6 +411,9 @@ export function parseCaptureSheet(
 			habitat,
 			tideRaw: text(cell(row, c.tide)),
 			notes,
+			lavage: yesNo(cell(row, c.lavage)) ?? (stomach || stomachContents ? 1 : null),
+			stomach,
+			stomachContents,
 			ref
 		};
 		if (!rec.sex && !isBlank(cell(row, c.sex)) && cell(row, c.sex) != null)
@@ -567,6 +586,9 @@ export function parseRecaptures2014(
 			habitat: null,
 			tideRaw: null,
 			notes,
+			lavage: null,
+			stomach: null,
+			stomachContents: null,
 			ref
 		});
 	}

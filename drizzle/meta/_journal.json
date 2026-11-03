@@ -15,6 +15,13 @@
       "when": 1793666235332,
       "tag": "0001_breezy_phantom_reporter",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1793678374777,
+      "tag": "0002_cloudy_red_wolf",
+      "breakpoints": true
     }
   ]
 }
