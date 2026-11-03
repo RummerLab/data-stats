@@ -1,5 +1,6 @@
 import { memo } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, round } from '#lib/server/analytics/common';
+import { catchModel } from '#lib/server/analytics/catchModel';
 import { correlations, SET_VARIABLES } from '#lib/server/analytics/env';
 import { quantile, spearman, pairs } from '#lib/stats';
 import type { PageServerLoad } from './$types';
@@ -53,6 +54,7 @@ export const load: PageServerLoad = () =>
 		const zero = sets.filter((s) => !s.nTotal).length;
 
 		return {
+			model: memo('catchModel', catchModel),
 			n: sets.length,
 			zero,
 			corr: corr.map((c) => ({
