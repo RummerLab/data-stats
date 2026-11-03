@@ -46,6 +46,7 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          diet.ts (gastric lavage: fullness, prey groups)
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
+                         glmm.ts (binomial mixed model, crossed random intercepts) · sex.ts
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
                          school holidays (schoolDays) and the one-label-per-date dayType
@@ -100,6 +101,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
+
+### Sex ratio mixed model (#117)
+
+- `analytics/sex.ts`: female (1) vs male (0) per individual, counted once at its first capture, with the nursery and season of that capture as crossed random intercepts (`glmm.ts`: Laplace approximation, PIRLS as lme4's nAGQ = 0, SDs by Nelder–Mead). Tests fix one SD at 0 and halve the χ²₁ p (boundary).
+- Reuse `fitBinomialGlmm` for any yes/no outcome with grouping (fed or empty, recaptured or not) instead of pooling groups; there is no R in CI, so validate new uses against simulated data as `glmm.test.ts` does.
 
 ### School holidays (#25)
 
