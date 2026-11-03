@@ -7,6 +7,7 @@ import {
 	round,
 	siteName
 } from '#lib/server/analytics/common';
+import { vonBertalanffy } from '#lib/server/analytics/population';
 import { histogram, linearFit, mean, median, pairs } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -64,6 +65,7 @@ export const load: PageServerLoad = () =>
 
 		const nurseries = activeNurseries(d);
 		return {
+			vbgf: vonBertalanffy(d),
 			n: within.length,
 			medianCm: round(median(within.filter((g) => g.species === 'Cm').map((g) => g.rate)), 2),
 			medianNa: round(median(within.filter((g) => g.species === 'Na').map((g) => g.rate)), 2),

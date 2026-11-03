@@ -3,6 +3,7 @@
 	import DataTable from '#lib/components/DataTable.svelte';
 	import BoxPlot from '#lib/components/charts/BoxPlot.svelte';
 	import Histogram from '#lib/components/charts/Histogram.svelte';
+	import LineChart from '#lib/components/charts/LineChart.svelte';
 	import Scatter from '#lib/components/charts/Scatter.svelte';
 	import { num, pValue } from '#lib/format';
 	import { SPECIES } from '#lib/species';
@@ -104,6 +105,40 @@
 			<BoxPlot boxes={data.labMass} yLabel="g/day" yFormat={(v) => num(v, 1)} />
 		</ChartCard>
 	</section>
+
+	{#if data.vbgf}
+		{@const v = data.vbgf}
+		<section class="section">
+			<ChartCard
+				title="A growth curve for blacktips (von Bertalanffy)"
+				subtitle={`Total length by age: starts at the newborn mean (${num(v.l0)} mm, open umbilical scar) and levels off at the mean of the largest 10% of adults (${num(v.linf)} mm, ${v.adults} adults measured)`}
+				note={`Growth constant K = ${num(v.k, 2)} per year (95% bootstrap interval ${num(v.kLo, 2)}–${num(v.kHi, 2)}), fitted to ${num(v.pairs)} recapture increments at least a month apart (Fabens method).${v.ageAt1m != null ? ` On this curve a blacktip reaches 1 m at about ${num(v.ageAt1m, 1)} years.` : ''} Recaptured pups span only the first year or so, so juvenile growth alone cannot fix the adult size: the curve borrows it from the adult datasheet, and the shape beyond the nursery years is an extrapolation.`}
+			>
+				<LineChart
+					xLabel="Age (years)"
+					yLabel="Total length (mm)"
+					xFormat={(x) => num(x, 0)}
+					yFormat={(y) => num(y)}
+					series={[
+						{ name: 'Fitted curve', color: SPECIES.Cm.color, points: v.curve },
+						{
+							name: 'Slower (K lower limit)',
+							color: 'var(--ink-2)',
+							dashed: true,
+							points: v.curveLo
+						},
+						{
+							name: 'Faster (K upper limit)',
+							color: 'var(--ink-2)',
+							dashed: true,
+							points: v.curveHi
+						}
+					]}
+					refs={[{ y: v.linf, label: 'largest adults' }]}
+				/>
+			</ChartCard>
+		</section>
+	{/if}
 
 	{#if data.acrossSeasons.length}
 		<section class="section card">
