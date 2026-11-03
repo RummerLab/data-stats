@@ -1,6 +1,7 @@
 import { memo } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, fieldCaptures, round } from '#lib/server/analytics/common';
 import { MOON_PHASES } from '#lib/server/astro';
+import { moonCloud } from '#lib/server/analytics/cloud';
 import { histogram, median, welch } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -27,6 +28,7 @@ export const load: PageServerLoad = () =>
 		const bright = caps.filter((c) => (c.moonIllum ?? 0.5) > 0.75).map((c) => c.minAfterSunset);
 		const w = welch(bright, dark);
 		return {
+			moonCloud: moonCloud(d),
 			phases,
 			illum: binnedMean(
 				sets,

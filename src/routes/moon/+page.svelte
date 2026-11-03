@@ -9,6 +9,7 @@
 
 	let { data }: PageProps = $props();
 	const t = $derived(data.timing);
+	const mc = $derived(data.moonCloud);
 </script>
 
 <div class="container">
@@ -100,6 +101,24 @@
 				]}
 				valueFormat={(v) => num(v, 2)}
 				labels
+			/>
+		</ChartCard>
+		<ChartCard
+			title="Does cloud hide the moon?"
+			subtitle="Catch rate on dark nights and on bright-moon nights (≥ 60% lit, moon above 10° at mid-set) under a clear (< 40% cloud) or overcast (≥ 70%) sky. Whiskers: 95% confidence intervals."
+			note={`${mc.groups[1].mean != null && mc.groups[2].mean != null ? `Bright-moon nights averaged ${num(mc.groups[1].mean, 2)} sharks per net-hour under a clear sky and ${num(mc.groups[2].mean, 2)} under cloud (Welch ${pValue(mc.p)}). ` : ''}Moonlight reaching the water (illumination × moon height × clear sky) against catch rate: Spearman ρ = ${num(mc.rho, 2)} over ${num(mc.n)} sets.${mc.p != null && mc.p > 0.05 && mc.rho != null && Math.abs(mc.rho) < 0.1 ? ' Accounting for cloud does not reveal a moonlight effect.' : ''}`}
+		>
+			<BarChart
+				categories={mc.groups.map((g) => `${g.k} (${g.n})`)}
+				series={[
+					{
+						name: 'Sharks / net-hour',
+						color: 'var(--series-7)',
+						values: mc.groups.map((g) => g.mean)
+					}
+				]}
+				errors={mc.groups.map((g) => (g.lo != null && g.hi != null ? [g.lo, g.hi] : null))}
+				valueFormat={(v) => num(v, 2)}
 			/>
 		</ChartCard>
 		<ChartCard

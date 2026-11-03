@@ -1,5 +1,6 @@
 import { memo } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, round } from '#lib/server/analytics/common';
+import { crewVsEra5 } from '#lib/server/analytics/cloud';
 import { mean, sum } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -50,6 +51,7 @@ export const load: PageServerLoad = () =>
 			(a: number, b: number) =>
 				`${round(a, dp)}–${round(b, dp)}${u}`;
 		return {
+			crewCloud: crewVsEra5(d),
 			byMonth,
 			rainMonthly: [...monthly.entries()]
 				.sort()
