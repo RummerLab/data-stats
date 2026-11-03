@@ -9,7 +9,7 @@ import {
 	recapturePairs,
 	round
 } from '#lib/server/analytics/common';
-import { DAY_TYPES, dayType, holidayOn } from '#lib/server/holidays';
+import { DAY_TYPES, dayType, holidayOn, schoolDays } from '#lib/server/holidays';
 import { mean, median, pairs, se, spearman, welch } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -74,6 +74,8 @@ export const load: PageServerLoad = () =>
 		// Busy days (#25): do weekends and holidays, when more people are on the water, change the
 		// evening catch? Mean per-set catch rate with a ±1.96·SE interval.
 		const dated = eff.filter((s) => s.date && s.cpue != null);
+		const school = schoolDays(d.schoolHolidays);
+		const type = (s: (typeof dated)[number]) => dayType(s.date!, school);
 		const group = (ss: typeof dated, label: string) => {
 			const ys = ss.map((s) => s.cpue);
 			const m = mean(ys);
@@ -88,7 +90,7 @@ export const load: PageServerLoad = () =>
 		};
 		const byType = DAY_TYPES.map((t) =>
 			group(
-				dated.filter((s) => dayType(s.date!) === t),
+				dated.filter((s) => type(s) === t),
 				t
 			)
 		);
@@ -98,17 +100,30 @@ export const load: PageServerLoad = () =>
 				['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
 			)
 		);
-		const busy = dated.filter((s) => dayType(s.date!) !== 'Weekday');
-		const quiet = dated.filter((s) => dayType(s.date!) === 'Weekday');
+		const busy = dated.filter((s) => type(s) !== 'Weekday');
+		const quiet = dated.filter((s) => type(s) === 'Weekday');
 		const test = welch(
 			busy.map((s) => s.cpue),
 			quiet.map((s) => s.cpue)
 		);
+		// School holidays on weekdays only, against term-time weekdays (`quiet`): keeps weekends out.
+		const breakDays = dated.filter(
+			(s) => type(s) === 'School holidays' && s.weekday !== 0 && s.weekday !== 6
+		);
+		const schoolTest = welch(
+			breakDays.map((s) => s.cpue),
+			quiet.map((s) => s.cpue)
+		);
 		const holidaySets = new Map<string, number>();
+		const breakSets = new Map<string, number>();
 		for (const s of dated) {
 			const h = holidayOn(s.date!);
 			if (h) holidaySets.set(h, (holidaySets.get(h) ?? 0) + 1);
+			const b = school.get(s.date!);
+			if (b) breakSets.set(b, (breakSets.get(b) ?? 0) + 1);
 		}
+		const counts = (m: Map<string, number>) =>
+			[...m].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
 		return {
 			rows,
 			metrics,
@@ -120,7 +135,16 @@ export const load: PageServerLoad = () =>
 				busyMean: round(mean(busy.map((s) => s.cpue)), 2),
 				quietMean: round(mean(quiet.map((s) => s.cpue)), 2),
 				p: test ? round(test.p, 3) : null,
-				holidays: [...holidaySets].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }))
+				school: {
+					since: d.schoolHolidays[0]?.schoolYear ?? null,
+					breakMean: round(mean(breakDays.map((s) => s.cpue)), 2),
+					termMean: round(mean(quiet.map((s) => s.cpue)), 2),
+					nBreak: breakDays.length,
+					nTerm: quiet.length,
+					p: schoolTest ? round(schoolTest.p, 3) : null
+				},
+				holidays: counts(holidaySets),
+				breaks: counts(breakSets)
 			}
 		};
 	});

@@ -498,6 +498,16 @@ export const cyclonePoints = sqliteTable('cyclone_points', {
 	distKm: real('dist_km').notNull()
 });
 
+/** French Polynesia school holidays: first and last day off, local dates (#25). */
+export const schoolHolidays = sqliteTable('school_holidays', {
+	id: integer('id').primaryKey(),
+	schoolYear: text('school_year').notNull(), // 2017-2018
+	name: text('name').notNull(), // Christmas break…
+	start: text('start').notNull(),
+	end: text('end').notNull(),
+	source: text('source').notNull()
+});
+
 export const climateMonthly = sqliteTable('climate_monthly', {
 	ym: text('ym').primaryKey(), // YYYY-MM
 	oni: real('oni'),

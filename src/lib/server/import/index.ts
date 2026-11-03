@@ -73,7 +73,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '7';
+export const IMPORTER_VERSION = '8';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -531,6 +531,7 @@ export function runImport(
 	const ocean = new Map(readCsv(opts.externalDir, 'ocean-daily.csv').map((r) => [r.date, r]));
 	const climate = new Map(readCsv(opts.externalDir, 'climate-monthly.csv').map((r) => [r.ym, r]));
 	const cyclones = readCsv(opts.externalDir, 'cyclones.csv');
+	const school = readCsv(opts.externalDir, 'school-holidays.csv');
 	const tidePts: HourlyPoint[] = readCsv(opts.externalDir, 'tide-papeete-hourly.csv')
 		.map((r) => ({ t: tsToHour(r.ts), mm: Number(r.mm) }))
 		.filter((x) => Number.isFinite(x.mm))
@@ -1034,6 +1035,18 @@ export function runImport(
 					windKt: val(r.wind_kt),
 					presHpa: val(r.pres_hpa),
 					distKm: val(r.dist_km)!
+				}))
+		);
+		insert(
+			schema.schoolHolidays,
+			school
+				.filter((r) => r.start && r.end)
+				.map((r) => ({
+					schoolYear: r.school_year,
+					name: r.name,
+					start: r.start,
+					end: r.end,
+					source: r.source
 				}))
 		);
 		insert(schema.dataIssues, log.items);

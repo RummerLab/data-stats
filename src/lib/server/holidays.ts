@@ -1,10 +1,10 @@
 /**
  * Human-activity proxies for French Polynesia (#25): public holidays (computed, including the
- * Easter-based ones) and the Christmas–New Year festive period. Dates are local (UTC−10) ISO
- * strings, like set dates.
+ * Easter-based ones), the Christmas–New Year festive period and school holidays. Dates are local
+ * (UTC−10) ISO strings, like set dates.
  *
- * School holidays are not included: the Polynesian school calendar changes every year and isn't
- * derivable from rules. The festive window below is a deliberately generic stand-in.
+ * School holidays change every year, so they come from `external/school-holidays.csv` (archived
+ * calendar orders for 2013-14 to 2016-17, the Ministry's open data since) via `schoolDays`.
  */
 
 /** Easter Sunday (Gregorian, anonymous algorithm) as an ISO date. */
@@ -68,13 +68,37 @@ export function isFestive(iso: string): boolean {
 	return md >= '12-20' || md <= '01-05';
 }
 
-export type DayType = 'Public holiday' | 'Festive period' | 'Weekend' | 'Weekday';
-export const DAY_TYPES: DayType[] = ['Weekday', 'Weekend', 'Public holiday', 'Festive period'];
+export interface SchoolBreak {
+	name: string;
+	start: string; // first day off
+	end: string; // last day off
+}
 
-/** One label per date; a holiday wins over the festive window, which wins over the weekend. */
-export function dayType(iso: string): DayType {
+/** Every day of the school breaks: ISO date → break name. */
+export function schoolDays(breaks: SchoolBreak[]): Map<string, string> {
+	const out = new Map<string, string>();
+	for (const b of breaks) for (let d = b.start; d <= b.end; d = addDays(d, 1)) out.set(d, b.name);
+	return out;
+}
+
+export type DayType =
+	'Public holiday' | 'Festive period' | 'School holidays' | 'Weekend' | 'Weekday';
+export const DAY_TYPES: DayType[] = [
+	'Weekday',
+	'Weekend',
+	'School holidays',
+	'Public holiday',
+	'Festive period'
+];
+
+/**
+ * One label per date: a public holiday wins over the festive window, which wins over the school
+ * holidays, which win over the weekend.
+ */
+export function dayType(iso: string, school: Map<string, string> = new Map()): DayType {
 	if (holidayOn(iso)) return 'Public holiday';
 	if (isFestive(iso)) return 'Festive period';
+	if (school.has(iso)) return 'School holidays';
 	const wd = new Date(`${iso}T00:00:00Z`).getUTCDay();
 	return wd === 0 || wd === 6 ? 'Weekend' : 'Weekday';
 }
