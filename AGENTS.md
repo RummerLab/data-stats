@@ -44,7 +44,8 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
-src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap, charts/*
+src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap (SSR SVG),
+                         InteractiveMap (Leaflet, lazy; MooreaMap is its fallback), charts/*
 src/routes/              one folder per page (+page.server.ts computes, +page.svelte renders)
 scripts/                 fetch-external.mjs · make-fixture.mjs · server.mjs · nightlyRelease.mjs
 external/                public environmental snapshots (committed)
@@ -117,7 +118,7 @@ REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # op
 ## What not to do
 
 - Don't edit, rename, re-save or "clean" the spreadsheets. Don't commit them, fixtures derived from them, or SQLite caches.
-- Don't add a chart library or third-party scripts/fonts/tiles without updating the CSP in `vite.config.ts` and this file.
+- Don't add a chart library or third-party scripts/fonts without updating the CSP in `vite.config.ts` and this file. Map tiles (Esri World Imagery, OpenStreetMap) are the only allowed external images (`img-src`); a new tile host needs the CSP, the e2e tile stub in `e2e/pages.spec.ts` and the attribution.
 - Don't hard-code numbers in page copy; compute them in the load function.
 - Don't claim causation from the correlations; don't overstate the human-pressure results (the source paper found no significant effect).
 - Don't reintroduce dual-axis charts or per-point value labels.
