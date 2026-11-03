@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { sexModel } from '#lib/server/analytics/sex';
 import {
 	activeNurseries,
 	boxOf,
@@ -210,6 +211,7 @@ export const load: PageServerLoad = () =>
 			sexCm: sexRatio('Cm'),
 			sexNa: sexRatio('Na'),
 			overallSex,
+			sexModel: memo('sexModel', sexModel),
 			dimorph,
 			claspers
 		};

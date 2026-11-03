@@ -12,6 +12,16 @@
 
 	let { data }: PageProps = $props();
 	const seasons = $derived(data.kSeasons.map(season));
+	const sexFit = (sp: 'Cm' | 'Na') => data.sexModel.find((m) => m.species === sp)?.fit ?? null;
+	/** Mixed-model season test for a per-season chart (#117). */
+	const seasonNote = (sp: 'Cm' | 'Na') => {
+		const f = sexFit(sp);
+		return f
+			? `Mixed model (nursery and season as random effects): seasons vary by SD ${num(f.seasonSd, 2)} on the log-odds scale, likelihood-ratio ${pValue(f.seasonP)}${f.seasonP != null && f.seasonP >= 0.05 ? ': no more than chance' : ''}.`
+			: undefined;
+	};
+	// Nurseries with at least 20 sharks; smaller ones sit at the typical share by design.
+	const nurseryRows = (sp: 'Cm' | 'Na') => (sexFit(sp)?.nurseries ?? []).filter((r) => r.n >= 20);
 	const lwPoints = $derived([
 		...data.lwCm.points.map(([x, y]) => ({ x, y, g: SPECIES.Cm.common })),
 		...data.lwNa.points.map(([x, y]) => ({ x, y, g: SPECIES.Na.common }))
@@ -153,13 +163,55 @@
 			{#each data.overallSex as s (s.species)}
 				{speciesName(s.species)}: {num(s.f)} females, {num(s.m)} males ({pct(
 					s.f / Math.max(1, s.f + s.m)
-				)} female, binomial {pValue(s.p)}).
+				)} female, binomial {`${pValue(s.p)}). `}
 			{/each}
 		</p>
+		<p>
+			A logistic mixed model asks whether the ratio shifts between nurseries or between seasons. It
+			counts each shark once, at its first capture, with the nursery and season of that capture as
+			random effects.
+			{#each data.sexModel as m (m.species)}
+				{#if m.fit}
+					{speciesName(m.species)}: {pct(m.fit.typical.est)} female at a typical nursery in a typical
+					season (95% interval {pct(m.fit.typical.lo)}–{pct(m.fit.typical.hi)}); nurseries
+					{m.fit.nurseryP != null && m.fit.nurseryP < 0.05
+						? `differ (SD ${num(m.fit.nurserySd, 2)} on the log-odds scale, ${pValue(m.fit.nurseryP)})`
+						: `do not differ beyond chance (${pValue(m.fit.nurseryP)})`}, and seasons
+					{m.fit.seasonP != null && m.fit.seasonP < 0.05
+						? `differ (SD ${num(m.fit.seasonSd, 2)}, ${pValue(m.fit.seasonP)}). `
+						: `do not (${pValue(m.fit.seasonP)}). `}
+				{/if}
+			{/each}
+		</p>
+		<div class="grid-2">
+			{#each ['Cm', 'Na'] as const as sp (sp)}
+				{#if nurseryRows(sp).length}
+					<ChartCard
+						title={`Share of females by nursery: ${speciesName(sp).toLowerCase()}`}
+						subtitle="Mixed-model estimate for each nursery with ≥ 20 sharks (first captures, n in brackets). Whiskers: approximate 95% intervals. Estimates are pulled towards the typical share when the data are thin."
+					>
+						<BarChart
+							horizontal
+							categories={nurseryRows(sp).map((r) => `${r.name} (${r.n})`)}
+							series={[
+								{
+									name: 'Female share',
+									color: SPECIES[sp].color,
+									values: nurseryRows(sp).map((r) => r.est)
+								}
+							]}
+							errors={nurseryRows(sp).map((r) => [r.lo, r.hi])}
+							valueFormat={(v) => pct(v)}
+						/>
+					</ChartCard>
+				{/if}
+			{/each}
+		</div>
 		<div class="grid-2">
 			<ChartCard
 				title="Share of females per season: blacktip"
 				subtitle="Bars show the share, whiskers the 95% Wilson interval; 50% is an even ratio"
+				note={seasonNote('Cm')}
 			>
 				<BarChart
 					categories={data.sexCm.map((r) => season(r.season))}
@@ -170,7 +222,7 @@
 					valueFormat={(v) => pct(v)}
 				/>
 			</ChartCard>
-			<ChartCard title="Share of females per season: sicklefin lemon">
+			<ChartCard title="Share of females per season: sicklefin lemon" note={seasonNote('Na')}>
 				<BarChart
 					categories={data.sexNa.map((r) => season(r.season))}
 					series={[
