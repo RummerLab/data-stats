@@ -122,6 +122,7 @@
 				{@const oc = ins.cloud.overcastVsClear}
 				<ChartCard
 					title="Clouds and the nursery's afternoon"
+					papers={['trujillo2025shallows']}
 					subtitle="Nursery daily high and day–night swing by that day's cloud cover (ERA5), relative to the average for the same month: the cloudy wet season is also the warm season"
 					note={oc
 						? `Within the same month, overcast days (≥ 70% cloud) peaked ${num(Math.abs(oc.max ?? 0), 2)} °C ${(oc.max ?? 0) <= 0 ? 'cooler' : 'warmer'} than clear days (< 40%), and the day–night swing was ${num(Math.abs(oc.swing ?? 0), 2)} °C ${(oc.swing ?? 0) <= 0 ? 'smaller' : 'larger'}. Spearman ρ between cloud and the daily high: ${num(ins.cloud.rhoMax, 2)} over ${num(ins.cloud.days)} days.`

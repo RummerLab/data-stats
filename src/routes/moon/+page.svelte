@@ -109,6 +109,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Does cloud hide the moon?"
+			papers={['debaere2024lunar']}
 			subtitle="Catch rate on dark nights and on bright-moon nights (≥ 60% lit, moon above 10° at mid-set) under a clear (< 40% cloud) or overcast (≥ 70%) sky. Whiskers: 95% confidence intervals."
 			note={`${mc.groups[1].mean != null && mc.groups[2].mean != null ? `Bright-moon nights averaged ${num(mc.groups[1].mean, 2)} sharks per net-hour under a clear sky and ${num(mc.groups[2].mean, 2)} under cloud (Welch ${pValue(mc.p)}). ` : ''}Moonlight reaching the water (illumination × moon height × clear sky) against catch rate: Spearman ρ = ${num(mc.rho, 2)} over ${num(mc.n)} sets.${mc.p != null && mc.p > 0.05 && mc.rho != null && Math.abs(mc.rho) < 0.1 ? ' Accounting for cloud does not reveal a moonlight effect.' : ''}`}
 		>
