@@ -15,9 +15,11 @@
 </script>
 
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { isoDay, registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
+	import { KEYS_HINT, markKeys } from './marks';
 	import Tip, { type TipState } from './Tip.svelte';
 	import { dateTicks, fromDay, linear, logTicks, nice, ticks } from './scale';
 
@@ -88,12 +90,44 @@
 	const jit = (i: number) =>
 		jitter ? (((i * 9301 + 49297) % 233280) / 233280 - 0.5) * 2 * jitter : 0;
 
+	// Screen positions, rounded to 0.1 px: with thousands of points the attributes are the page (#76).
+	const px = (v: number) => Math.round(v * 10) / 10;
+	const placed = $derived(
+		pts.map((p, i) => ({
+			p,
+			x: px(sx(p.x + jit(i))),
+			y: px(sy(p.y)),
+			color: (p.g && colorOf.get(p.g)) || 'var(--series-1)'
+		}))
+	);
+	// One layer per colour, so shared attributes sit on the layer instead of on every point.
+	const layers = $derived.by(() => {
+		const out: { color: string; idx: number[] }[] = [];
+		placed.forEach((q, i) => {
+			const l = out.find((o) => o.color === q.color);
+			if (l) l.idx.push(i);
+			else out.push({ color: q.color, idx: [i] });
+		});
+		return out;
+	});
+	const links = $derived(pts.some((p) => p.href));
+	// Big scatters reach the browser as one path of dots per colour (a few bytes a point) and
+	// become circles, with see-through overlaps, once the page is interactive.
+	const LIGHT = 250;
+	let live = $state(false);
+	onMount(() => (live = true));
+	const circles = $derived(live || links || placed.length <= LIGHT);
+	const dots = (idx: number[]) => idx.map((i) => `M${placed[i].x} ${placed[i].y}h0`).join('');
+
+	let svg = $state<SVGSVGElement>();
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, p: ScatterPoint) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	let active = $state<number | null>(null);
+	function show(i: number, x: number, y: number) {
+		const p = placed[i].p;
+		active = i;
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			x,
+			y,
 			title: p.label,
 			lines: [
 				{ label: xLabel || 'x', value: xDate ? fromDay(p.x) : xFormat(p.x) },
@@ -101,6 +135,33 @@
 			]
 		};
 	}
+	function hide() {
+		active = null;
+		tip = null;
+	}
+	/** Hover picks the nearest point within reach, so small dots are easy to hit. */
+	function move(e: PointerEvent) {
+		const box = svg!.getBoundingClientRect();
+		const k = box.width ? width / box.width : 1;
+		const mx = (e.clientX - box.left) * k;
+		const my = (e.clientY - box.top) * k;
+		let best = -1;
+		let bd = Math.max(10, r * 2.5) ** 2;
+		for (let i = 0; i < placed.length; i++) {
+			const d = (placed[i].x - mx) ** 2 + (placed[i].y - my) ** 2;
+			if (d < bd) [best, bd] = [i, d];
+		}
+		if (best < 0) hide();
+		else show(best, e.clientX - box.left, e.clientY - box.top);
+	}
+	// Keyboard order: left to right.
+	const order = $derived(placed.map((_, i) => i).sort((a, b) => placed[a].x - placed[b].x));
+	const keys = markKeys({
+		count: () => order.length,
+		show: (k) => show(order[k], placed[order[k]].x, placed[order[k]].y),
+		hide,
+		href: (k) => placed[order[k]].p.href
+	});
 </script>
 
 <Legend
@@ -115,13 +176,15 @@
 />
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${height}`}
 		{width}
 		{height}
-		role={points.some((p) => p.href) ? 'group' : 'img'}
-		aria-label={`${yLabel} against ${xLabel}`}
-		onpointerleave={() => (tip = null)}
+		{...keys}
+		aria-label={`${yLabel} against ${xLabel}. ${KEYS_HINT}`}
+		onpointermove={move}
+		onpointerleave={hide}
 	>
 		{#each yt as t (t)}
 			<line x1={m.left} x2={width - m.right} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" />
@@ -153,25 +216,43 @@
 			y2={height - m.bottom}
 			stroke="var(--axis)"
 		/>
-		{#each pts as p, i (i)}
-			<svelte:element
-				this={p.href ? 'a' : 'g'}
-				href={p.href}
-				role={p.href ? undefined : 'presentation'}
-			>
-				<circle
-					cx={sx(p.x + jit(i))}
-					cy={sy(p.y)}
-					{r}
-					fill={p.g ? (colorOf.get(p.g) ?? 'var(--series-1)') : 'var(--series-1)'}
-					fill-opacity={opacity}
-					stroke="var(--surface)"
-					stroke-width="1"
-					role="presentation"
-					onpointerenter={(e) => show(e, p)}
+		{#each layers as l (l.color)}
+			{#if !circles}
+				<path
+					d={dots(l.idx)}
+					fill="none"
+					stroke={l.color}
+					stroke-opacity={opacity}
+					stroke-width={2 * r}
+					stroke-linecap="round"
 				/>
-			</svelte:element>
+			{:else if links}
+				<g fill={l.color} fill-opacity={opacity} stroke="var(--surface)" stroke-width="1">
+					{#each l.idx as i (i)}
+						<a href={placed[i].p.href} aria-label={placed[i].p.label}>
+							<circle cx={placed[i].x} cy={placed[i].y} {r} />
+						</a>
+					{/each}
+				</g>
+			{:else}
+				<g fill={l.color} fill-opacity={opacity} stroke="var(--surface)" stroke-width="1">
+					{#each l.idx as i (i)}
+						<circle cx={placed[i].x} cy={placed[i].y} {r} />
+					{/each}
+				</g>
+			{/if}
 		{/each}
+		{#if active != null && placed[active]}
+			<circle
+				cx={placed[active].x}
+				cy={placed[active].y}
+				r={r + 3}
+				fill="none"
+				stroke="var(--ink)"
+				stroke-width="1.5"
+				pointer-events="none"
+			/>
+		{/if}
 		{#each fits as f (f.name)}
 			<polyline
 				points={f.points.map((q) => `${sx(q.x).toFixed(1)},${sy(q.y).toFixed(1)}`).join(' ')}

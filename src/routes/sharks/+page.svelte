@@ -72,6 +72,7 @@
 			]}
 			rows={filtered.map((r) => ({
 				...r,
+				href: `/sharks/${encodeURIComponent(r.id)}`,
 				speciesL: speciesName(r.species),
 				firstL: date(r.first),
 				lastL: date(r.last)

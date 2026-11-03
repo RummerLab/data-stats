@@ -20,6 +20,7 @@
 	import { num } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 	import { linear } from './scale';
 
 	let {
@@ -92,11 +93,9 @@
 	const off = (k: number) => (series.length > 1 ? (k - (series.length - 1) / 2) * 9 : 0);
 
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, i: number) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, i: number) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: rows[i],
 			lines: series.map((s) => {
 				const v = s.values[i];
@@ -108,17 +107,24 @@
 			})
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => rows.length,
+		show: (i) => markAt(svg, i, (p) => show(p, i)),
+		hide: () => (tip = null)
+	});
 </script>
 
 <Legend items={series.map((s) => ({ label: s.name, color: s.color, kind: 'dot' as const }))} />
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role="img"
-		aria-label={`${xLabel || 'Estimates'} with 95% intervals`}
+		{...keys}
+		aria-label={`${xLabel || 'Estimates'} with 95% intervals. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each xt as t (t)}
@@ -145,7 +151,8 @@
 					height={band}
 					fill="transparent"
 					role="presentation"
-					onpointermove={(e) => show(e, i)}
+					data-mark={i}
+					onpointermove={(e) => show(pointerIn(e), i)}
 				/>
 				{#each series as s, k (s.name)}
 					{@const v = s.values[i]}

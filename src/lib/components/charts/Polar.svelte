@@ -2,6 +2,7 @@
 	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 
 	let {
 		sectors,
@@ -40,12 +41,10 @@
 		return `M${cx},${cy}L${cx + r * Math.cos(a0)},${cy + r * Math.sin(a0)}A${r},${r} 0 0 1 ${cx + r * Math.cos(a1)},${cy + r * Math.sin(a1)}Z`;
 	}
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, i: number) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, i: number) {
 		const s = sectors[i];
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: s.label,
 			lines: [
 				{ value: s.value == null ? '–' : format(s.value) },
@@ -53,16 +52,23 @@
 			]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => sectors.length,
+		show: (i) => markAt(svg, i, (p) => show(p, i)),
+		hide: () => (tip = null)
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${height}`}
 		{width}
 		{height}
-		role="img"
-		aria-label="Polar chart"
+		{...keys}
+		aria-label={`Polar chart. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each [0.25, 0.5, 0.75, 1] as f (f)}
@@ -78,7 +84,8 @@
 				stroke="var(--surface)"
 				stroke-width="1"
 				role="presentation"
-				onpointermove={(e) => show(e, i)}
+				data-mark={i}
+				onpointermove={(e) => show(pointerIn(e), i)}
 			/>
 			<text
 				x={cx + (R + 18) * Math.cos(a)}

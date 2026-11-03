@@ -48,7 +48,9 @@ for (const theme of ['light', 'dark'] as const) {
 			'/sharks',
 			'/findings',
 			'/crew',
-			'/about'
+			'/about',
+			'/morphometrics',
+			'/pressure'
 		]) {
 			await page.goto(route);
 			for (const v of await axe(page))
@@ -69,4 +71,27 @@ test('nursery links open a profile and the menu works on mobile', async ({ page 
 		() => document.documentElement.scrollWidth - window.innerWidth
 	);
 	expect(overflow).toBeLessThanOrEqual(1);
+});
+
+test('charts can be read with the keyboard (#32)', async ({ page }) => {
+	await page.goto('/morphometrics');
+	for (const chart of await page.locator('svg.chart-svg[role="application"]').all()) {
+		await chart.focus();
+		await page.keyboard.press('ArrowRight');
+		const tip = chart.locator('xpath=..').locator('.tip');
+		await expect(tip).toBeVisible();
+		await page.keyboard.press('End');
+		await expect(tip).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(tip).toBeHidden();
+	}
+});
+
+test('pages are compressed and revalidate with a 304 (#76)', async ({ request }) => {
+	const res = await request.get('/morphometrics', { headers: { 'accept-encoding': 'gzip' } });
+	expect(res.headers()['content-encoding']).toBe('gzip');
+	const etag = res.headers()['etag'];
+	expect(etag).toBeTruthy();
+	const again = await request.get('/morphometrics', { headers: { 'if-none-match': etag } });
+	expect(again.status()).toBe(304);
 });

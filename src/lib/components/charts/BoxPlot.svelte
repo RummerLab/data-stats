@@ -18,6 +18,7 @@
 	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 	import { linear, nice, ticks } from './scale';
 
 	let {
@@ -59,12 +60,10 @@
 	const sy = $derived(linear(ext, [height - m.bottom, m.top]));
 	const bw = $derived(Math.min(28, band * 0.6));
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, b: Box) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, b: Box) {
 		const s = b.stats!;
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: `${b.name} (n = ${s.n})`,
 			lines: [
 				{ label: 'Upper whisker', value: yFormat(s.hi) },
@@ -76,16 +75,25 @@
 			]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	// Only boxes with data are marks.
+	const withData = $derived(boxes.flatMap((b, i) => (b.stats ? [i] : [])));
+	const keys = markKeys({
+		count: () => withData.length,
+		show: (k) => markAt(svg, withData[k], (p) => show(p, boxes[withData[k]])),
+		hide: () => (tip = null)
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${height}`}
 		{width}
 		{height}
-		role="img"
-		aria-label={`${yLabel} by group (box plots)`}
+		{...keys}
+		aria-label={`${yLabel} by group (box plots). ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each ticks(ext[0], ext[1], 5) as t (t)}
@@ -104,7 +112,7 @@
 			{#if b.stats}
 				{@const s = b.stats}
 				{@const c = b.color ?? 'var(--series-1)'}
-				<g role="presentation" onpointermove={(e) => show(e, b)}>
+				<g role="presentation" data-mark={i} onpointermove={(e) => show(pointerIn(e), b)}>
 					<rect
 						x={cx - band / 2}
 						width={band}

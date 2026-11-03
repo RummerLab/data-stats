@@ -118,7 +118,8 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 - Cite the study behind a chart with `<ChartCard papers={['debaere2024lunar']}>` (ids in `src/lib/publications.ts`). Link only papers that analysed the same question with this dataset; check the abstract first. PDFs are served at `rummerlab.com/papers/<file>` (metadata in the rummerlab-website repo, `data/papers.json`).
 - Species colours come from `src/lib/species.ts` (blacktip = slot 1, sicklefin lemon = slot 2).
 - Charts measure their width (`bind:clientWidth`) and carry a `viewBox` so pre-hydration renders scale down instead of overflowing.
-- Interactive marks (links) inside an SVG → the SVG gets `role="group"`, not `img` (axe `nested-interactive`). Only put `aria-label` on elements that are links.
+- Keyboard (#32): every chart spreads `markKeys()` from `charts/marks.ts` onto its svg (one tab stop, `role="application"` while it has marks, arrows/Home/End/Enter/Escape) and puts `data-mark={i}` on each mark's hover element so `markAt` can pin the tooltip there. Pointer handlers use `pointerIn(e)`. A new chart needs both, plus `KEYS_HINT` in its `aria-label`. Only put `aria-label` on elements that are links (e.g. linked scatter points).
+- Page weight (#76): markup, not data, made pages heavy. Scatter sends one path of dots per colour above 250 points and swaps in circles after mount, hover picks the nearest point, coordinates are rounded to 0.1 px. Keep per-mark attributes off big charts; put shared ones on a parent `<g>`. `hooks.server.ts` Brotli/gzips HTML and JSON and sets a weak ETag (build version + import hash) so revalidation is a 304 without a render.
 - Style guide: `docs/dev/BRANDING.md`.
 
 ## Docker / release

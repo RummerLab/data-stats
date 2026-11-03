@@ -11,6 +11,7 @@
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 	import { barPath, hbarPath, linear, nice, ticks } from './scale';
 
 	let {
@@ -93,11 +94,9 @@
 	const rotate = $derived(!horizontal && band < longest * 6.5 + 6);
 
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, i: number) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, i: number) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: categories[i],
 			lines: series
 				.map((s) => ({
@@ -118,17 +117,25 @@
 				)
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => categories.length,
+		show: (i) => markAt(svg, i, (p) => show(p, i)),
+		hide: () => (tip = null),
+		href: (i) => hrefs?.[i]
+	});
 </script>
 
 <Legend items={series.map((s) => ({ label: s.name, color: s.color }))} />
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role={hrefs?.some(Boolean) ? 'group' : 'img'}
-		aria-label={`${yLabel || 'Values'} by category`}
+		{...keys}
+		aria-label={`${yLabel || 'Values'} by category. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each vt as t (t)}
@@ -169,7 +176,8 @@
 						height={horizontal ? band : h - m.top - m.bottom}
 						fill="transparent"
 						role="presentation"
-						onpointermove={(e) => show(e, i)}
+						data-mark={i}
+						onpointermove={(e) => show(pointerIn(e), i)}
 					/>
 					{#if stacked}
 						{@const segs = series.reduce<{ s: BarSeries; a: number; b: number }[]>((acc, s) => {

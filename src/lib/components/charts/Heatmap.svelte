@@ -2,6 +2,7 @@
 	import { registerCsv } from './csv';
 	import { compact } from '#lib/format';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 
 	let {
 		xLabels,
@@ -66,26 +67,35 @@
 	}
 
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, r: number, c: number) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, r: number, c: number) {
 		const v = values[r]?.[c];
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: `${yLabels[r]} · ${xLabels[c]}`,
 			lines: [{ value: v == null ? 'no data' : format(v) }]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => yLabels.length * xLabels.length,
+		cols: () => xLabels.length,
+		show: (k) => {
+			const [r, c] = [Math.floor(k / xLabels.length), k % xLabels.length];
+			markAt(svg, k, (p) => show(p, r, c));
+		},
+		hide: () => (tip = null)
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role="img"
-		aria-label={`Heatmap of ${yTitle} by ${xTitle}`}
+		{...keys}
+		aria-label={`Heatmap of ${yTitle} by ${xTitle}. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each yLabels as yl, r (r)}
@@ -109,7 +119,8 @@
 					fill={f.color}
 					fill-opacity={f.opacity}
 					role="presentation"
-					onpointermove={(e) => show(e, r, c)}
+					data-mark={r * xLabels.length + c}
+					onpointermove={(e) => show(pointerIn(e), r, c)}
 				/>
 				{#if cellLabels && v != null && cellW > 28}
 					<text
