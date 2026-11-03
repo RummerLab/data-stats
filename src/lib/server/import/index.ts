@@ -73,7 +73,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '8';
+export const IMPORTER_VERSION = '9';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -530,6 +530,16 @@ export function runImport(
 	const wHourly = new Map(readCsv(opts.externalDir, 'weather-hourly.csv').map((r) => [r.ts, r]));
 	const ocean = new Map(readCsv(opts.externalDir, 'ocean-daily.csv').map((r) => [r.date, r]));
 	const climate = new Map(readCsv(opts.externalDir, 'climate-monthly.csv').map((r) => [r.ym, r]));
+	const chlRows = readCsv(opts.externalDir, 'chlorophyll-weekly.csv').filter((r) => r.date);
+	// Each weekly composite covers its centre date ± 3 days.
+	const chlByDay = new Map<string, number>();
+	for (const r of chlRows) {
+		const v = val(r.chl);
+		if (v == null) continue;
+		const t = Date.parse(`${r.date}T00:00:00Z`);
+		for (let k = -3; k <= 3; k++)
+			chlByDay.set(new Date(t + k * 86_400_000).toISOString().slice(0, 10), v);
+	}
 	const cyclones = readCsv(opts.externalDir, 'cyclones.csv');
 	const school = readCsv(opts.externalDir, 'school-holidays.csv');
 	const tidePts: HourlyPoint[] = readCsv(opts.externalDir, 'tide-papeete-hourly.csv')
@@ -635,6 +645,7 @@ export function runImport(
 				sst: val(o?.oisst) ?? val(o?.crw_sst),
 				sstAnom: val(o?.crw_anom),
 				dhw: val(o?.crw_dhw),
+				chl: chlByDay.get(s.date) ?? null,
 				waveHeight: val(o?.wave_max),
 				swellHeight: val(o?.swell_max),
 				oni: val(climate.get(ymOf(s.date))?.oni),
@@ -1011,6 +1022,10 @@ export function runImport(
 			}))
 		);
 		insert(
+			schema.chlorophyllWeekly,
+			chlRows.map((r) => ({ date: r.date, chl: val(r.chl), pixels: val(r.pixels) ?? 0 }))
+		);
+		insert(
 			schema.tideHourly,
 			tidePts.map((pt) => ({
 				ts: new Date(pt.t * 3_600_000).toISOString().slice(0, 13),
@@ -1059,6 +1074,7 @@ export function runImport(
 			external: JSON.stringify({
 				weather: [...wDaily.keys()].sort().at(-1) ?? null,
 				ocean: [...ocean.keys()].sort().at(-1) ?? null,
+				chlorophyll: chlRows.at(-1)?.date ?? null,
 				tide: tidePts.length
 					? new Date(tidePts[tidePts.length - 1].t * 3_600_000).toISOString().slice(0, 10)
 					: null,

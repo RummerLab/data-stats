@@ -97,6 +97,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
 
+### Chlorophyll-a (#23)
+
+- `fetch-external.mjs --only=chlorophyll` reads NOAA S-NPP VIIRS science-quality weekly chlorophyll (`noaacwNPPVIIRSSQchlaWeekly` on coastwatch.noaa.gov ERDDAP; the pfeg copy only redirects there) for a box around Moorea and writes one median per week (`external/chlorophyll-weekly.csv`, `chlorophyll_weekly` table, `sets.chl` for the week holding the set date).
+- The median covers an offshore ring: pixels within 30 km of Moorea's centre and ≥ 10 km from any pixel with no value in more than half the weeks (land and coast, Tahiti's included). Coastal pixels read tens of times the open ocean (land in the pixel, lagoon floor, haze), and some get a value often enough that "never valid" misses them. The job throws if the ring shrinks below 40 pixels.
+- Science-quality weeks lag by about six weeks. It is the ocean around the island, not lagoon water; don't describe it as conditions in the nurseries.
+
 ### Catch model (#54)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).

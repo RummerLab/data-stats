@@ -50,6 +50,13 @@
 				via PacIOOS ERDDAP.
 			</li>
 			<li>
+				<b>Chlorophyll-a:</b> NOAA S-NPP VIIRS science-quality weekly composites (4 km), via NOAA CoastWatch
+				ERDDAP. These data were provided by NOAA's Center for Satellite Applications and Research (STAR)
+				and the CoastWatch program. Pixels near the coast are unreliable, so each week is the median of
+				the ocean pixels within 30 km of Mo'orea's centre and at least 10 km from any land or coastal
+				pixel, Tahiti's included.
+			</li>
+			<li>
 				<b>Tides:</b> University of Hawaii Sea Level Center fast-delivery hourly sea level, Papeete (station
 				015).
 			</li>
@@ -82,7 +89,7 @@
 		<p class="small muted">
 			Last import {date(data.importedAt)}. Environmental data to {date(data.external.weather)} (weather),
 			{date(data.external.ocean)}
-			(ocean) and {date(data.external.tide)} (tide).
+			(ocean), {date(data.external.chlorophyll)} (chlorophyll) and {date(data.external.tide)} (tide).
 		</p>
 	</section>
 
