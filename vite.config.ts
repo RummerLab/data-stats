@@ -20,7 +20,7 @@ export default defineConfig({
 			},
 			adapter: adapter({ out: 'build' }),
 			// Per-request nonces for SSR pages; the pre-paint theme script in app.html carries
-			// %sveltekit.nonce%. No third-party scripts, fonts or tiles: everything is bundled.
+			// %sveltekit.nonce%. No third-party scripts or fonts; map tiles are the only external images.
 			csp: {
 				mode: 'auto',
 				directives: {
@@ -28,7 +28,13 @@ export default defineConfig({
 					'script-src': ['self'],
 					// Svelte `style:` directives use inline styles.
 					'style-src': ['self', 'unsafe-inline'],
-					'img-src': ['self', 'data:'],
+					// Map tiles for the interactive maps (#29): Esri imagery and OpenStreetMap.
+					'img-src': [
+						'self',
+						'data:',
+						'https://server.arcgisonline.com',
+						'https://tile.openstreetmap.org'
+					],
 					'font-src': ['self', 'data:'],
 					'connect-src': ['self'],
 					'object-src': ['none'],

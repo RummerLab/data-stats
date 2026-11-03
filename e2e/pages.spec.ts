@@ -8,6 +8,17 @@ const ROUTES = [
 	'/nurseries/haapiti'
 ];
 
+// Map tiles come from third-party hosts: serve a blank tile so tests don't depend on them.
+const BLANK_PNG = Buffer.from(
+	'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
+	'base64'
+);
+test.beforeEach(async ({ page }) => {
+	await page.route(/server\.arcgisonline\.com|tile\.openstreetmap\.org/, (route) =>
+		route.fulfill({ contentType: 'image/png', body: BLANK_PNG })
+	);
+});
+
 async function axe(page: Page) {
 	const result = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
 	return result.violations.filter((v) => v.impact === 'serious' || v.impact === 'critical');
