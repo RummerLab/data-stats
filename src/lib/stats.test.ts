@@ -5,9 +5,11 @@ import {
 	chiSquare,
 	chiSquareP,
 	histogram,
+	kruskal,
 	linearFit,
 	median,
 	normalP,
+	pairedT,
 	powerFit,
 	quantile,
 	spearman,
@@ -78,5 +80,30 @@ describe('chi-square', () => {
 		expect(r.stat).toBeCloseTo(6.667, 3);
 		expect(r.p).toBeCloseTo(0.00982, 4);
 		expect(chiSquare([[5, 5]])).toBeNull();
+	});
+});
+
+describe('rank and paired tests (#119)', () => {
+	it('computes Kruskal–Wallis H by hand', () => {
+		// Ranks 1–3 vs 4–6: H = 12/42 · (6²/3 + 15²/3) − 21 = 3.857.
+		const r = kruskal([
+			[1, 2, 3],
+			[4, 5, 6]
+		])!;
+		expect(r.h).toBeCloseTo(3.857, 3);
+		expect(r.df).toBe(1);
+		expect(r.p).toBeCloseTo(0.0495, 3);
+		expect(kruskal([[1, 2, 3]])).toBeNull();
+	});
+	it('runs a paired t-test on the differences', () => {
+		const r = pairedT([
+			[1, 2],
+			[2, 4],
+			[3, 5],
+			[4, 7]
+		])!;
+		expect(r.diff).toBe(2);
+		expect(r.t).toBeCloseTo(4.899, 3);
+		expect(r.p).toBeCloseTo(0.0163, 3);
 	});
 });

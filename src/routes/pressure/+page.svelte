@@ -77,6 +77,7 @@
 			title="Correlations with shark outcomes"
 			papers={['bouyoucos2024abiotic']}
 			subtitle="Spearman ρ across nurseries (n ≤ 10): blue negative, red positive"
+			stats={data.stats.corr}
 		>
 			<Heatmap
 				xLabels={data.outcomes}
@@ -88,7 +89,11 @@
 				format={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Fishing effort vs catch rate" papers={['bouyoucos2024abiotic']}>
+		<ChartCard
+			title="Fishing effort vs catch rate"
+			papers={['bouyoucos2024abiotic']}
+			stats={data.stats.fishing}
+		>
 			<Scatter
 				points={[
 					...pts(
@@ -114,6 +119,7 @@
 		<ChartCard
 			title="Coastal artificialisation vs newborn condition"
 			papers={['bouyoucos2024abiotic']}
+			stats={data.stats.artif}
 		>
 			<Scatter
 				points={pts(
@@ -128,7 +134,7 @@
 				opacity={0.85}
 			/>
 		</ChartCard>
-		<ChartCard title="Direct human impact vs growth">
+		<ChartCard title="Direct human impact vs growth" stats={data.stats.human}>
 			<Scatter
 				points={pts(
 					(r) => r.human,
@@ -142,7 +148,11 @@
 				opacity={0.85}
 			/>
 		</ChartCard>
-		<ChartCard title="Composite pressure vs blacktip catch rate" papers={['bouyoucos2024abiotic']}>
+		<ChartCard
+			title="Composite pressure vs blacktip catch rate"
+			papers={['bouyoucos2024abiotic']}
+			stats={data.stats.composite}
+		>
 			<Scatter
 				points={pts(
 					(r) => r.composite,
@@ -173,6 +183,7 @@
 			<ChartCard
 				title="Catch rate by type of day"
 				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+				stats={data.stats.dayType}
 			>
 				<BarChart
 					categories={data.busyDays.byType.map((t) => `${t.label} (${t.n})`)}
@@ -192,6 +203,7 @@
 			<ChartCard
 				title="Catch rate by day of the week"
 				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+				stats={data.stats.weekday}
 			>
 				<BarChart
 					categories={data.busyDays.byWeekday.map((t) => `${t.label} (${t.n})`)}

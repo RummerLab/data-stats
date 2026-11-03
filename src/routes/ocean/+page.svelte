@@ -61,6 +61,7 @@
 		<ChartCard
 			title="SST anomaly"
 			subtitle="Weekly mean difference from Coral Reef Watch climatology"
+			stats={data.anomStats ? `Mean anomaly per calendar year. ${data.anomStats}` : null}
 		>
 			<LineChart
 				xType="date"

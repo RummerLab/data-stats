@@ -3,6 +3,7 @@ import { binnedMean, cpueOf, effortSets, round } from '#lib/server/analytics/com
 import { catchModel } from '#lib/server/analytics/catchModel';
 import { correlations, SET_VARIABLES } from '#lib/server/analytics/env';
 import { quantile, spearman, pairs } from '#lib/stats';
+import { rateSlopeText, rateTest, rateText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -53,7 +54,25 @@ export const load: PageServerLoad = () =>
 		});
 		const zero = sets.filter((s) => !s.nTotal).length;
 
+		const sig = corr.filter((c) => c.p != null && c.p < 0.05);
+		const bonf = 0.05 / Math.max(1, corr.length);
+		const both = (
+			term: Parameters<typeof rateTest>[1],
+			what: string,
+			skip: ('nursery' | 'season')[] = []
+		) => [
+			rateText(rateTest(sets, term, 'cpueCm', skip), `${what} for blacktips`),
+			rateText(rateTest(sets, term, 'cpueNa', skip), `${what} for sicklefin lemons`)
+		];
+		const stats = {
+			corr: `${sig.length} of ${corr.length} variables correlate with catch rate at p < 0.05${sig.length ? ` (${sig.map((c) => c.label.toLowerCase()).join(', ')})` : ''}; ${corr.filter((c) => c.p != null && c.p < bonf).length} pass a Bonferroni-corrected p < ${bonf.toPrecision(1)}. With this many variables some links are expected by chance, and the raw correlations mix in the calendar (see the model below).`,
+			nurseries: both({ groupOf: (s) => s.siteId }, 'nurseries', ['nursery']),
+			seasons: both({ groupOf: (s) => s.season }, 'seasons', ['season']),
+			weekday: rateText(rateTest(sets, { groupOf: (s) => s.weekday }), 'days of the week'),
+			crew: rateSlopeText(rateTest(sets, { valueOf: (s) => s.crewSize }), 'crew size')
+		};
 		return {
+			stats,
 			model: memo('catchModel', catchModel),
 			n: sets.length,
 			zero,

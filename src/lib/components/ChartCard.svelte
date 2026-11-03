@@ -8,6 +8,7 @@
 		title,
 		subtitle,
 		note,
+		stats,
 		source,
 		id,
 		table,
@@ -17,6 +18,8 @@
 		title: string;
 		subtitle?: string;
 		note?: string;
+		/** The test behind the chart's pattern (#119); nulls (too little data) are skipped. */
+		stats?: string | null | (string | null | undefined)[];
 		source?: string;
 		id?: string;
 		table?: { columns: Column[]; rows: Record<string, unknown>[] };
@@ -24,6 +27,10 @@
 		papers?: PaperId[];
 		children: Snippet;
 	} = $props();
+
+	const statLines = $derived(
+		(Array.isArray(stats) ? stats : [stats]).filter((x): x is string => !!x)
+	);
 
 	// Charts inside the card register their data; the button needs JS, so it appears on mount.
 	const sources = collectCsv();
@@ -58,6 +65,9 @@
 	</figcaption>
 	<div class="body">{@render children()}</div>
 	{#if note}<p class="note">{note}</p>{/if}
+	{#if statLines.length}
+		<p class="stats"><span class="k">Statistics</span> {statLines.join(' ')}</p>
+	{/if}
 	{#if table && table.rows.length}
 		<details class="tbl">
 			<summary>Show data ({table.rows.length} rows)</summary>
@@ -106,6 +116,22 @@
 		color: var(--ink-2);
 		margin: 10px 0 0;
 		line-height: 1.5;
+	}
+	.stats {
+		font-size: 0.82rem;
+		color: var(--ink-2);
+		margin: 8px 0 0;
+		line-height: 1.5;
+		font-variant-numeric: tabular-nums;
+	}
+	.stats .k {
+		display: inline-block;
+		font-size: 0.7rem;
+		font-weight: 650;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--accent);
+		margin-right: 4px;
 	}
 	.papers {
 		font-size: 0.78rem;

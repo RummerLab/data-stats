@@ -30,6 +30,7 @@
 		<ChartCard
 			title="Captures relative to sunset"
 			subtitle={`Median: blacktip ${num(data.medCm)} min, sicklefin lemon ${num(data.medNa)} min after sunset`}
+			stats={data.stats.sunset}
 		>
 			<Histogram
 				edges={data.edges}
@@ -56,6 +57,7 @@
 		<ChartCard
 			title="Catch rate through the set"
 			subtitle="Sharks per net-hour in each 20-minute slice after the net goes in (only sets still fishing in that slice)"
+			stats={data.stats.hazard}
 		>
 			<BarChart
 				categories={data.hazard.map((h) => `${h.t0}–${h.t0 + 20}`)}
@@ -82,6 +84,7 @@
 		<ChartCard
 			title="Sunset and net-in times through the season"
 			subtitle="Dots: when each net went in. Lines: sunset, civil and nautical dusk."
+			stats={data.stats.starts}
 		>
 			<LineChart
 				series={[
@@ -119,6 +122,7 @@
 		<ChartCard
 			title="Work-up time per shark"
 			subtitle="Minutes from landing (or capture) to release, by season"
+			stats={data.stats.workup}
 		>
 			<BoxPlot
 				boxes={data.workup.map((b) => ({ ...b, color: 'var(--series-5)' }))}

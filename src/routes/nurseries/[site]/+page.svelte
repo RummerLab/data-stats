@@ -127,6 +127,7 @@
 			title="Catch rate per season"
 			papers={['eustache2024density']}
 			subtitle="Sharks per net-hour"
+			stats={data.seasonStats}
 		>
 			<LineChart
 				series={[

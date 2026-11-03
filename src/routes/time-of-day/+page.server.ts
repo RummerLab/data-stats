@@ -2,6 +2,13 @@ import { memo } from '#lib/server/data';
 import { boxOf, effortSets, fieldCaptures, round, seasonDay } from '#lib/server/analytics/common';
 import { sunTimes } from '#lib/server/astro';
 import { histogram, median } from '#lib/stats';
+import {
+	fitText,
+	groupsText,
+	rankText,
+	trendText,
+	twoGroupText
+} from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -54,7 +61,45 @@ export const load: PageServerLoad = () =>
 			return { x: day, sunset: s.sunset, dusk: s.civilDusk, nautical: s.nauticalDusk };
 		});
 
+		const workupBy = d.seasons.map((season) =>
+			caps
+				.filter(
+					(c) => c.season === season && c.workupMin != null && c.workupMin > 0 && c.workupMin < 90
+				)
+				.map((c) => c.workupMin)
+		);
+		const starts = sets
+			.filter((s) => s.date && s.startMin != null && s.startMin > 14 * 60)
+			.map((s) => [seasonDay(s.date!), s.startMin!] as [number, number]);
+		const stats = {
+			sunset: twoGroupText(
+				after('Na'),
+				after('Cm'),
+				'sicklefin lemons and blacktips',
+				'min after sunset'
+			),
+			hazard: (() => {
+				const r = rankText(
+					hazard
+						.filter((h) => h.rate != null && h.sets >= 30)
+						.map((h) => [h.t0, h.rate!] as [number, number])
+				);
+				return r ? `Catch rate against minutes since net-in (slices with ≥ 30 sets): ${r}` : null;
+			})(),
+			starts: (() => {
+				const f = fitText(starts, 'min per day');
+				return f ? `Net-in time against day of the season: ${f}` : null;
+			})(),
+			workup: [
+				groupsText(workupBy, 'seasons'),
+				trendText(
+					workupBy.map((w) => median(w)),
+					'min'
+				)
+			]
+		};
 		return {
+			stats,
 			edges: Array.from({ length: 25 }, (_, i) => -150 + i * 20),
 			afterCm: histogram(after('Cm'), -150, 330, 20).map((b) => b.count),
 			afterNa: histogram(after('Na'), -150, 330, 20).map((b) => b.count),

@@ -8,6 +8,7 @@ import {
 	seasonDay
 } from '#lib/server/analytics/common';
 import { linearFit, mean, pairs, quantile, se } from '#lib/stats';
+import { fitText, groupsText, rankText, tableText, trendText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -122,7 +123,65 @@ export const load: PageServerLoad = () =>
 			n: first.filter((c) => c.umbilical === u).length
 		}));
 
+		const named = (name: string, text: string | null) => (text ? `${name}: ${text}` : null);
+		const ofSp = (sp: string) => first.filter((c) => c.species === sp);
+		const stats = {
+			open: ['Cm', 'Na'].map((sp) =>
+				named(
+					sp === 'Cm'
+						? 'Blacktips, unhealed scar against day of the season (one point per pup)'
+						: 'Sicklefin lemons',
+					rankText(
+						ofSp(sp)
+							.filter((c) => c.umbilical)
+							.map((c) => [seasonDay(c.date!), c.umbilical !== 'closed' ? 1 : 0])
+					)
+				)
+			),
+			size: ['Cm', 'Na'].map((sp) =>
+				named(
+					sp === 'Cm' ? 'Blacktips' : 'Sicklefin lemons',
+					fitText(
+						sizeScatter.filter((p) => p.g === sp).map((p) => [p.x, p.y]),
+						'mm per day'
+					)
+				)
+			),
+			window: named(
+				'Median capture date of open-scar pups',
+				trendText(
+					window.map((w) => (w.n >= 5 ? w.q50 : null)),
+					'days'
+				)
+			),
+			gSst: fitText(
+				pairs(
+					bySeason.filter((r) => r.n >= 10),
+					(r) => r.gSst,
+					(r) => r.tl
+				),
+				'mm per °C'
+			),
+			ageMix: tableText(
+				ageMix.map((r) => [r.neonate, r.juvenile]),
+				'seasons in the newborn share'
+			),
+			scar: ['Cm', 'Na'].map((sp) =>
+				named(
+					sp === 'Cm' ? 'Blacktips' : 'Sicklefin lemons',
+					groupsText(
+						(['open', 'semi', 'closed'] as const).map((u) =>
+							ofSp(sp)
+								.filter((c) => c.umbilical === u)
+								.map((c) => c.tlMm)
+						),
+						'scar stages'
+					)
+				)
+			)
+		};
 		return {
+			stats,
 			weeks,
 			openCm: openShare('Cm'),
 			openNa: openShare('Na'),

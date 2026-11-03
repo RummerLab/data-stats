@@ -8,6 +8,7 @@ import {
 	siteName
 } from '#lib/server/analytics/common';
 import { histogram } from '#lib/stats';
+import { rateSlopeText, rateTest, tableText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -37,7 +38,21 @@ export const load: PageServerLoad = () =>
 			const ss = eff.filter((s) => (v === 10 ? (s.visit ?? 0) >= 10 : s.visit === v));
 			return { v: v === 10 ? '10+' : String(v), cpue: round(cpueOf(ss)), n: ss.length };
 		});
+		const stats = {
+			zero: tableText(
+				nurseries.map((id) => {
+					const ss = eff.filter((s) => s.siteId === id);
+					return [ss.filter((s) => !s.nTotal).length, ss.filter((s) => s.nTotal).length];
+				}),
+				'nurseries'
+			),
+			visits: rateSlopeText(
+				rateTest(eff, { valueOf: (s) => s.visit }),
+				'the visit number (later visits also fall later in the season, which the adjusted test allows for)'
+			)
+		};
 		return {
+			stats,
 			seasons: d.seasons,
 			nurseryNames: nurseries.map((id) => siteName(d, id)),
 			setGrid,

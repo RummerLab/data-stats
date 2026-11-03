@@ -9,6 +9,8 @@ import {
 	siteName
 } from '#lib/server/analytics/common';
 import { topFindings } from '#lib/server/analytics/findings';
+import { rateEffects, rateTest, trendText } from '#lib/server/analytics/tests';
+import { num, pValue, season as seasonFmt } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -32,6 +34,29 @@ export const load: PageServerLoad = () =>
 				cpueNa: round(cpueOf(ss, 'cpueNa')),
 				sets: sets.filter((s) => s.season === season).length
 			};
+		});
+
+		// Do seasons differ beyond chance once nursery and time of season are held fixed (#120)?
+		const seasonStats = (['cpueCm', 'cpueNa'] as const).map((key) => {
+			const name = key === 'cpueCm' ? 'Blacktips' : 'Sicklefin lemons';
+			const t = rateTest(eff, { groupOf: (s) => s.season }, key, ['season']);
+			if (!t?.adjusted) return null;
+			const unusual = (rateEffects(eff, (s) => s.season, key, ['season']) ?? []).filter(
+				(e) => e.lo > 1 || e.hi < 1
+			);
+			const differ = t.adjusted.p < 0.05;
+			return [
+				`${name}: seasons ${differ ? 'differ beyond chance' : 'do not differ beyond chance'} once nursery and day of the season are held fixed (negative-binomial test, ${pValue(t.adjusted.p)}).`,
+				differ && unusual.length
+					? `Unusual seasons: ${unusual.map((e) => `${seasonFmt(e.level)} ${num(e.rr, 2)}× the average season (95% interval ${num(e.lo, 2)}–${num(e.hi, 2)})`).join('; ')}.`
+					: '',
+				trendText(
+					perSeason.map((s) => s[key]),
+					'sharks per net-hour'
+				) ?? ''
+			]
+				.filter(Boolean)
+				.join(' ');
 		});
 
 		const months = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5];
@@ -70,6 +95,7 @@ export const load: PageServerLoad = () =>
 		});
 
 		return {
+			seasonStats,
 			kpi: {
 				captures: caps.length,
 				individuals: new Set(caps.map((c) => c.individualId)).size,

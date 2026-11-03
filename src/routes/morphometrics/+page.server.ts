@@ -20,6 +20,8 @@ import {
 	welch,
 	wilson
 } from '#lib/stats';
+import { fitText, groupsText, trendText, twoGroupText } from '#lib/server/analytics/tests';
+import { num, pValue } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -52,6 +54,7 @@ export const load: PageServerLoad = () =>
 							a: fit.a,
 							b: fit.b,
 							r2: round(fit.r2, 3),
+							p: fit.p,
 							n: fit.n,
 							curve: Array.from({ length: 30 }, (_, i) => {
 								const x = lo + ((hi - lo) * i) / 29;
@@ -192,7 +195,58 @@ export const load: PageServerLoad = () =>
 					p.x != null && p.y != null && p.y > 5 && p.y < 200
 			);
 
+		const powerText = (s: 'Cm' | 'Na', name: string) => {
+			const f = lw(s).fit;
+			return f
+				? `${name}: W = ${f.a.toExponential(2)}·L^${num(f.b, 2)}, R² = ${num(f.r2, 3)}, ${pValue(f.p)} (n = ${num(f.n)}).`
+				: null;
+		};
+		const neoBySeason = (s: string) =>
+			d.seasons.map((season) =>
+				sp(s)
+					.filter((c) => c.season === season && isNeonate(c))
+					.map(fulton)
+			);
+		const tlSeason = d.seasons.map((season) =>
+			sp('Cm')
+				.filter((c) => c.season === season)
+				.map((c) => c.tlMm)
+		);
+		const stats = {
+			lf: twoGroupText(
+				sp('Na').map((c) => c.tlMm),
+				sp('Cm').map((c) => c.tlMm),
+				'sicklefin lemons and blacktips at first capture',
+				'mm'
+			),
+			lw: [
+				'Power fits on log–log axes (log-mass on log-length regression):',
+				powerText('Cm', 'Blacktip'),
+				powerText('Na', 'Sicklefin lemon')
+			],
+			kSite: groupsText(
+				nurseries.map((id) => neoCm.filter((c) => c.siteId === id).map(fulton)),
+				'nurseries'
+			),
+			kSeason: [
+				groupsText(neoBySeason('Cm'), 'seasons for blacktips'),
+				trendText(kBySeason('Cm')),
+				groupsText(neoBySeason('Na'), 'seasons for sicklefin lemons')
+			],
+			tlSeason: [
+				groupsText(tlSeason, 'seasons'),
+				trendText(
+					tlBySeason('Cm').map((b) => b.stats?.mean ?? null),
+					'mm'
+				)
+			],
+			claspers: fitText(
+				claspers.map((c) => [c.x, c.y]),
+				'mm per mm'
+			)
+		};
 		return {
+			stats,
 			edges,
 			lfCm: lf('Cm'),
 			lfNa: lf('Na'),

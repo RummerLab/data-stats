@@ -66,6 +66,7 @@
 				],
 				rows: data.corr.map((c) => ({ ...c, pL: pValue(c.p) }))
 			}}
+			stats={data.stats.corr}
 		>
 			<BarChart
 				horizontal
@@ -186,6 +187,7 @@
 					title="Nurseries, adjusted"
 					subtitle="Catch rate at each nursery relative to the average nursery, on the same dates and in the same conditions"
 					note="Nurseries with at least 30 complete sets, ordered by the blacktip estimate. Lemons are modelled only where at least 10 were caught; elsewhere there is no lemon estimate."
+					stats={data.stats.nurseries}
 				>
 					<ForestPlot
 						rows={siteOrder.map((i) => md.sites[i].name)}
@@ -210,6 +212,7 @@
 					note={lastSeason
 						? `${season(lastSeason)} may still be under way; its estimate covers the dates netted so far.`
 						: ''}
+					stats={data.stats.seasons}
 				>
 					<ForestPlot
 						rows={md.seasons.map((x) => season(x))}
@@ -289,7 +292,11 @@
 	</section>
 
 	<section class="section grid-2">
-		<ChartCard title="Day of the week" subtitle="Weekends bring more people to the beaches">
+		<ChartCard
+			title="Day of the week"
+			subtitle="Weekends bring more people to the beaches"
+			stats={data.stats.weekday}
+		>
 			<BarChart
 				categories={data.weekday.map((w) => w.name)}
 				series={[
@@ -303,7 +310,11 @@
 				labels
 			/>
 		</ChartCard>
-		<ChartCard title="Crew size" subtitle="Do more hands (and more splashing) change the catch?">
+		<ChartCard
+			title="Crew size"
+			subtitle="Do more hands (and more splashing) change the catch?"
+			stats={data.stats.crew}
+		>
 			<BarChart
 				categories={data.crewSize.map((c) => c.k)}
 				series={[

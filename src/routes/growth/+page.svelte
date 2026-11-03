@@ -32,6 +32,7 @@
 		<ChartCard
 			title="Growth-rate distribution"
 			subtitle="mm per day between captures; small negative values are measurement error"
+			stats={data.stats.dist}
 		>
 			<Histogram
 				edges={data.edges}
@@ -47,6 +48,7 @@
 		<ChartCard
 			title="Short intervals are noisier"
 			subtitle="Growth rate against days between captures"
+			stats={data.stats.noise}
 		>
 			<Scatter
 				points={data.scatter}
@@ -78,6 +80,7 @@
 		<ChartCard
 			title="Growth against starting size"
 			subtitle="Growth rate against length at the first of the two captures"
+			stats={data.stats.size}
 		>
 			<Scatter
 				points={data.sizeScatter}
@@ -91,22 +94,25 @@
 			title="Growth by nursery"
 			papers={['bouyoucos2022nursery']}
 			subtitle="Nurseries with ≥ 5 recapture pairs"
+			stats={data.stats.site}
 		>
 			<BoxPlot boxes={data.bySite} yLabel="mm/day" yFormat={(v) => num(v, 2)} />
 		</ChartCard>
 		<ChartCard
 			title="Mass change"
 			subtitle="Grams per day between captures. Newborns can lose mass while using up the liver energy reserves from their mother."
+			stats={data.stats.mass}
 		>
 			<Scatter points={data.mass} {groups} xLabel="Days between captures" yLabel="g/day" />
 		</ChartCard>
 		<ChartCard
 			title="Lab vs field length growth"
 			subtitle="Blacktips recaptured in the wild against sharks held at CRIOBE for experiments"
+			stats={data.stats.labTl}
 		>
 			<BoxPlot boxes={data.labVsField} yLabel="mm/day" yFormat={(v) => num(v, 2)} />
 		</ChartCard>
-		<ChartCard title="Lab vs field mass change" subtitle="Grams per day">
+		<ChartCard title="Lab vs field mass change" subtitle="Grams per day" stats={data.stats.labMass}>
 			<BoxPlot boxes={data.labMass} yLabel="g/day" yFormat={(v) => num(v, 1)} />
 		</ChartCard>
 	</section>

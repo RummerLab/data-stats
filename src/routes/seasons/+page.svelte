@@ -57,6 +57,7 @@
 		<ChartCard
 			title="Zero-catch nights"
 			subtitle="Share of timed gillnet sets that caught no sharks"
+			stats={data.stats.zero}
 		>
 			<BarChart
 				categories={labels}
@@ -74,6 +75,7 @@
 		<ChartCard
 			title="Newborn share"
 			subtitle="Share of each season's sharks (first capture) that were newborns (neonate or open/healing umbilical scar)"
+			stats={data.stats.neonates}
 		>
 			<LineChart
 				series={[
@@ -92,6 +94,7 @@
 		<ChartCard
 			title="Blacktip size at first capture"
 			subtitle="Mean total length of blacktips the first time each was caught that season"
+			stats={data.stats.tlCm}
 		>
 			<LineChart
 				series={[
@@ -110,6 +113,7 @@
 		<ChartCard
 			title="Sea temperature during fieldwork"
 			subtitle="Mean OISST sea-surface temperature on sampling nights"
+			stats={data.stats.sst}
 		>
 			<LineChart
 				series={[
@@ -127,6 +131,7 @@
 		<ChartCard
 			title="Crew size per season"
 			subtitle="Distinct people named in each season's set logs"
+			stats={data.stats.crew}
 		>
 			<BarChart
 				categories={labels}
