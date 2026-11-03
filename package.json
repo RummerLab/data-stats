@@ -1,7 +1,7 @@
 {
 	"name": "data-stats",
 	"private": true,
-	"version": "0.2.1",
+	"version": "0.2.2",
 	"description": "Physioshark data explorer: 13 seasons of Moorea shark-nursery surveys joined with weather, ocean, tide and climate data.",
 	"type": "module",
 	"packageManager": "pnpm@12.15.0",
