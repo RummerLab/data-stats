@@ -7,6 +7,7 @@ import {
 	histogram,
 	linearFit,
 	median,
+	normalP,
 	powerFit,
 	quantile,
 	spearman,
@@ -65,6 +66,8 @@ describe('chi-square', () => {
 		expect(chiSquareP(5.991, 2)).toBeCloseTo(0.05, 3);
 		expect(chiSquareP(18.307, 10)).toBeCloseTo(0.05, 3);
 		expect(chiSquareP(0, 3)).toBe(1);
+		expect(normalP(1.96)).toBeCloseTo(0.05, 4);
+		expect(normalP(-2.576)).toBeCloseTo(0.01, 4);
 	});
 	it('tests independence in a table of counts', () => {
 		const r = chiSquare([

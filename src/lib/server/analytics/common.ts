@@ -42,10 +42,7 @@ export function seasonDay(date: string): number {
 	return daysBetween(start, date);
 }
 
-export const seasonDayLabel = (day: number) => {
-	const d = new Date(Date.UTC(2001, 7, 1) + day * 86_400_000);
-	return `${d.getUTCDate()} ${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getUTCMonth()]}`;
-};
+export { seasonDayLabel } from '#lib/format';
 
 export interface BinnedMean {
 	label: string;

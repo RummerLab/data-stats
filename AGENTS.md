@@ -44,11 +44,13 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          findings.ts (live findings) · insitu.ts (logger temperature summaries)
                          population.ts (Schnabel abundance, von Bertalanffy growth)
                          diet.ts (gastric lavage: fullness, prey groups)
+                         glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
 src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap (SSR SVG),
                          InteractiveMap (Leaflet, lazy; MooreaMap is its fallback), charts/*
+                         (ForestPlot: rate ratios with intervals on a log scale)
 src/routes/              one folder per page (+page.server.ts computes, +page.svelte renders)
 scripts/                 fetch-external.mjs · make-fixture.mjs · server.mjs · nightlyRelease.mjs
 external/                public environmental snapshots (committed)
@@ -84,6 +86,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - ERA5 `cloud_evening` covers every set; the crew's 1–4 `cloud_cover` score exists only in 2020–22 and tracks ERA5 (score 1 ≈ 43%, 4 ≈ 94%). `moonlight()` in `analytics/cloud.ts` = illumination × sin(moon altitude) × clear-sky fraction.
 - Cloud vs water temperature must be compared within the same month: the cloudy wet season is also the warmest, so raw correlations are ~0 while within-month ones are strongly negative.
+
+### Catch model (#54)
+
+- `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
+- The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
+- `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
 
 ### Adding a new season
 

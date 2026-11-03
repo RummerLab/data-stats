@@ -64,7 +64,7 @@ export function pairs<T>(rows: T[], fx: (r: T) => Num, fy: (r: T) => Num): [numb
 
 // --- distributions -----------------------------------------------------------------------------
 
-function logGamma(x: number): number {
+export function logGamma(x: number): number {
 	const c = [
 		76.1800917294715, -86.5053203294168, 24.0140982408309, -1.23173957245016, 0.00120865097386618,
 		-0.5395239384953e-5
@@ -117,6 +117,30 @@ export function incompleteBeta(x: number, a: number, b: number): number {
 	return x < (a + 1) / (a + b + 2)
 		? (bt * betacf(a, b, x)) / a
 		: 1 - (bt * betacf(b, a, 1 - x)) / b;
+}
+
+/** Two-sided p-value for a standard normal statistic (erfc, Numerical Recipes; error < 1.2e-7). */
+export function normalP(z: number): number {
+	if (!Number.isFinite(z)) return NaN;
+	const x = Math.abs(z) / Math.SQRT2;
+	const t = 1 / (1 + 0.5 * x);
+	const poly =
+		-x * x -
+		1.26551223 +
+		t *
+			(1.00002368 +
+				t *
+					(0.37409196 +
+						t *
+							(0.09678418 +
+								t *
+									(-0.18628806 +
+										t *
+											(0.27886807 +
+												t *
+													(-1.13520398 +
+														t * (1.48851587 + t * (-0.82215223 + t * 0.17087277))))))));
+	return Math.min(1, t * Math.exp(poly));
 }
 
 /** Upper regularised incomplete gamma Q(a, x) (Numerical Recipes series / continued fraction). */
