@@ -61,6 +61,15 @@
 				A heavy-rain day is one of the wettest 1% of days in the ERA5 daily series.
 			</li>
 			<li>
+				<b>School holidays:</b> French Polynesia's official school calendars: the Polynesian
+				government's calendar orders for 2013-14 to 2016-17 (collèges and lycées, archived from
+				education.pf), then the French Ministry of Education's
+				<a href="https://www.data.gouv.fr/datasets/le-calendrier-scolaire/"
+					>Le calendrier scolaire</a
+				>
+				open data (Licence Ouverte 2.0).
+			</li>
+			<li>
 				<b>Sun and moon:</b> computed for Mo'orea (17.53° S, 149.83° W, UTC−10) from standard astronomical
 				formulas.
 			</li>

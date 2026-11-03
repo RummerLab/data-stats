@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dayType, easter, holidayOn, publicHolidays } from './holidays';
+import { dayType, easter, holidayOn, publicHolidays, schoolDays } from './holidays';
 
 describe('French Polynesia holidays', () => {
 	it('computes Easter', () => {
@@ -29,5 +29,19 @@ describe('French Polynesia holidays', () => {
 		expect(dayType('2023-12-30')).toBe('Festive period'); // a Saturday
 		expect(dayType('2023-11-18')).toBe('Weekend');
 		expect(dayType('2023-11-21')).toBe('Weekday');
+	});
+
+	it('spreads school breaks over their days', () => {
+		const school = schoolDays([
+			{ name: 'November break', start: '2023-10-28', end: '2023-11-12' },
+			{ name: 'Christmas break', start: '2023-12-16', end: '2024-01-14' }
+		]);
+		expect(school.size).toBe(16 + 30);
+		expect(school.get('2023-12-31')).toBe('Christmas break');
+		expect(dayType('2023-11-01', school)).toBe('Public holiday');
+		expect(dayType('2023-11-04', school)).toBe('School holidays'); // a Saturday
+		expect(dayType('2023-11-13', school)).toBe('Weekday');
+		expect(dayType('2023-12-18', school)).toBe('School holidays');
+		expect(dayType('2023-12-20', school)).toBe('Festive period');
 	});
 });

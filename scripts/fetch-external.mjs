@@ -13,6 +13,9 @@
  * - UHSLC fast-delivery hourly sea level, Papeete (station 015)
  * - NOAA CPC Oceanic Niño Index and Southern Oscillation Index
  * - NOAA IBTrACS v04r01 South Pacific best tracks (cyclone positions near Moorea, #24)
+ * - French Polynesia school holidays (#25): the Ministère de l'Éducation nationale's
+ *   "Le calendrier scolaire" open data (Licence Ouverte 2.0) since 2017-18, and the Polynesian
+ *   government's archived calendar orders for 2013-14 to 2016-17
  *
  * Output files are small CSVs (hourly series gzipped) committed to the repo, so the app and CI
  * never need network access. No spreadsheet data is read or sent anywhere.
@@ -395,7 +398,119 @@ async function cyclones() {
 	console.log(`[external] cyclones: ${rows.length} track points`);
 }
 
-const jobs = { weather, ocean, tide, climate, cyclones };
+/**
+ * French Polynesia school holidays before 2017-18, transcribed from the Council of Ministers'
+ * orders (arrêtés) for collèges and lycées, archived from education.pf by the Wayback Machine:
+ * https://web.archive.org/web/2017/http://education.pf/des.pf.old/fichiers_des/Calendriers/
+ * Dates are the first and last day off; the orders say "from <last school day> after classes
+ * to <last day off>". Lone Saturdays without morning classes (2 and 9 May 2015) are left out.
+ */
+const ARCHIVED_SCHOOL_HOLIDAYS = [
+	// 2013-14: arrêté 332/CM of 17 March 2011, amended by 0270/CM of 28 February 2013 (September
+	// and summer); the other breaks are read from the amended calendar published with it.
+	['2013-2014', 'September break', '2013-09-15', '2013-09-29', 'arrêté 0270/CM 2013'],
+	['2013-2014', 'November break', '2013-11-01', '2013-11-10', 'arrêté 0270/CM 2013'],
+	['2013-2014', 'Christmas break', '2013-12-15', '2014-01-12', 'arrêté 0270/CM 2013'],
+	['2013-2014', 'February break', '2014-02-16', '2014-02-23', 'arrêté 0270/CM 2013'],
+	['2013-2014', 'Easter break', '2014-03-30', '2014-04-13', 'arrêté 0270/CM 2013'],
+	['2013-2014', 'Summer holidays', '2014-06-29', '2014-08-12', 'arrêté 0270/CM 2013'],
+	// 2014-15: arrêté 0399/CM of 12 March 2014.
+	['2014-2015', 'September break', '2014-09-21', '2014-09-28', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'November break', '2014-11-01', '2014-11-11', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'Christmas break', '2014-12-14', '2015-01-11', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'February break', '2015-02-15', '2015-02-22', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'Easter break', '2015-03-29', '2015-04-12', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'May break', '2015-05-14', '2015-05-17', 'arrêté 0399/CM 2014'],
+	['2014-2015', 'Summer holidays', '2015-06-26', '2015-08-11', 'arrêté 0399/CM 2014'],
+	// 2015-16: arrêté 0401/CM of 12 March 2014.
+	['2015-2016', 'September break', '2015-09-20', '2015-09-27', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'November break', '2015-11-01', '2015-11-08', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'Christmas break', '2015-12-13', '2016-01-10', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'February break', '2016-02-14', '2016-02-21', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'Easter break', '2016-03-25', '2016-04-10', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'May break', '2016-05-05', '2016-05-08', 'arrêté 0401/CM 2014'],
+	['2015-2016', 'Summer holidays', '2016-06-23', '2016-08-09', 'arrêté 0401/CM 2014'],
+	// 2016-17: arrêté 0403/CM of 12 March 2014.
+	['2016-2017', 'September break', '2016-09-18', '2016-09-25', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'November break', '2016-10-30', '2016-11-06', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'November break', '2016-11-11', '2016-11-13', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'Christmas break', '2016-12-11', '2017-01-08', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'February break', '2017-02-12', '2017-02-19', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'Easter break', '2017-03-26', '2017-04-09', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'Easter break', '2017-04-14', '2017-04-17', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'May break', '2017-05-25', '2017-05-28', 'arrêté 0403/CM 2014'],
+	['2016-2017', 'Summer holidays', '2017-06-22', '2017-08-08', 'arrêté 0403/CM 2014']
+];
+
+const SCHOOL_BREAK_NAMES = {
+	'Vacances de Septembre': 'September break',
+	'Vacances de Novembre': 'November break',
+	'Vacances de Noël': 'Christmas break',
+	'Vacances de Février': 'February break',
+	'Vacances de Pâques': 'Easter break',
+	'Vacances de Mai': 'May break',
+	'Grandes Vacances': 'Summer holidays'
+};
+
+/**
+ * Known slips in the national dataset: [school year, break, field, wrong date, right date]. The
+ * 2023 November break "starts" on 28 September, inside the September break; every other year it
+ * starts on the Saturday about two weeks before classes resume in November.
+ */
+const SCHOOL_ERRATA = [['2023-2024', 'November break', 'start', '2023-09-28', '2023-10-28']];
+
+/** Local calendar date in Paris (the dataset's timestamps are Paris midnights in UTC). */
+const parisDay = (ts) => new Date(ts).toLocaleDateString('sv-SE', { timeZone: 'Europe/Paris' });
+
+/** School holidays since 2013-14: archived orders, then the Ministry's open data (Etalab 2.0). */
+async function school() {
+	console.log('[external] school holidays (archived orders + data.education.gouv.fr)');
+	// The export endpoint returns every match (records/ stops at 100).
+	const results = await get(
+		'https://data.education.gouv.fr/api/explore/v2.1/catalog/datasets/fr-en-calendrier-scolaire/exports/json?' +
+			new URLSearchParams({ where: 'location="Polynésie"', order_by: 'start_date' }),
+		{ json: true }
+	);
+	// Pupils only: a day counts when pupils at either level are off. Teachers' dates are dropped.
+	const merged = new Map();
+	for (const r of results) {
+		if (/^enseignants/i.test(r.population ?? '')) continue;
+		const name = SCHOOL_BREAK_NAMES[r.description];
+		// e.g. "Début des Grandes Vacances", a start-only marker for a year not yet fully set.
+		if (!name) {
+			console.warn(`[external] school holidays: skipped "${r.description}" ${r.annee_scolaire}`);
+			continue;
+		}
+		const key = `${r.annee_scolaire}|${name}`;
+		const start = parisDay(r.start_date);
+		// end_date is the day classes resume.
+		const end = isoDay(new Date(Date.parse(`${parisDay(r.end_date)}T00:00:00Z`) - 86_400_000));
+		const m = merged.get(key);
+		if (m) {
+			m[2] = start < m[2] ? start : m[2];
+			m[3] = end > m[3] ? end : m[3];
+		} else merged.set(key, [r.annee_scolaire, name, start, end, 'data.education.gouv.fr']);
+	}
+	for (const [year, name, field, wrong, right] of SCHOOL_ERRATA) {
+		const m = merged.get(`${year}|${name}`);
+		const i = field === 'start' ? 2 : 3;
+		if (m?.[i] === wrong) m[i] = right;
+	}
+	const firstYear = '2017-2018';
+	const rows = [
+		...ARCHIVED_SCHOOL_HOLIDAYS,
+		...[...merged.values()].filter((r) => r[0] >= firstYear)
+	].sort((a, b) => a[2].localeCompare(b[2]));
+	// Breaks must not overlap or run backwards: a typo upstream would otherwise go unnoticed.
+	for (let i = 0; i < rows.length; i++) {
+		const [year, name, start, end] = rows[i];
+		if (end < start || (i > 0 && start <= rows[i - 1][3]))
+			throw new Error(`school holidays: ${year} ${name} ${start}–${end} overlaps or is reversed`);
+	}
+	writeCsv('school-holidays.csv', ['school_year', 'name', 'start', 'end', 'source'], rows);
+}
+
+const jobs = { weather, ocean, tide, climate, cyclones, school };
 for (const [name, job] of Object.entries(jobs)) {
 	if (!want(name)) continue;
 	try {

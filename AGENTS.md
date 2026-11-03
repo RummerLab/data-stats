@@ -47,7 +47,8 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
-src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
+src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
+                         school holidays (schoolDays) and the one-label-per-date dayType
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
 src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap (SSR SVG),
                          InteractiveMap (Leaflet, lazy; MooreaMap is its fallback), charts/*
@@ -99,6 +100,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
+
+### School holidays (#25)
+
+- `fetch-external.mjs --only=school` writes `external/school-holidays.csv` (first and last day off, local dates). 2013-14 to 2016-17 are transcribed in the script from the Polynesian government's calendar orders for collèges and lycées (arrêtés 0270/CM 2013, 0399, 0401 and 0403/CM 2014), archived from education.pf by the Wayback Machine; the national dataset only starts in 2017-18. From 2017-18 it is the Ministry's `fr-en-calendrier-scolaire` open data (Polynésie, Licence Ouverte 2.0, credit it): pupils only, a day counts when either level is off, `end_date` is the day classes resume.
+- The national data has slips (the 2023 November break "starts" on 28 September): fix them in `SCHOOL_ERRATA`. The job throws if breaks overlap, so a new typo fails the weekly refresh instead of reaching the site.
+- `dayType` precedence: public holiday > festive window > school holidays > weekend. The pressure page also compares school-holiday weekdays with term-time weekdays, which keeps weekends out of the contrast.
 
 ### Adding a new season
 

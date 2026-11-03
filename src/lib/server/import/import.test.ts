@@ -4,6 +4,7 @@ import { diet } from '../analytics/diet';
 import { weatherEvents } from '../analytics/events';
 import { topFindings } from '../analytics/findings';
 import { seasonRewind } from '../analytics/rewind';
+import { schoolDays } from '../holidays';
 
 // DATA_DIR points at samples/fixture (synthetic) and DATABASE_PATH at :memory: (vitest.config.ts).
 describe('import of the synthetic fixture', () => {
@@ -80,6 +81,17 @@ describe('import of the synthetic fixture', () => {
 		expect(ev.byMonth).toHaveLength(12);
 		expect(ev.heavyDays).toBe(ev.byMonth.reduce((a, b) => a + b, 0));
 		expect(ev.threshold).toBeGreaterThan(20);
+	});
+
+	it('loads French Polynesia school holidays (#25)', () => {
+		// external/ is the committed public snapshot (official calendars), not synthetic data.
+		const years = new Set(d.schoolHolidays.map((b) => b.schoolYear));
+		for (let y = 2013; y <= 2025; y++) expect(years.has(`${y}-${y + 1}`)).toBe(true);
+		const days = schoolDays(d.schoolHolidays);
+		expect(days.get('2014-12-25')).toBe('Christmas break');
+		expect(days.get('2023-11-01')).toBe('November break');
+		expect(days.has('2023-10-02')).toBe(false);
+		for (const b of d.schoolHolidays) expect(b.start <= b.end).toBe(true);
 	});
 
 	it('computes findings without throwing', () => {

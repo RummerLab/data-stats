@@ -23,6 +23,15 @@
 				: 'That is within what chance alone would produce.';
 		return `Busy days average ${num(busyMean, 2)} sharks per net-hour against ${num(quietMean, 2)} on ordinary weekdays${test}. ${verdict}`;
 	});
+	const schoolText = $derived.by(() => {
+		const s = data.busyDays.school;
+		if (s.p == null) return '';
+		const verdict =
+			s.p < 0.05
+				? `${s.breakMean! > s.termMean! ? 'higher' : 'lower'} than chance alone would explain`
+				: 'a difference chance alone would produce';
+		return `On weekdays in the school holidays (${s.nBreak} sets), catches average ${num(s.breakMean, 2)} sharks per net-hour against ${num(s.termMean, 2)} on term-time weekdays (${s.nTerm} sets; p = ${num(s.p, 3)}): ${verdict}.`;
+	});
 </script>
 
 <div class="container">
@@ -152,9 +161,13 @@
 	<section class="section">
 		<h2>Busy days</h2>
 		<p>
-			A rough proxy for people on the water: weekends, French Polynesia's public holidays and the
-			Christmas–New Year period (20 Dec – 5 Jan). {busyText}
-			School holidays aren't included yet: the Polynesian school calendar changes every year.
+			A rough proxy for people on the water: weekends, French Polynesia's public holidays, the
+			Christmas–New Year period (20 Dec – 5 Jan) and the Polynesian school holidays{data.busyDays
+				.school.since
+				? ` (official calendars since ${data.busyDays.school.since})`
+				: ''}. Each date gets one label: a public holiday beats the Christmas–New Year period, which
+			beats the school holidays, which beat the weekend. {busyText}
+			{schoolText}
 		</p>
 		<div class="grid-2">
 			<ChartCard
@@ -201,6 +214,15 @@
 				Sets on public holidays: {data.busyDays.holidays
 					.map((h) => `${h.name} (${h.n})`)
 					.join(', ')}.
+			</p>
+		{/if}
+		{#if data.busyDays.breaks.length}
+			<p class="small">
+				Sets in the school holidays: {data.busyDays.breaks
+					.map((h) => `${h.name} (${h.n})`)
+					.join(', ')}. School calendars: the Polynesian government's archived orders for 2013-14 to
+				2016-17 (collèges and lycées), then the French Ministry of Education's open data (Licence
+				Ouverte 2.0).
 			</p>
 		{/if}
 	</section>
