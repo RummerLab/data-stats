@@ -18,6 +18,7 @@ import {
 	seasonDayLabel,
 	siteName
 } from './common';
+import { catchModel } from './catchModel';
 import { cloudWater } from './cloud';
 import { diet } from './diet';
 import { dailyMaxBySite, versusSst } from './insitu';
@@ -391,6 +392,31 @@ function compute(d: Dataset): Finding[] {
 			text: `Spearman ρ = ${num(rhos[0].r!.rho, 2)} across ${num(rhos[0].r!.n)} sets (p ${rhos[0].r!.p < 0.001 ? '< 0.001' : `= ${rhos[0].r!.p.toFixed(3)}`}). Every environmental link with CPUE is weak: nursery catches are noisy night to night.`,
 			href: '/drivers'
 		});
+
+	// Sea temperature or the calendar? (#54)
+	const model = memo('catchModel', catchModel);
+	const [alone, , adjusted] = model?.sst.map((x) => x.v) ?? [];
+	const warming = spearman(
+		pairs(
+			eff,
+			(s) => (s.date ? seasonDay(s.date) : null),
+			(s) => s.sst
+		)
+	);
+	if (model && alone && adjusted && alone.hi < 1 && (warming?.rho ?? 0) > 0.3) {
+		const peak = model.all.day.reduce((a, b) => (b.est > a.est ? b : a));
+		const change = (rr: number) => `${rr < 1 ? '−' : '+'}${pct(Math.abs(rr - 1))}`;
+		const words = (rr: number) => `${pct(Math.abs(rr - 1))} ${rr < 1 ? 'fewer' : 'more'}`;
+		const flat = adjusted.lo <= 1 && adjusted.hi >= 1;
+		out.push({
+			id: 'sst-calendar',
+			kind: 'pattern',
+			title: 'Warm water, or just late in the season?',
+			value: `${change(alone.est)} → ${flat ? 'no link' : change(adjusted.est)}`,
+			text: `On its own, each extra °C of sea temperature goes with ${words(alone.est)} sharks per net-hour. Model the day of the season, nursery, season and weather together and the link ${flat ? `disappears (rate ratio ${num(adjusted.est, 2)}, 95% interval ${num(adjusted.lo, 2)}–${num(adjusted.hi, 2)}, where 1 means no change)` : `becomes ${words(adjusted.est)} per °C`}: the sea keeps warming as the season goes on, while catches fall away after peaking around ${seasonDayLabel(peak.x)}.`,
+			href: '/drivers#model'
+		});
+	}
 
 	// Stomach contents (#40)
 	const dt = diet(d);

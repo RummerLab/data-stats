@@ -45,11 +45,13 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          population.ts (Schnabel abundance, von Bertalanffy growth)
                          diet.ts (gastric lavage: fullness, prey groups)
                          events.ts (cyclones and heavy-rain days vs catches)
+                         glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
 src/lib/components/      ChartCard, StatTile, DataTable, FindingCard, MooreaMap (SSR SVG),
                          InteractiveMap (Leaflet, lazy; MooreaMap is its fallback), charts/*
+                         (ForestPlot: rate ratios with intervals on a log scale)
 src/routes/              one folder per page (+page.server.ts computes, +page.svelte renders)
 scripts/                 fetch-external.mjs · make-fixture.mjs · server.mjs · nightlyRelease.mjs
 external/                public environmental snapshots (committed)
@@ -91,6 +93,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `fetch-external.mjs --only=cyclones` downloads the IBTrACS South Pacific CSV (~36 MB) and keeps track points within 750 km of Moorea since 2013 (`external/cyclones.csv`, `cyclone_points` table). Analyses use 500 km.
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
+
+### Catch model (#54)
+
+- `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
+- The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
+- `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
 
 ### Adding a new season
 

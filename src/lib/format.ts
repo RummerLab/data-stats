@@ -53,6 +53,12 @@ export function monthYear(iso: string): string {
 	return `${MONTHS[m - 1]} ${y}`;
 }
 
+/** Day of the fieldwork season (1 Aug = day 0) → `5 Nov`. */
+export const seasonDayLabel = (day: number) => {
+	const d = new Date(Date.UTC(2001, 7, 1) + day * 86_400_000);
+	return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
+};
+
 /** `2013-2014` → `2013–14`. */
 export function season(s: string): string {
 	return s.length === 9 ? `${s.slice(0, 4)}–${s.slice(7)}` : s;
