@@ -176,6 +176,8 @@ REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # op
 
 Don't silently fix unrelated things and don't let them go unrecorded: **file a GitHub issue**. Search first (`gh issue list --state all --search "<keywords>"`), one issue per problem, title `Area: short summary`, body with what/why/acceptance. Labels: `data`, `analytics`, `environment`, `design`, `docker`, `infrastructure`, `data-quality`, `findings`, `question`, `accessibility`, `documentation`, `enhancement`, `bug`. Epics: #68 importer · #69 environment · #70 design · #71 biology · #72 environment/fieldwork analyses · #73 findings · #74 infra · #75 data quality. Never put real records in an issue.
 
+Questions for the lab go to Dr Jodie Rummer (`@JodieRummer`) on GitHub: label the issue `question`, tag her in the body (or in a comment on an existing issue), and number the questions so each can be answered in a line. Say what changes on the site with each answer. She reads the issues and replies there.
+
 ## Changelog for agents
 
 | When    | Note                                                                                                                                                                                                                                                   |
