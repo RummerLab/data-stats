@@ -22,6 +22,7 @@ import { catchModel } from './catchModel';
 import { cloudWater } from './cloud';
 import { diet } from './diet';
 import { dailyMaxBySite, versusSst } from './insitu';
+import { sexModel } from './sex';
 import { rateTest } from './tests';
 
 export interface Finding {
@@ -123,18 +124,27 @@ function compute(d: Dataset): Finding[] {
 		});
 	}
 
-	// Sex ratio
+	// Sex ratio, with the mixed model's verdict on nurseries (#117)
+	const sexFits = memo('sexModel', sexModel);
 	for (const sp of ['Cm', 'Na'] as const) {
 		const ind = d.individuals.filter((i) => i.species === sp && i.sex);
 		const f = ind.filter((i) => i.sex === 'F').length;
 		if (ind.length > 50) {
 			const p = binomTestHalf(f, ind.length);
+			const m = sexFits.find((x) => x.species === sp)?.fit;
+			const top = m?.nurseries.filter((r) => r.n >= 20) ?? [];
+			const byNursery =
+				m?.nurseryP != null && m.nurseryP < 0.05 && top.length >= 2
+					? ` It does shift between nurseries (mixed model p = ${m.nurseryP.toFixed(3)}): from ${pct(top[0].est)} female at ${top[0].name} to ${pct(top[top.length - 1].est)} at ${top[top.length - 1].name}.`
+					: m?.nurseryP != null
+						? ` Nurseries don't differ beyond chance (mixed model p = ${m.nurseryP.toFixed(2)}).`
+						: '';
 			out.push({
 				id: `sex-${sp}`,
 				kind: 'pattern',
 				title: `${speciesName(sp)} sex ratio`,
 				value: `${pct(f / ind.length)} female`,
-				text: `${num(f)} females and ${num(ind.length - f)} males among individually identified ${speciesName(sp).toLowerCase()}s; ${p < 0.05 ? `a ratio unlikely to be chance (binomial p = ${p.toFixed(3)})` : `close to 1:1 (binomial p = ${p.toFixed(2)})`}.`,
+				text: `${num(f)} females and ${num(ind.length - f)} males among individually identified ${speciesName(sp).toLowerCase()}s; ${p < 0.05 ? `a ratio unlikely to be chance (binomial p = ${p.toFixed(3)})` : `close to 1:1 (binomial p = ${p.toFixed(2)})`}.${byNursery}`,
 				href: '/morphometrics#sex'
 			});
 		}
