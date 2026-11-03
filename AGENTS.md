@@ -116,6 +116,8 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Adding a new season
 
+- Scar-transition charts (#126) pair consecutive known-stage field observations within a season. Unknown stages are skipped; identity conflicts, same-day pairs and possible lab interruptions are excluded. Backward transitions remain visible. Elapsed observation intervals are not healing times.
+
 Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (the `YYYY-YYYY` in the file name sets the season). Check the Data quality page for unknown sites, unmatched headers ("Sheet not imported") and unit warnings, and extend aliases if needed. Never rename columns in the workbook to make the importer happy.
 
 ## Charts & design
