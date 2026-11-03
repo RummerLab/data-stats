@@ -44,6 +44,7 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          findings.ts (live findings) · insitu.ts (logger temperature summaries)
                          population.ts (Schnabel abundance, von Bertalanffy growth)
                          diet.ts (gastric lavage: fullness, prey groups)
+                         events.ts (cyclones and heavy-rain days vs catches)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too) + festive window
 src/lib/stats.ts         regression, Spearman, Welch, Wilson, binomial, histograms, box stats
@@ -84,6 +85,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - ERA5 `cloud_evening` covers every set; the crew's 1–4 `cloud_cover` score exists only in 2020–22 and tracks ERA5 (score 1 ≈ 43%, 4 ≈ 94%). `moonlight()` in `analytics/cloud.ts` = illumination × sin(moon altitude) × clear-sky fraction.
 - Cloud vs water temperature must be compared within the same month: the cloudy wet season is also the warmest, so raw correlations are ~0 while within-month ones are strongly negative.
+
+### Cyclones and heavy rain (#24)
+
+- `fetch-external.mjs --only=cyclones` downloads the IBTrACS South Pacific CSV (~36 MB) and keeps track points within 750 km of Moorea since 2013 (`external/cyclones.csv`, `cyclone_points` table). Analyses use 500 km.
+- Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
+- After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
 
 ### Adding a new season
 

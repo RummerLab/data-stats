@@ -33,5 +33,6 @@ export const EXTERNAL_FILES = [
 	'weather-hourly.csv.gz',
 	'ocean-daily.csv',
 	'tide-papeete-hourly.csv.gz',
-	'climate-monthly.csv'
+	'climate-monthly.csv',
+	'cyclones.csv'
 ];

@@ -73,7 +73,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '6';
+export const IMPORTER_VERSION = '7';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -530,6 +530,7 @@ export function runImport(
 	const wHourly = new Map(readCsv(opts.externalDir, 'weather-hourly.csv').map((r) => [r.ts, r]));
 	const ocean = new Map(readCsv(opts.externalDir, 'ocean-daily.csv').map((r) => [r.date, r]));
 	const climate = new Map(readCsv(opts.externalDir, 'climate-monthly.csv').map((r) => [r.ym, r]));
+	const cyclones = readCsv(opts.externalDir, 'cyclones.csv');
 	const tidePts: HourlyPoint[] = readCsv(opts.externalDir, 'tide-papeete-hourly.csv')
 		.map((r) => ({ t: tsToHour(r.ts), mm: Number(r.mm) }))
 		.filter((x) => Number.isFinite(x.mm))
@@ -1019,6 +1020,21 @@ export function runImport(
 		insert(
 			schema.climateMonthly,
 			[...climate.values()].map((r) => ({ ym: r.ym, oni: val(r.oni), soi: val(r.soi) }))
+		);
+		insert(
+			schema.cyclonePoints,
+			cyclones
+				.filter((r) => r.sid && r.time && val(r.lat) != null && val(r.dist_km) != null)
+				.map((r) => ({
+					sid: r.sid,
+					name: r.name || 'UNNAMED',
+					ts: r.time,
+					lat: val(r.lat)!,
+					lon: val(r.lon)!,
+					windKt: val(r.wind_kt),
+					presHpa: val(r.pres_hpa),
+					distKm: val(r.dist_km)!
+				}))
 		);
 		insert(schema.dataIssues, log.items);
 		const metaRows = {

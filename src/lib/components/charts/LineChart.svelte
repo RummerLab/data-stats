@@ -27,6 +27,7 @@
 		xFormat,
 		bands = [],
 		refs = [],
+		markers = [],
 		yDomain
 	}: {
 		series: LineSeries[];
@@ -39,6 +40,8 @@
 		xFormat?: (v: number) => string;
 		bands?: { x0: number; x1: number; label?: string }[];
 		refs?: { y: number; label: string }[];
+		/** Labelled vertical lines at single x values (events). */
+		markers?: { x: number; label: string }[];
 		yDomain?: [number, number];
 	} = $props();
 
@@ -60,7 +63,12 @@
 	}));
 
 	let width = $state(640);
-	const m = $derived({ top: 12, right: 16, bottom: xLabel ? 44 : 30, left: 52 });
+	const m = $derived({
+		top: markers.length ? 20 : 12,
+		right: 16,
+		bottom: xLabel ? 44 : 30,
+		left: 52
+	});
 	const fx = $derived(
 		xFormat ?? (xType === 'date' ? (v: number) => fromDay(Math.round(v)) : compact)
 	);
@@ -152,6 +160,19 @@
 				height={height - m.top - m.bottom}
 				fill="var(--surface-2)"
 			/>
+		{/each}
+		{#each markers as mk (mk.label)}
+			<line
+				x1={sx(mk.x)}
+				x2={sx(mk.x)}
+				y1={m.top}
+				y2={height - m.bottom}
+				stroke="var(--ink)"
+				stroke-dasharray="3 3"
+			/>
+			<text x={sx(mk.x)} y={m.top - 6} text-anchor="middle" font-size="10.5" fill="var(--ink-2)"
+				>{mk.label}</text
+			>
 		{/each}
 		{#each yt as t (t)}
 			<line x1={m.left} x2={width - m.right} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" />

@@ -12,6 +12,7 @@
  * - NOAA Coral Reef Watch 5 km daily heat stress via PacIOOS ERDDAP
  * - UHSLC fast-delivery hourly sea level, Papeete (station 015)
  * - NOAA CPC Oceanic Niño Index and Southern Oscillation Index
+ * - NOAA IBTrACS v04r01 South Pacific best tracks (cyclone positions near Moorea, #24)
  *
  * Output files are small CSVs (hourly series gzipped) committed to the repo, so the app and CI
  * never need network access. No spreadsheet data is read or sent anywhere.
@@ -333,7 +334,68 @@ async function climate() {
 	);
 }
 
-const jobs = { weather, ocean, tide, climate };
+/** Great-circle distance in km. */
+function km(lat1, lon1, lat2, lon2) {
+	const r = Math.PI / 180;
+	const a =
+		Math.sin(((lat2 - lat1) * r) / 2) ** 2 +
+		Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
+	return 6371 * 2 * Math.asin(Math.sqrt(a));
+}
+
+/** Tropical cyclone track points within 750 km of Moorea since START (IBTrACS, 3-hourly, UTC). */
+async function cyclones() {
+	console.log('[external] cyclones (IBTrACS South Pacific)');
+	const text = await get(
+		'https://www.ncei.noaa.gov/data/international-best-track-archive-for-climate-stewardship-ibtracs/v04r01/access/csv/ibtracs.SP.list.v04r01.csv'
+	);
+	const lines = text.split(/\r?\n/);
+	const head = lines[0].split(',');
+	const col = (name) => head.indexOf(name);
+	const [iSid, iName, iTime, iLat, iLon, iWmo, iUsa, iPres] = [
+		'SID',
+		'NAME',
+		'ISO_TIME',
+		'LAT',
+		'LON',
+		'WMO_WIND',
+		'USA_WIND',
+		'WMO_PRES'
+	].map(col);
+	const num = (s) => (s == null || s.trim() === '' ? null : Number(s));
+	const rows = [];
+	// Line 1 is units; data start on line 2.
+	for (const line of lines.slice(2)) {
+		if (!line) continue;
+		const c = line.split(',');
+		const time = c[iTime];
+		if (!time || time.slice(0, 10) < START) continue;
+		const lat = num(c[iLat]);
+		const lon = num(c[iLon]);
+		if (lat == null || lon == null) continue;
+		const d = km(LAT, LON, lat, lon);
+		if (d > 750) continue;
+		const wind = num(c[iWmo]) ?? num(c[iUsa]);
+		rows.push([
+			c[iSid],
+			(c[iName] || 'UNNAMED').replace(/,/g, ' '),
+			time.replace(' ', 'T') + 'Z',
+			fmt(lat, 2),
+			fmt(lon, 2),
+			fmt(wind, 0),
+			fmt(num(c[iPres]), 0),
+			fmt(d, 0)
+		]);
+	}
+	writeCsv(
+		'cyclones.csv',
+		['sid', 'name', 'time', 'lat', 'lon', 'wind_kt', 'pres_hpa', 'dist_km'],
+		rows
+	);
+	console.log(`[external] cyclones: ${rows.length} track points`);
+}
+
+const jobs = { weather, ocean, tide, climate, cyclones };
 for (const [name, job] of Object.entries(jobs)) {
 	if (!want(name)) continue;
 	try {

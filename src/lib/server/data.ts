@@ -45,6 +45,7 @@ export interface Dataset {
 	weather: WeatherDay[];
 	ocean: OceanDay[];
 	climate: (typeof schema.climateMonthly.$inferSelect)[];
+	cyclones: (typeof schema.cyclonePoints.$inferSelect)[];
 	issues: DataIssue[];
 	seasons: string[];
 }
@@ -96,6 +97,7 @@ export function dataset(): Dataset {
 		weather: db.select().from(schema.weatherDaily).orderBy(asc(schema.weatherDaily.date)).all(),
 		ocean: db.select().from(schema.oceanDaily).orderBy(asc(schema.oceanDaily.date)).all(),
 		climate: db.select().from(schema.climateMonthly).orderBy(asc(schema.climateMonthly.ym)).all(),
+		cyclones: db.select().from(schema.cyclonePoints).orderBy(asc(schema.cyclonePoints.ts)).all(),
 		issues: db.select().from(schema.dataIssues).all(),
 		seasons
 	};

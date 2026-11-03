@@ -1,6 +1,7 @@
 import { memo } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, round } from '#lib/server/analytics/common';
 import { crewVsEra5 } from '#lib/server/analytics/cloud';
+import { weatherEvents } from '#lib/server/analytics/events';
 import { mean, sum } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -50,7 +51,10 @@ export const load: PageServerLoad = () =>
 			(u: string, dp = 0) =>
 			(a: number, b: number) =>
 				`${round(a, dp)}–${round(b, dp)}${u}`;
+		const events = weatherEvents(d);
 		return {
+			events,
+			stormMarkers: (events?.storms ?? []).map((s) => ({ x: toDay(s.date), label: s.name })),
 			crewCloud: crewVsEra5(d),
 			byMonth,
 			rainMonthly: [...monthly.entries()]

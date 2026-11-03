@@ -1,5 +1,5 @@
 # Weekly refresh of the public environmental snapshots in external/ (#22): weather, waves,
-# SST, Coral Reef Watch heat stress, Papeete tides and ENSO indices. When anything changed,
+# SST, Coral Reef Watch heat stress, Papeete tides, ENSO indices and IBTrACS cyclone tracks. When anything changed,
 # commit it to main, cut a patch release and publish the image so servers pick up fresh data.
 # No spreadsheet data is involved.
 

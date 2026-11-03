@@ -205,8 +205,8 @@
 			<p class="fh">Environmental data</p>
 			<p class="small">
 				Weather &amp; waves: Open-Meteo (ERA5, CC BY 4.0). SST: NOAA OISST v2.1. Heat stress: NOAA
-				Coral Reef Watch via PacIOOS. Tides: UHSLC Papeete gauge. ENSO: NOAA CPC. Coastline ©
-				OpenStreetMap contributors.
+				Coral Reef Watch via PacIOOS. Tides: UHSLC Papeete gauge. ENSO: NOAA CPC. Cyclones: NOAA
+				IBTrACS. Coastline © OpenStreetMap contributors.
 			</p>
 		</div>
 	</div>
