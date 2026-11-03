@@ -123,7 +123,11 @@
 				hrefs={data.perSeason.map((r) => `/seasons/${r.season}`)}
 			/>
 		</ChartCard>
-		<ChartCard title="Catch rate per season" subtitle="Sharks per net-hour">
+		<ChartCard
+			title="Catch rate per season"
+			papers={['eustache2024density']}
+			subtitle="Sharks per net-hour"
+		>
 			<LineChart
 				series={[
 					{
@@ -150,6 +154,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Where its sharks turn up next"
+			papers={['bouyoucos2020homerange']}
 			subtitle="Consecutive captures of the same shark that involve this nursery"
 		>
 			{#if data.moves.length}
@@ -172,6 +177,7 @@
 		<section class="section grid-2">
 			<ChartCard
 				title="Water temperature here"
+				papers={['bouyoucos2022nursery']}
 				subtitle={`In-situ loggers, ${date(t.first)} to ${date(t.last)}: monthly means of the daily high, mean and low`}
 				note={t.vsIsland != null
 					? `Averaged ${num(t.mean, 1)} °C over ${num(t.days)} logged days, ${num(Math.abs(t.vsIsland), 2)} °C ${t.vsIsland >= 0 ? 'warmer' : 'cooler'} than the mean of all nurseries logged on the same days.`

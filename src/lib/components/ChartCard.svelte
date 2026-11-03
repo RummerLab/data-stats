@@ -2,6 +2,7 @@
 	import { onMount, type Snippet } from 'svelte';
 	import DataTable, { type Column } from './DataTable.svelte';
 	import { collectCsv, slug, toCsv, type CsvTable } from './charts/csv';
+	import { paper, paperHref, type PaperId } from '#lib/publications';
 
 	let {
 		title,
@@ -10,6 +11,7 @@
 		source,
 		id,
 		table,
+		papers = [],
 		children
 	}: {
 		title: string;
@@ -18,6 +20,8 @@
 		source?: string;
 		id?: string;
 		table?: { columns: Column[]; rows: Record<string, unknown>[] };
+		/** Studies that analysed the same question with this dataset (`#lib/publications`). */
+		papers?: PaperId[];
 		children: Snippet;
 	} = $props();
 
@@ -65,6 +69,14 @@
 			Download CSV<span class="sr"> for {title}</span>
 		</button>
 	{/if}
+	{#if papers.length}
+		<p class="papers">
+			{papers.length > 1 ? 'Papers' : 'Paper'}:
+			{#each papers.map(paper) as p, i (p.id)}{#if i > 0};{/if}
+				<a href={paperHref(p)} title={p.title}>{p.authors} ({p.year})</a>,
+				<i>{p.journal}</i>{#if p.pdf}<span class="pdf">&nbsp;(PDF)</span>{/if}{/each}
+		</p>
+	{/if}
 	{#if source}<p class="source">Source: {source}</p>{/if}
 </figure>
 
@@ -94,6 +106,15 @@
 		color: var(--ink-2);
 		margin: 10px 0 0;
 		line-height: 1.5;
+	}
+	.papers {
+		font-size: 0.78rem;
+		color: var(--ink-2);
+		margin: 8px 0 0;
+		line-height: 1.5;
+	}
+	.pdf {
+		color: var(--muted);
 	}
 	.source {
 		font-size: 0.74rem;

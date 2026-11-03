@@ -104,6 +104,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Catch rate per season"
+			papers={['eustache2024density']}
 			subtitle="Sharks per net-hour of gillnetting (2013–14 logs have no set times)"
 		>
 			<LineChart

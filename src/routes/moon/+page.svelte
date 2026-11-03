@@ -26,6 +26,7 @@
 	<section class="section grid-2">
 		<ChartCard
 			title="Catch rate around the lunar cycle"
+			papers={['debaere2024lunar']}
 			subtitle="Sharks per net-hour by moon phase (wedge area ∝ catch rate). New moon at the top, full moon at the bottom."
 		>
 			<Polar
@@ -40,6 +41,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Catch rate by phase and species"
+			papers={['debaere2024lunar']}
 			table={{
 				columns: [
 					{ key: 'name', label: 'Phase' },
@@ -71,6 +73,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Catch rate by moon illumination"
+			papers={['debaere2024lunar', 'bouyoucos2024abiotic']}
 			subtitle="Whiskers: 95% confidence intervals"
 		>
 			<BarChart
@@ -88,6 +91,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Is the moon up?"
+			papers={['debaere2024lunar']}
 			subtitle="Catch rate when the moon is above or below the horizon at mid-set"
 		>
 			<BarChart
@@ -123,6 +127,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Bright nights vs dark nights: when do sharks hit the net?"
+			papers={['debaere2024lunar']}
 			subtitle="Capture time after sunset on dark (< 25% illuminated) and bright (> 75%) nights"
 			note={`Median ${num(t.dark)} min after sunset on dark nights (n = ${num(t.nDark)}) vs ${num(t.bright)} min on bright nights (n = ${num(t.nBright)}); Welch ${pValue(t.p)}.`}
 		>

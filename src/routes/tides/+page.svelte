@@ -58,6 +58,7 @@
 		</ChartCard>
 		<ChartCard
 			title="A typical fortnight"
+			papers={['debaere2024lunar']}
 			subtitle={`Papeete sea level, 1–14 November ${data.exYear}, relative to average`}
 		>
 			<LineChart
@@ -116,6 +117,7 @@
 			</ChartCard>
 			<ChartCard
 				title="Catch rate by tide height mid-set"
+				papers={['debaere2024lunar']}
 				subtitle="Whiskers: 95% confidence intervals"
 			>
 				<BarChart
@@ -131,7 +133,7 @@
 					valueFormat={(v) => num(v, 2)}
 				/>
 			</ChartCard>
-			<ChartCard title="Catch rate by tide direction mid-set">
+			<ChartCard title="Catch rate by tide direction mid-set" papers={['debaere2024lunar']}>
 				<BarChart
 					categories={data.cpueTrend.map((t) => `${t.k} (${t.n})`)}
 					series={[
