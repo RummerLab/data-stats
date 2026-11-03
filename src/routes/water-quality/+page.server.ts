@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { thermalCalendar } from '#lib/server/analytics/thermalCalendar';
 import { activeNurseries, boxOf, round, siteName } from '#lib/server/analytics/common';
 import {
 	coverage,
@@ -127,6 +128,7 @@ export const load: PageServerLoad = () =>
 			: null;
 
 		return {
+			thermalCalendar: thermalCalendar(d),
 			insitu,
 			temp: by('temp', 20, 40),
 			ph: by('ph', 7, 9),

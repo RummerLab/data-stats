@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ThermalCalendar from '#lib/components/ThermalCalendar.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BoxPlot from '#lib/components/charts/BoxPlot.svelte';
@@ -27,6 +28,7 @@
 				)} to {monthYear(ins.summary.last)}.{/if}
 		</p>
 	</header>
+	<ThermalCalendar sites={data.thermalCalendar} />
 
 	{#if ins}
 		<section class="section">

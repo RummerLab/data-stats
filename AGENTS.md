@@ -87,6 +87,8 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Cloud cover (#104)
 
+- Month-hour nursery heatmaps (#127) use `logger_diel.n` as contributing site-hour days, not sensor samples. Mask cells with fewer than ten days and keep a common 15–40 °C scale; pooled historical means cannot establish threshold-exceedance duration.
+
 - ERA5 `cloud_evening` covers every set; the crew's 1–4 `cloud_cover` score exists only in 2020–22 and tracks ERA5 (score 1 ≈ 43%, 4 ≈ 94%). `moonlight()` in `analytics/cloud.ts` = illumination × sin(moon altitude) × clear-sky fraction.
 - Cloud vs water temperature must be compared within the same month: the cloudy wet season is also the warmest, so raw correlations are ~0 while within-month ones are strongly negative.
 
