@@ -13,6 +13,7 @@ import {
 } from '#lib/server/analytics/common';
 import { dielBySeason, islandDaily, monthly, withGaps } from '#lib/server/analytics/insitu';
 import { histogram, mean } from '#lib/stats';
+import { rateTest, rateText, trendText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = ({ params }) => {
@@ -89,7 +90,15 @@ export const load: PageServerLoad = ({ params }) => {
 			href: `/nurseries/${s.id}`
 		}));
 
+	const seasonStats = [
+		rateText(
+			rateTest(eff, { groupOf: (s) => s.season }, 'cpue', ['season']),
+			'seasons at this nursery'
+		),
+		trendText(perSeason.map((r) => r.cpue))
+	];
 	return {
+		seasonStats,
 		site: { ...site, aliases: site.aliases ? (JSON.parse(site.aliases) as string[]) : [] },
 		kpi: {
 			captures: caps.length,

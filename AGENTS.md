@@ -46,6 +46,7 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          diet.ts (gastric lavage: fullness, prey groups)
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
+                         tests.ts (the statistic behind each chart, worded for ChartCard stats)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
                          school holidays (schoolDays) and the one-label-per-date dayType
@@ -115,6 +116,7 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 
 - Follow the dataviz method: categorical slots in fixed order (`--series-1…8`, validated light and dark), sequential = one hue (`--seq-*`), diverging = blue ↔ red with a neutral midpoint, one y-axis only (never dual axes), legends for ≥ 2 series, text in ink tokens (never the series colour), 4 px rounded bar ends, 2 px lines, hover tooltips, data tables via `ChartCard table`.
 - Every chart registers its data with the enclosing `ChartCard` (`registerCsv` in `charts/csv.ts`), which shows **Download CSV**. A new chart component must call `registerCsv` too. An explicit `ChartCard table` takes precedence.
+- Back every trend, relationship or group difference with a test (#119): compute it in the load function with `analytics/tests.ts` and pass the sentence to `ChartCard stats`. Catch rates: `rateTest`/`rateText` (negative-binomial LRT with log net-hours offset, raw and adjusted for nursery, season and day of the season; pass `skip` for the factor under test). Values across groups: `groupsText` (Kruskal–Wallis). Shares: `tableText` (χ²). One value per season: `trendText`. Scatters: `fitText` (R², p, Spearman) or `rankText`. Copy and findings that name a "best" or "highest" group must check the test first (the moon finding picked the best of eight phases, #118).
 - Cite the study behind a chart with `<ChartCard papers={['debaere2024lunar']}>` (ids in `src/lib/publications.ts`). Link only papers that analysed the same question with this dataset; check the abstract first. PDFs are served at `rummerlab.com/papers/<file>` (metadata in the rummerlab-website repo, `data/papers.json`).
 - Species colours come from `src/lib/species.ts` (blacktip = slot 1, sicklefin lemon = slot 2).
 - Charts measure their width (`bind:clientWidth`) and carry a `viewBox` so pre-hydration renders scale down instead of overflowing.

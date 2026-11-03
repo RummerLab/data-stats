@@ -33,6 +33,7 @@
 		<ChartCard
 			title="Length-frequency"
 			subtitle={`Total length at first capture. Median: blacktip ${num(data.medianTl.Cm)} mm, sicklefin lemon ${num(data.medianTl.Na)} mm.`}
+			stats={data.stats.lf}
 		>
 			<Histogram
 				edges={data.edges}
@@ -56,6 +57,7 @@
 					: '',
 				'b ≈ 3 means mass grows with the cube of length (isometric growth).'
 			].join(' ')}
+			stats={data.stats.lw}
 		>
 			<Scatter
 				points={lwPoints}
@@ -91,6 +93,7 @@
 			title="Newborn blacktip condition by nursery"
 			papers={['weideli2019condition']}
 			subtitle="Fulton's K = 100·mass(g)/TL(cm)³ for newborns (open or healing umbilical scar)"
+			stats={data.stats.kSite}
 		>
 			<BoxPlot
 				boxes={data.kBySite.map((b) => ({ ...b, color: SPECIES.Cm.color }))}
@@ -102,6 +105,7 @@
 			title="Newborn condition by season"
 			papers={['weideli2019condition', 'debaere2023umbilicus']}
 			subtitle="Mean Fulton's K of newborns"
+			stats={data.stats.kSeason}
 		>
 			<LineChart
 				series={[
@@ -122,7 +126,11 @@
 				yFormat={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Blacktip size by season" subtitle="Total length at first capture">
+		<ChartCard
+			title="Blacktip size by season"
+			subtitle="Total length at first capture"
+			stats={data.stats.tlSeason}
+		>
 			<BoxPlot
 				boxes={data.tlCm.map((b) => ({ ...b, color: SPECIES.Cm.color }))}
 				yLabel="TL (mm)"
@@ -210,6 +218,7 @@
 			<ChartCard
 				title="Clasper development"
 				subtitle="Inner clasper length against total length in males: claspers lengthen as males approach maturity"
+				stats={data.stats.claspers}
 			>
 				<Scatter
 					points={data.claspers}

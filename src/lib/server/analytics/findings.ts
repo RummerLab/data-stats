@@ -2,7 +2,7 @@
  * Auto-generated findings (#55): records, quirks and patterns computed live from the data, so
  * they update when a new season's workbook is added. Each links to the page with the chart.
  */
-import { clock, date, num, pct, season as seasonFmt } from '#lib/format';
+import { clock, date, num, pct, pValue, season as seasonFmt } from '#lib/format';
 import { speciesName } from '#lib/species';
 import { binomTestHalf, mean, median, pairs, spearman } from '#lib/stats';
 import { moonPhaseName } from '../astro';
@@ -22,6 +22,7 @@ import { catchModel } from './catchModel';
 import { cloudWater } from './cloud';
 import { diet } from './diet';
 import { dailyMaxBySite, versusSst } from './insitu';
+import { rateTest } from './tests';
 
 export interface Finding {
 	id: string;
@@ -71,23 +72,39 @@ function compute(d: Dataset): Finding[] {
 		});
 	}
 
-	// Moon phase
-	const phases = Array.from({ length: 8 }, (_, i) =>
-		eff.filter((s) => s.moonPhase != null && Math.round(s.moonPhase * 8) % 8 === i)
-	);
+	// Moon phase (#118): name a best phase only if the phases differ beyond chance. Picking the
+	// highest of eight raw rates always finds a "best" one.
+	const phaseOf = (s: (typeof eff)[number]) =>
+		s.moonPhase == null ? null : Math.round(s.moonPhase * 8) % 8;
+	const phases = Array.from({ length: 8 }, (_, i) => eff.filter((s) => phaseOf(s) === i));
 	const phaseCpue = phases.map((p) => ({ n: p.length, cpue: cpueOf(p) }));
 	const valid = phaseCpue.map((p, i) => ({ ...p, i })).filter((p) => p.n >= 25 && p.cpue != null);
-	if (valid.length >= 4) {
+	const moonTest = rateTest(eff, { groupOf: phaseOf });
+	if (valid.length >= 4 && moonTest) {
 		const best = valid.reduce((a, b) => (b.cpue! > a.cpue! ? b : a));
 		const worst = valid.reduce((a, b) => (b.cpue! < a.cpue! ? b : a));
-		out.push({
-			id: 'moon',
-			kind: 'pattern',
-			title: 'Best moon for finding pups',
-			value: moonPhaseName(best.i / 8),
-			text: `Nets set around the ${moonPhaseName(best.i / 8).toLowerCase()} caught ${num(best.cpue!, 2)} sharks per net-hour, against ${num(worst.cpue!, 2)} around the ${moonPhaseName(worst.i / 8).toLowerCase()} (${best.n} and ${worst.n} sets).`,
-			href: '/moon'
-		});
+		const p = moonTest.adjusted?.p ?? moonTest.raw.p;
+		const test = `negative-binomial test across all eight phases, adjusted for ${moonTest.adjustedFor}: ${pValue(p)}, ${num(moonTest.n)} sets`;
+		const phase = (i: number) => moonPhaseName(i / 8).toLowerCase();
+		out.push(
+			p < 0.05
+				? {
+						id: 'moon',
+						kind: 'pattern',
+						title: 'Best moon for finding pups',
+						value: moonPhaseName(best.i / 8),
+						text: `Nets set around the ${phase(best.i)} caught ${num(best.cpue!, 2)} sharks per net-hour, against ${num(worst.cpue!, 2)} around the ${phase(worst.i)}; the phases differ beyond chance (${test}).`,
+						href: '/moon'
+					}
+				: {
+						id: 'moon',
+						kind: 'pattern',
+						title: "The moon doesn't change the catch",
+						value: 'No effect',
+						text: `The ${phase(best.i)} (${num(best.cpue!, 2)} sharks per net-hour) and the ${phase(worst.i)} (${num(worst.cpue!, 2)}) look different, but across all eight phases the spread is what chance alone produces (${test}). Debaere et al. (2024) reached the same conclusion with this dataset.`,
+						href: '/moon'
+					}
+		);
 	}
 
 	// Timing after sunset
@@ -207,6 +224,12 @@ function compute(d: Dataset): Finding[] {
 			cm: cpueOf(x.sets, 'cpueCm')!
 		}));
 	if (siteCpue.length) {
+		const nurseryTest = rateTest(
+			eff.filter((s) => siteCpue.some((x) => x.id === s.siteId)),
+			{ groupOf: (s) => s.siteId },
+			'cpue',
+			['nursery']
+		);
 		const top = siteCpue.reduce((a, b) => (b.cpue > a.cpue ? b : a));
 		const low = siteCpue.reduce((a, b) => (b.cpue < a.cpue ? b : a));
 		out.push({
@@ -214,7 +237,7 @@ function compute(d: Dataset): Finding[] {
 			kind: 'pattern',
 			title: 'Most productive nursery',
 			value: siteName(d, top.id),
-			text: `${num(top.cpue, 2)} sharks per net-hour on average, ${num(top.cpue / low.cpue, 1)}× the rate at ${siteName(d, low.id)} (${num(low.cpue, 2)}).`,
+			text: `${num(top.cpue, 2)} sharks per net-hour on average, ${num(top.cpue / low.cpue, 1)}× the rate at ${siteName(d, low.id)} (${num(low.cpue, 2)}).${nurseryTest ? ` Nurseries differ ${(nurseryTest.adjusted?.p ?? nurseryTest.raw.p) < 0.05 ? 'well beyond' : 'no more than'} chance (negative-binomial test, adjusted for ${nurseryTest.adjustedFor}: ${pValue(nurseryTest.adjusted?.p ?? nurseryTest.raw.p)}).` : ''}`,
 			href: `/nurseries/${top.id}`
 		});
 		const lemon = siteCpue.reduce((a, b) => (b.na / (b.cpue || 1) > a.na / (a.cpue || 1) ? b : a));
@@ -350,15 +373,20 @@ function compute(d: Dataset): Finding[] {
 	const wk = eff.filter((s) => s.weekday != null);
 	const weekend = cpueOf(wk.filter((s) => s.weekday === 0 || s.weekday === 6));
 	const weekday = cpueOf(wk.filter((s) => s.weekday !== 0 && s.weekday !== 6));
-	if (weekend != null && weekday != null)
+	const weekendTest = rateTest(wk, {
+		groupOf: (s) => (s.weekday === 0 || s.weekday === 6 ? 'weekend' : 'weekday')
+	});
+	if (weekend != null && weekday != null && weekendTest) {
+		const p = weekendTest.adjusted?.p ?? weekendTest.raw.p;
 		out.push({
 			id: 'weekend',
 			kind: 'quirk',
 			title: 'Weekend effect?',
 			value: `${num(weekend, 2)} vs ${num(weekday, 2)}`,
-			text: `Sharks per net-hour on weekend nights against weeknights. Weekends bring more people to the beaches; ${weekend < weekday ? 'catches are a little lower then' : 'catches are no lower then'}.`,
+			text: `Sharks per net-hour on weekend nights against weeknights. Weekends bring more people to the beaches, but ${p < 0.05 ? `catches really are ${weekend < weekday ? 'lower' : 'higher'} then` : 'the gap is within chance'} (negative-binomial test adjusted for ${weekendTest.adjustedFor}: ${pValue(p)}).`,
 			href: '/drivers'
 		});
+	}
 
 	// Strongest driver
 	const vars: [string, keyof (typeof eff)[number]][] = [
@@ -462,7 +490,7 @@ function compute(d: Dataset): Finding[] {
 			kind: 'pattern',
 			title: 'Heat stress and newborn condition',
 			value: `ρ = ${num(kr.rho, 2)}`,
-			text: `Correlation between Coral Reef Watch degree heating weeks on the capture date and the body condition (Fulton's K) of newborn blacktips (n = ${num(kr.n)}).`,
+			text: `Correlation between Coral Reef Watch degree heating weeks on the capture date and the body condition (Fulton's K) of newborn blacktips (n = ${num(kr.n)}, ${pValue(kr.p)}${kr.p < 0.05 ? '' : ': no more than chance'}).`,
 			href: '/ocean'
 		});
 

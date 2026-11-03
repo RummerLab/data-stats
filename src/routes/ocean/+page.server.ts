@@ -9,6 +9,7 @@ import {
 	round
 } from '#lib/server/analytics/common';
 import { linearFit, mean, pairs } from '#lib/stats';
+import { trendText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 const toDay = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
@@ -76,7 +77,15 @@ export const load: PageServerLoad = () =>
 			null
 		);
 
+		// Warming: one mean anomaly per complete calendar year, so weekly autocorrelation can't
+		// inflate the test.
+		const years = [...new Set(o.map((r) => r.date.slice(0, 4)))].sort();
+		const annual = years
+			.map((y) => o.filter((r) => r.date.startsWith(y) && r.crwAnom != null))
+			.map((rs) => (rs.length >= 300 ? mean(rs.map((r) => r.crwAnom)) : null));
+		const anomStats = trendText(annual, '°C', 'year');
 		return {
+			anomStats,
 			bands,
 			sst: weekly(o, (r) => r.oisst ?? r.crwSst),
 			anom: weekly(o, (r) => r.crwAnom),

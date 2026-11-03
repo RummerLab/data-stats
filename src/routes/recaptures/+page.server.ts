@@ -8,6 +8,7 @@ import {
 } from '#lib/server/analytics/common';
 import { schnabel } from '#lib/server/analytics/population';
 import { histogram, median, pairs as xy, spearman } from '#lib/stats';
+import { tableText, trendText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -83,7 +84,23 @@ export const load: PageServerLoad = () =>
 			);
 			return r && r.n >= 8 ? { rho: round(r.rho, 2), p: r.p, n: r.n } : null;
 		};
+		const bySeason = rateBy((c) => c.season, d.seasons);
+		const bySite = rateBy((c) => c.siteId, nurseries);
+		const stats = {
+			season: [
+				tableText(
+					bySeason.map((r) => [r.recaptured, r.n - r.recaptured]),
+					'seasons'
+				),
+				trendText(bySeason.map((r) => r.rate))
+			],
+			site: tableText(
+				bySite.map((r) => [r.recaptured, r.n - r.recaptured]),
+				'nurseries'
+			)
+		};
 		return {
+			stats,
 			abundance: { rows: est, cm: rho('Cm'), na: rho('Na') },
 			bySeason: rateBy((c) => c.season, d.seasons),
 			bySite: rateBy((c) => c.siteId, nurseries).map((r) => ({ ...r, name: siteName(d, r.key) })),

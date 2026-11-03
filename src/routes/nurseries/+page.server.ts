@@ -10,6 +10,7 @@ import {
 	round
 } from '#lib/server/analytics/common';
 import { mean } from '#lib/stats';
+import { rateTest, rateText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -69,5 +70,14 @@ export const load: PageServerLoad = () =>
 					.join(' · '),
 				href: '/adults'
 			}));
-		return { rows, seasons: d.seasons, heat, adults };
+		const inIds = eff.filter((s) => s.siteId && ids.includes(s.siteId));
+		const stats = {
+			species: (['cpueCm', 'cpueNa'] as const).map((key) =>
+				rateText(
+					rateTest(inIds, { groupOf: (s) => s.siteId }, key, ['nursery']),
+					`nurseries for ${key === 'cpueCm' ? 'blacktips' : 'sicklefin lemons'}`
+				)
+			)
+		};
+		return { rows, seasons: d.seasons, heat, adults, stats };
 	});

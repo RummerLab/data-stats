@@ -65,6 +65,7 @@
 			title="Zero-catch nights by nursery"
 			papers={['mcinturf2025aggregation']}
 			subtitle="Share of timed sets with no sharks"
+			stats={data.stats.zero}
 		>
 			<BarChart
 				horizontal
@@ -83,6 +84,7 @@
 		<ChartCard
 			title="Does repeat netting change the catch?"
 			subtitle="Catch rate by visit number to the same nursery within a season"
+			stats={data.stats.visits}
 		>
 			<BarChart
 				categories={data.visits.map((v) => v.v)}

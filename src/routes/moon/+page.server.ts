@@ -2,6 +2,7 @@ import { memo } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, fieldCaptures, round } from '#lib/server/analytics/common';
 import { MOON_PHASES } from '#lib/server/astro';
 import { moonCloud } from '#lib/server/analytics/cloud';
+import { rateSlopeText, rateTest, rateText } from '#lib/server/analytics/tests';
 import { histogram, median, welch } from '#lib/stats';
 import type { PageServerLoad } from './$types';
 
@@ -27,7 +28,19 @@ export const load: PageServerLoad = () =>
 		const dark = caps.filter((c) => (c.moonIllum ?? 0.5) < 0.25).map((c) => c.minAfterSunset);
 		const bright = caps.filter((c) => (c.moonIllum ?? 0.5) > 0.75).map((c) => c.minAfterSunset);
 		const w = welch(bright, dark);
+		const phaseOf = { groupOf: (s: (typeof sets)[number]) => phaseIdx(s.moonPhase) };
+		const isUp = {
+			groupOf: (s: (typeof sets)[number]) =>
+				s.moonAltMid == null ? null : s.moonAltMid > 0 ? 'up' : 'down'
+		};
 		return {
+			stats: {
+				phases: rateText(rateTest(sets, phaseOf), 'the eight moon phases'),
+				phasesCm: rateText(rateTest(sets, phaseOf, 'cpueCm'), 'moon phases for blacktips'),
+				phasesNa: rateText(rateTest(sets, phaseOf, 'cpueNa'), 'moon phases for sicklefin lemons'),
+				illum: rateSlopeText(rateTest(sets, { valueOf: (s) => s.moonIllum }), 'moon illumination'),
+				up: rateText(rateTest(sets, isUp), 'nights with the moon up and down')
+			},
 			moonCloud: moonCloud(d),
 			phases,
 			illum: binnedMean(

@@ -60,6 +60,7 @@
 			title="Sicklefin lemons vs blacktips"
 			papers={['bouyoucos2022nursery']}
 			subtitle="Catch rate per species: lemon sharks are concentrated in a few southern and western nurseries"
+			stats={data.stats.species}
 		>
 			<BarChart
 				horizontal

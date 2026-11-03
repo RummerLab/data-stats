@@ -43,6 +43,7 @@
 		<ChartCard
 			title="Recapture rate by season"
 			subtitle="Share of individuals caught more than once"
+			stats={data.stats.season}
 		>
 			<BarChart
 				categories={data.bySeason.map((r) => season(r.key))}
@@ -52,7 +53,7 @@
 				valueFormat={(v) => pct(v)}
 			/>
 		</ChartCard>
-		<ChartCard title="Recapture rate by nursery">
+		<ChartCard title="Recapture rate by nursery" stats={data.stats.site}>
 			<BarChart
 				horizontal
 				categories={data.bySite.map((r) => r.name)}

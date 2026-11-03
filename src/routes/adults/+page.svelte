@@ -48,7 +48,11 @@
 		</div>
 
 		<section class="section grid-2">
-			<ChartCard title="Adult size" subtitle="Total length by sex (cm values converted to mm)">
+			<ChartCard
+				title="Adult size"
+				subtitle="Total length by sex (cm values converted to mm)"
+				stats={data.stats.size}
+			>
 				<Histogram
 					edges={data.edges}
 					series={[
@@ -76,6 +80,7 @@
 				title="Lactate at the first and second blood draw"
 				subtitle="Each dot is one shark; dots above the dashed line had more lactate at the second draw"
 				note={`Mean lactate ${num(m.lact1, 1)} → ${num(m.lact2, 1)} mmol/L; glucose ${num(m.gluc1, 1)} → ${num(m.gluc2, 1)}; β-hydroxybutyrate ${num(m.bhb1, 2)} → ${num(m.bhb2, 2)}.`}
+				stats={data.stats.lact}
 			>
 				<Scatter
 					points={data.lactPairs.map((p) => ({ x: p.l1, y: p.l2, label: p.name }))}
@@ -117,6 +122,7 @@
 				title="Girth against length"
 				subtitle="Pectoral girth: pregnant females stand out"
 				papers={['eustache2023philopatry']}
+				stats={data.stats.girth}
 			>
 				<Scatter
 					points={data.girth}

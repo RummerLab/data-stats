@@ -60,20 +60,25 @@
 				title="Haematocrit by nursery"
 				papers={['schwieterman2019blood']}
 				subtitle="% packed red cells: oxygen-carrying capacity"
+				stats={data.stats.hct}
 			>
 				<BoxPlot
 					boxes={data.hct.map((b) => ({ ...b, color: 'var(--series-8)' }))}
 					yLabel="Haematocrit (%)"
 				/>
 			</ChartCard>
-			<ChartCard title="Triglycerides by nursery" subtitle="An energy-reserve marker">
+			<ChartCard
+				title="Triglycerides by nursery"
+				subtitle="An energy-reserve marker"
+				stats={data.stats.tg}
+			>
 				<BoxPlot
 					boxes={data.tg.map((b) => ({ ...b, color: 'var(--series-4)' }))}
 					yLabel="Triglycerides"
 					yFormat={(v) => num(v, 2)}
 				/>
 			</ChartCard>
-			<ChartCard title="Cholesterol by nursery">
+			<ChartCard title="Cholesterol by nursery" stats={data.stats.chol}>
 				<BoxPlot
 					boxes={data.chol.map((b) => ({ ...b, color: 'var(--series-7)' }))}
 					yLabel="Cholesterol"
@@ -116,6 +121,7 @@
 			<ChartCard
 				title="Mass on arrival and release"
 				subtitle="Above the dashed line = heavier at release"
+				stats={data.stats.mass}
 			>
 				<Scatter
 					points={data.massPairs}
@@ -140,6 +146,7 @@
 			<ChartCard
 				title="Appetite after arrival (2020–21)"
 				subtitle="Mean % of offered food eaten, by days since a shark's first logged feed"
+				stats={data.stats.feeding}
 			>
 				<LineChart
 					series={[

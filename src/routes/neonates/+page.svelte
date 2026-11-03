@@ -31,6 +31,7 @@
 			title="Share of pups with an unhealed scar, week by week"
 			papers={['debaere2023umbilicus', 'debaere2025injuries']}
 			subtitle="Open or healing umbilical scars among first captures (weeks with ≥ 5 sharks)"
+			stats={data.stats.open}
 		>
 			<LineChart
 				series={[
@@ -63,6 +64,7 @@
 					? `Sicklefin lemon: +${num(data.fitNa.slope * 30, 1)} mm per month (R² ${num(data.fitNa.r2, 2)}).`
 					: ''
 			].join(' ')}
+			stats={data.stats.size}
 		>
 			<Scatter
 				points={data.sizeScatter.map((p) => ({
@@ -99,6 +101,7 @@
 			title="Birth window by season"
 			papers={['debaere2023umbilicus']}
 			subtitle="When open-scar pups were caught: 10th, 50th and 90th percentile dates (seasons with ≥ 5 open-scar pups)"
+			stats={data.stats.window}
 		>
 			<LineChart
 				series={[
@@ -146,6 +149,7 @@
 		<ChartCard
 			title="Newborns and juveniles each season"
 			subtitle="Age class at first capture (newborn = neonate or unhealed scar)"
+			stats={data.stats.ageMix}
 		>
 			<BarChart
 				stacked
@@ -165,6 +169,7 @@
 			title="Size by scar stage"
 			papers={['debaere2023umbilicus']}
 			subtitle="Mean TL at first capture: open → healing → healed"
+			stats={data.stats.scar}
 		>
 			<BarChart
 				categories={data.usSize.map((u) => u.u)}
