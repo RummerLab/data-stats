@@ -14,6 +14,7 @@
 	import { compact } from '#lib/format';
 	import Legend from './Legend.svelte';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markKeys } from './marks';
 	import { dateTicks, fromDay, linear, linePath, nice, ticks } from './scale';
 
 	let {
@@ -110,11 +111,8 @@
 		return Math.abs(pts[lo].x - x) <= Math.abs(pts[hi].x - x) ? pts[lo] : pts[hi];
 	}
 
-	function move(e: PointerEvent) {
-		const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
-		const px = e.clientX - rect.left;
-		if (px < m.left || px > width - m.right) return leave();
-		const x = sx.invert(px);
+	/** Tooltip for the points nearest x; `y` is the tooltip's height (default: the first point). */
+	function showX(x: number, y?: number) {
 		const hits = series
 			.map((s) => ({ s, p: nearest(s.points, x) }))
 			.filter((h) => h.p && h.p.y != null) as { s: LineSeries; p: { x: number; y: number } }[];
@@ -123,7 +121,7 @@
 		hoverX = px0;
 		tip = {
 			x: sx(px0),
-			y: e.clientY - rect.top,
+			y: y ?? sy(hits[0].p.y),
 			title: fx(px0),
 			lines: hits.map((h) => ({
 				label: series.length > 1 ? h.s.name : undefined,
@@ -132,10 +130,19 @@
 			}))
 		};
 	}
+	function move(e: PointerEvent) {
+		const rect = (e.currentTarget as SVGElement).getBoundingClientRect();
+		const px = e.clientX - rect.left;
+		if (px < m.left || px > width - m.right) return leave();
+		showX(sx.invert(px), e.clientY - rect.top);
+	}
 	function leave() {
 		tip = null;
 		hoverX = null;
 	}
+	// Keyboard: every distinct x, left to right.
+	const steps = $derived([...new Set(xs)].sort((a, b) => a - b));
+	const keys = markKeys({ count: () => steps.length, show: (k) => showX(steps[k]), hide: leave });
 </script>
 
 <Legend
@@ -147,8 +154,8 @@
 		viewBox={`0 0 ${width} ${height}`}
 		{width}
 		{height}
-		role="img"
-		aria-label={`${yLabel || 'Value'} over ${xLabel || (xType === 'date' ? 'time' : 'x')}: ${series.map((s) => s.name).join(', ')}`}
+		{...keys}
+		aria-label={`${yLabel || 'Value'} over ${xLabel || (xType === 'date' ? 'time' : 'x')}: ${series.map((s) => s.name).join(', ')}. ${KEYS_HINT}`}
 		onpointermove={move}
 		onpointerleave={leave}
 	>

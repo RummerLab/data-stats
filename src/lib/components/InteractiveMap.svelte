@@ -94,7 +94,15 @@
 			ready = true;
 			await tick();
 			if (!el || cancelled) return;
-			map = L.map(el, { scrollWheelZoom: false, zoomSnap: 0.5 });
+			// Reduced motion (#32): jump instead of animating zooms and fades.
+			const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+			map = L.map(el, {
+				scrollWheelZoom: false,
+				zoomSnap: 0.5,
+				zoomAnimation: !still,
+				fadeAnimation: !still,
+				markerZoomAnimation: !still
+			});
 			const bases = Object.fromEntries(
 				BASEMAPS.map((b) => [
 					b.name,

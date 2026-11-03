@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { isoDay, registerCsv } from './csv';
 	import Tip, { type TipState } from './Tip.svelte';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './marks';
 	import { dateTicks, linear } from './scale';
 
 	let {
@@ -26,25 +27,37 @@
 	const hi = $derived(all.length ? Math.max(...all.map((i) => i.end)) : 1);
 	const sx = $derived(linear([lo, hi], [m.left, Math.max(m.left + 10, width - m.right)]));
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, label: string, text: string) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, label: string, text: string) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: label,
 			lines: [{ value: text }]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	// Marks run row by row; `first[i]` is the index of row i's first item.
+	const marks = $derived(
+		rows.flatMap((r) => r.items.map((it) => ({ label: r.label, tip: it.tip })))
+	);
+	const first = $derived(
+		rows.map((_, i) => rows.slice(0, i).reduce((a, r) => a + r.items.length, 0))
+	);
+	const keys = markKeys({
+		count: () => marks.length,
+		show: (k) => markAt(svg, k, (p) => show(p, marks[k].label, marks[k].tip)),
+		hide: () => (tip = null)
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role="img"
-		aria-label="Timeline"
+		{...keys}
+		aria-label={`Timeline. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		{#each dateTicks(lo, hi, Math.max(3, Math.floor(width / 90))) as t (t.v)}
@@ -75,7 +88,8 @@
 					rx="4"
 					fill={it.color ?? 'var(--series-1)'}
 					role="presentation"
-					onpointermove={(e) => show(e, r.label, it.tip)}
+					data-mark={first[i] + k}
+					onpointermove={(e) => show(pointerIn(e), r.label, it.tip)}
 				/>
 			{/each}
 		{/each}
