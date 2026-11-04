@@ -262,6 +262,8 @@
 				</div>
 			</div>
 		</section>
+	{/if}
+	{#if md}
 		<ModelDiagnostics groups={md.diagnostics} />
 	{/if}
 
