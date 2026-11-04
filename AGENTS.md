@@ -110,6 +110,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
+- Fit diagnostics (#125, `analytics/modelDiagnostics.ts`) reuse each fit's own rows, design matrix, counts and offsets, so they can't drift from the model. NB2 variance is μ + μ²/θ; P(0) falls back to Poisson when θ is infinite. Calibration rates are summed sharks over summed net-hours per group of sets. They are in-sample checks: not forecasting skill, and no leave-one-season-out (season is a fixed effect). Only rounded columns reach the page; keep it that way (the first draft sent 500 kB of JSON).
 
 ### Sex ratio mixed model (#117)
 
@@ -128,8 +129,6 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - The days are time between captures, not healing time or age. A transition gets a box only from five pairs (`MIN_BOX_PAIRS`). Labels match the rest of /neonates: open, healing, healed.
 
 ### School holidays (#25)
-
-- Catch-model diagnostics (#125) use each fit's exact rows/design/offsets; NB2 variance is μ + μ²/θ. They are in-sample checks, not validation of forecasting skill. Calibration rates are ratios of summed counts to summed net-hours; zero-catch plots require 20 sets per group.
 
 - `fetch-external.mjs --only=school` writes `external/school-holidays.csv` (first and last day off, local dates). 2013-14 to 2016-17 are transcribed in the script from the Polynesian government's calendar orders for collèges and lycées (arrêtés 0270/CM 2013, 0399, 0401 and 0403/CM 2014), archived from education.pf by the Wayback Machine; the national dataset only starts in 2017-18. From 2017-18 it is the Ministry's `fr-en-calendrier-scolaire` open data (Polynésie, Licence Ouverte 2.0, credit it): pupils only, a day counts when either level is off, `end_date` is the day classes resume.
 - The national data has slips (the 2023 November break "starts" on 28 September): fix them in `SCHOOL_ERRATA`. The job throws if breaks overlap, so a new typo fails the weekly refresh instead of reaching the site.

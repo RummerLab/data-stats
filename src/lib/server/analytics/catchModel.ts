@@ -5,12 +5,13 @@
  * fall through the season); the model estimates each one with the others held fixed. Still
  * observational: it adjusts for what is measured, nothing more.
  */
+import { SPECIES } from '#lib/species';
 import { mean, quantile, sd } from '#lib/stats';
-import { modelDiagnostics } from './modelDiagnostics';
 import type { Dataset, SetRow } from '../data';
 import { effortSets, round, seasonDay, seasonDayLabel, siteName } from './common';
 import { SET_VARIABLES } from './env';
 import { contrast, fitGlm, naturalSpline, type GlmFit } from './glm';
+import { modelDiagnostics } from './modelDiagnostics';
 
 /** Environmental terms, chosen to cover each family once (no near-duplicates like air vs sea). */
 const TERMS = [
@@ -190,9 +191,14 @@ export function catchModel(d: Dataset) {
 
 	return {
 		n: all.rows.length,
-		diagnostics: [all, cm, na].map((m, i) => ({
-			name: ['All sharks', 'Blacktip reef sharks', 'Sicklefin lemon sharks'][i],
-			data: modelDiagnostics(m.fit, m.rows, m.X, m.y, m.offset)
+		diagnostics: [
+			{ m: all, name: 'All sharks', color: 'var(--series-3)' },
+			{ m: cm, name: 'Blacktip reef sharks', color: SPECIES.Cm.color },
+			{ m: na, name: 'Sicklefin lemon sharks', color: SPECIES.Na.color }
+		].map(({ m, name, color }) => ({
+			name,
+			color,
+			data: modelDiagnostics(m.fit, m.rows, m.X, m.y, m.offset, (id) => siteName(d, id))
 		})),
 		dropped: effortSets(d).filter((s) => s.cpue != null).length - all.rows.length,
 		knots: knots.map((k) => seasonDayLabel(Math.round(k))),

@@ -13,7 +13,9 @@ it.skipIf(!process.env.REAL_DATA_DIR)(
 		expect(diagnostics).not.toBeNull();
 		expect(diagnostics!.n).toBe(model!.n);
 		expect(diagnostics!.bins.reduce((n, b) => n + b.n, 0)).toBe(model!.n);
-		expect(diagnostics!.points.every((p) => Number.isFinite(p.residual))).toBe(true);
+		expect(diagnostics!.residuals.value.every(Number.isFinite)).toBe(true);
+		for (const g of model!.diagnostics)
+			if (g.data) expect(g.data.residuals.value).toHaveLength(g.data.n);
 	},
 	60000
 );

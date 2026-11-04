@@ -1,7 +1,16 @@
+/**
+ * In-sample fit checks for the catch model (#125): calibration, zero-catch shares and Pearson
+ * residuals, from the exact rows, design matrix, counts and offsets of each fit. Only what the
+ * charts draw goes to the page, rounded, so /drivers stays light (#76).
+ */
 import type { SetRow } from '../data';
 import type { GlmFit } from './glm';
-import { seasonDay } from './common';
+import { round, seasonDay } from './common';
 
+/** Calibration groups: sets sorted by expected count, split into this many near-equal bins. */
+export const CALIBRATION_BINS = 10;
+
+/** NB2 P(Y = 0) = (θ / (θ + μ))^θ, with the Poisson limit e^−μ as θ → ∞. */
 export function zeroProbability(mu: number, theta: number) {
 	return Number.isFinite(theta) ? Math.exp(-theta * Math.log1p(mu / theta)) : Math.exp(-mu);
 }
@@ -12,7 +21,8 @@ export function modelDiagnostics(
 	rows: SetRow[],
 	X: number[][],
 	y: number[],
-	offsets: number[]
+	offsets: number[],
+	siteLabel: (id: string) => string = (id) => id
 ) {
 	if (
 		!fit?.converged ||
@@ -41,7 +51,7 @@ export function modelDiagnostics(
 	});
 	if (points.some((p) => !Number.isFinite(p.residual) || !Number.isFinite(p.hours))) return null;
 	const sorted = [...points].sort((a, b) => a.expected - b.expected);
-	const nBins = Math.min(10, points.length);
+	const nBins = Math.min(CALIBRATION_BINS, points.length);
 	const bins = Array.from({ length: nBins }, (_, i) => {
 		const ps = sorted.slice(
 			Math.floor((i * points.length) / nBins),
@@ -51,22 +61,34 @@ export function modelDiagnostics(
 		return {
 			bin: i + 1,
 			n: ps.length,
-			min: ps[0].expected,
-			max: ps.at(-1)!.expected,
-			hours,
-			expected: ps.reduce((n, p) => n + p.expected, 0) / hours,
-			observed: ps.reduce((n, p) => n + p.observed, 0) / hours
+			min: round(ps[0].expected, 2)!,
+			max: round(ps.at(-1)!.expected, 2)!,
+			hours: round(hours, 1)!,
+			// Rates are summed sharks over summed net-hours, never a mean of per-set rates.
+			expected: round(ps.reduce((n, p) => n + p.expected, 0) / hours, 3)!,
+			observed: round(ps.reduce((n, p) => n + p.observed, 0) / hours, 3)!
 		};
 	});
-	const zero = (key: 'site' | 'season') =>
-		[...new Set(points.map((p) => p[key]))].map((group) => {
+	const zero = (key: 'site' | 'season', label: (v: string) => string) =>
+		[...new Set(points.map((p) => p[key]))].sort().map((group) => {
 			const ps = points.filter((p) => p[key] === group);
 			return {
-				group,
+				group: label(group),
 				n: ps.length,
-				observed: ps.filter((p) => p.observed === 0).length / ps.length,
-				expected: ps.reduce((n, p) => n + p.zero, 0) / ps.length
+				observed: round((100 * ps.filter((p) => p.observed === 0).length) / ps.length, 1)!,
+				expected: round((100 * ps.reduce((n, p) => n + p.zero, 0)) / ps.length, 1)!
 			};
 		});
-	return { n: points.length, bins, sites: zero('site'), seasons: zero('season'), points };
+	return {
+		n: points.length,
+		bins,
+		sites: zero('site', siteLabel),
+		seasons: zero('season', (s) => s),
+		// Columns rather than objects: a few thousand points per model.
+		residuals: {
+			expected: points.map((p) => Number(p.expected.toPrecision(3))),
+			day: points.map((p) => p.day),
+			value: points.map((p) => round(p.residual, 2)!)
+		}
+	};
 }

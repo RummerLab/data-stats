@@ -1,7 +1,7 @@
 <script lang="ts">
-	import ModelDiagnostics from '#lib/components/ModelDiagnostics.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
+	import ModelDiagnostics from '#lib/components/ModelDiagnostics.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import ForestPlot from '#lib/components/charts/ForestPlot.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
@@ -50,13 +50,6 @@
 			The model further down estimates them together.
 		</p>
 	</header>
-	<ModelDiagnostics
-		groups={md?.diagnostics ?? [
-			{ name: 'All sharks', data: null },
-			{ name: 'Blacktip reef sharks', data: null },
-			{ name: 'Sicklefin lemon sharks', data: null }
-		]}
-	/>
 
 	<section class="section grid-2">
 		<ChartCard
@@ -269,6 +262,7 @@
 				</div>
 			</div>
 		</section>
+		<ModelDiagnostics groups={md.diagnostics} />
 	{/if}
 
 	<section class="section">
