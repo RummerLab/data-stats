@@ -49,22 +49,27 @@
 	const hi = $derived(domain?.[1] ?? (flat.length ? Math.max(...flat) : 1));
 	const absMax = $derived(Math.max(Math.abs(lo), Math.abs(hi)) || 1);
 
-	function fill(v: number | null): { color: string; opacity: number; dark: boolean } {
+	function fill(v: number | null): { color: string; opacity: number; ink: string } {
 		// No data: an empty dashed cell, never a colour from the scale (the lightest steps are
 		// close to --surface-2, in dark mode especially).
-		if (v == null || !Number.isFinite(v)) return { color: 'none', opacity: 1, dark: false };
+		if (v == null || !Number.isFinite(v)) return { color: 'none', opacity: 1, ink: 'var(--ink)' };
 		if (mode === 'div') {
 			const t = Math.max(-1, Math.min(1, v / absMax));
-			if (Math.abs(t) < 0.06) return { color: 'var(--div-mid)', opacity: 1, dark: false };
+			if (Math.abs(t) < 0.06) return { color: 'var(--div-mid)', opacity: 1, ink: 'var(--ink)' };
 			return {
 				color: t < 0 ? 'var(--div-neg)' : 'var(--div-pos)',
 				opacity: 0.18 + 0.82 * Math.abs(t),
-				dark: Math.abs(t) > 0.6
+				ink: Math.abs(t) > 0.6 ? '#ffffff' : 'var(--ink)'
 			};
 		}
 		const t = hi === lo ? 1 : (v - lo) / (hi - lo);
 		const k = Math.min(7, 1 + Math.floor(t * 6.999));
-		return { color: `var(--seq-${k})`, opacity: 1, dark: k >= 5 };
+		// The strong end is dark in light mode and pale in dark mode, so its text flips with it.
+		return {
+			color: `var(--seq-${k})`,
+			opacity: 1,
+			ink: k >= 5 ? 'var(--seq-strong-ink)' : 'var(--ink)'
+		};
 	}
 
 	let tip = $state<TipState | null>(null);
@@ -133,7 +138,7 @@
 						dy="0.32em"
 						text-anchor="middle"
 						font-size="10"
-						fill={f.dark ? '#ffffff' : 'var(--ink)'}
+						fill={f.ink}
 						pointer-events="none">{format(v)}</text
 					>
 				{/if}

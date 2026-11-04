@@ -24,7 +24,9 @@ const TERMS = [
 	'crew'
 ] as const;
 /** Nurseries need this many complete sets to get their own effect. */
-const MIN_SITE_SETS = 30;
+export const MIN_SITE_SETS = 30;
+/** The model needs this many sets from supported nurseries (and two nurseries, two seasons). */
+export const MIN_MODEL_SETS = 200;
 const SPLINE_KNOTS = [0, 0.25, 0.5, 0.75, 1];
 
 type Response = 'all' | 'Cm' | 'Na';
@@ -46,8 +48,9 @@ function count(s: SetRow, r: Response): number {
 }
 
 /** A species gets its own nursery effect only where it was caught at least this often. */
-const MIN_SITE_CATCH = 10;
+export const MIN_SITE_CATCH = 10;
 
+/** The sample selection behind every fit; /drivers shows it step by step (#123). */
 export function selectCatchModel(d: Dataset) {
 	const vars = TERMS.map((k) => SET_VARIABLES.find((v) => v.key === k)!);
 	const complete = effortSets(d).filter(
@@ -72,7 +75,7 @@ export function selectCatchModel(d: Dataset) {
 
 export function catchModel(d: Dataset) {
 	const { vars, perSite, sites, base, seasons, selectSpecies } = selectCatchModel(d);
-	if (base.length < 200 || sites.length < 2 || seasons.length < 2) return null;
+	if (base.length < MIN_MODEL_SETS || sites.length < 2 || seasons.length < 2) return null;
 
 	// Scales and spline knots come from the full model so every species shares the same units.
 	const scale = vars.map((v) => {

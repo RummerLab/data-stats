@@ -22,7 +22,6 @@
 			the source sheets.
 		</p>
 	</header>
-	<MeasurementCoverage data={data.coverage} />
 
 	<section class="section grid-2">
 		<div class="card">
@@ -35,6 +34,7 @@
 					{ key: 'sheets', label: 'Sheets / CSVs', num: true }
 				]}
 				rows={data.files}
+				label="Imported files"
 			/>
 			<p class="small">
 				{Object.entries(data.counts)
@@ -57,9 +57,12 @@
 					{ key: 'n', label: 'Notes', num: true }
 				]}
 				rows={data.summary}
+				label="Notes by type"
 			/>
 		</div>
 	</section>
+
+	<MeasurementCoverage data={data.coverage} />
 
 	<section class="section card">
 		<label class="filter"
@@ -81,6 +84,7 @@
 				{ key: 'value', label: 'Value' }
 			]}
 			rows={shown}
+			label="Data notes"
 		/>
 	</section>
 </div>
