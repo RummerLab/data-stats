@@ -1,3 +1,25 @@
+export const OISST_MAX_LAG_DAYS = 17;
+
+/** Yearly [start, end] chunks between two ISO dates. */
+export function chunks(start, end, lagDays = 0) {
+	const out = [];
+	let y = Number(start.slice(0, 4));
+	const endY = Number(end.slice(0, 4));
+	for (; y <= endY; y++) {
+		const s = y === Number(start.slice(0, 4)) ? start : `${y}-01-01`;
+		const e = y === endY ? end : `${y}-12-31`;
+		out.push([s, e]);
+	}
+	// Keep the entire publication-lag window in the request ending at `last`.
+	// In early January, December 31 may still be outside the published time axis.
+	const earliest = Date.parse(end) - lagDays * 86400000;
+	while (out.length > 1 && Date.parse(out.at(-1)[0]) > earliest) {
+		const tail = out.pop();
+		out.at(-1)[1] = tail[1];
+	}
+	return out;
+}
+
 /** Fetch yearly ERDDAP chunks; never publish a silently truncated historical series. */
 export async function readSeries({
 	base,
@@ -58,7 +80,7 @@ export function validateDaily(rows, variable, start, end) {
 	const dates = [...rows.keys()].sort();
 	const last = dates.at(-1);
 	const day = 86400000;
-	if (!last || Date.parse(end) - Date.parse(last) > 17 * day)
+	if (!last || Date.parse(end) - Date.parse(last) > OISST_MAX_LAG_DAYS * day)
 		throw new Error('OISST: stale or absent series');
 	for (let t = Date.parse(start); t <= Date.parse(last); t += day) {
 		const date = new Date(t).toISOString().slice(0, 10);

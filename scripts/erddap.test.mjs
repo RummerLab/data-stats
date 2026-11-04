@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readSeries } from './erddap.mjs';
+import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 const csv = (value) =>
 	`time,zlev,latitude,longitude,sst\nUTC,m,degrees_north,degrees_east,degree_C\n2013-08-01T12:00:00Z,0,-17.625,210.125,${value}\n`;
 const options = {
@@ -105,3 +105,27 @@ test('bounded mirror recovery requests only the missing date', async () => {
 	assert.ok(!url.includes('(last)'));
 	assert.ok(url.includes('(2013-08-01T12:00:00Z):1:(2013-08-01T12:00:00Z)'));
 });
+
+for (const end of ['2027-01-01', '2027-01-17', '2027-01-18']) {
+	test(`publication lag across New Year (${end}) retains the published December tail`, async () => {
+		const last = new Date(Date.parse(end) - OISST_MAX_LAG_DAYS * 86400000)
+			.toISOString()
+			.slice(0, 10);
+		const start = '2026-12-01';
+		const rows = await readSeries({
+			...options,
+			chunks: chunks(start, end, OISST_MAX_LAG_DAYS),
+			get: async (url) => {
+				const [, from, stop] = decodeURIComponent(url).match(/\[\(([^)]+)\):1:\(([^)]+)\)\]/);
+				const until = stop === 'last' ? last : stop.slice(0, 10);
+				if (from.slice(0, 10) > last || until > last) throw new Error('404 outside time axis');
+				const lines = [];
+				for (let t = Date.parse(from); t <= Date.parse(until + 'T12:00:00Z'); t += 86400000)
+					lines.push(`${new Date(t).toISOString()},0,-17.625,210.125,25`);
+				return csv('25').split('\n').slice(0, 2).join('\n') + '\n' + lines.join('\n');
+			}
+		});
+		assert.doesNotThrow(() => validateDaily(rows, 'sst', start, end));
+		assert.equal([...rows.keys()].sort().at(-1), last);
+	});
+}

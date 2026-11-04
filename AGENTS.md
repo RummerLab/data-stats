@@ -145,7 +145,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 ### Satellite SST (#154)
 
 - OISST v2.1 comes from NOAA upwell ERDDAP, dataset `ncdcOisst21Agg`, dimensions time / zlev=0 / latitude=-17.625 / longitude=210.125 (0–360°, equivalent to −149.875). The old `LonPM180` endpoint returned 503 and left the series empty. The aggregation also omits historical dates: recover those from NOAA upwell `oisst_rclone` (same grid and final product, surface dimension named `depth`), then validate continuity before writing.
-- `node scripts/fetch-external.mjs --only=oisst` repairs only the OISST column of the existing ocean snapshot; the regular ocean job refreshes all ocean variables. Historical failures and missing daily OISST values are fatal; only up to 17 days of lag relative to the requested end date are allowed. Run `node --test scripts/erddap.test.mjs` (also included in `pnpm test`).
+- `node scripts/fetch-external.mjs --only=oisst` repairs only the OISST column of the existing ocean snapshot; the regular ocean job refreshes all ocean variables. Historical failures and missing daily OISST values are fatal; only up to 17 days of lag relative to the requested end date are allowed. Keep the full 17-day publication-lag window in the final `last` request (merge the last yearly chunks in early January); December 31 may still be unpublished. Run `node --test scripts/erddap.test.mjs` (also included in `pnpm test`).
 - SST consumers prefer OISST, then CRW CoralTemp. Use `SST_SOURCE` from `src/lib/sst.ts` for source copy; /ocean reports source coverage. A snapshot change already invalidates caches, so no importer-version bump is needed without import-logic changes.
 
 ### Adding a new season

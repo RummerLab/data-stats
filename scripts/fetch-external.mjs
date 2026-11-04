@@ -27,7 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
-import { readSeries, validateDaily } from './erddap.mjs';
+import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.EXTERNAL_DIR || join(root, 'external');
@@ -66,19 +66,6 @@ async function get(url, { json = false, tries = 5 } = {}) {
 		await sleep(2000 * (i + 1) ** 2);
 	}
 	throw new Error(`failed: ${url}`);
-}
-
-/** Yearly [start, end] chunks between two ISO dates. */
-function chunks(start, end) {
-	const out = [];
-	let y = Number(start.slice(0, 4));
-	const endY = Number(end.slice(0, 4));
-	for (; y <= endY; y++) {
-		const s = y === Number(start.slice(0, 4)) ? start : `${y}-01-01`;
-		const e = y === endY ? end : `${y}-12-31`;
-		out.push([s, e]);
-	}
-	return out;
 }
 
 const fmt = (v, dp = 2) =>
@@ -164,14 +151,14 @@ async function weather() {
 	);
 }
 
-async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = false) {
+async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = false, lagDays = 0) {
 	return readSeries({
 		base,
 		dataset,
 		vars,
 		lat,
 		lon,
-		chunks: chunks(start, end),
+		chunks: chunks(start, end, lagDays),
 		zlev,
 		get,
 		sleep
@@ -188,7 +175,8 @@ async function fetchOisst(end) {
 		210.125,
 		START,
 		end,
-		true
+		true,
+		OISST_MAX_LAG_DAYS
 	);
 	// The legacy aggregation omits some archived dates. Recover those from NOAA's
 	// complete OISST v2.1 final-product mirror, never interpolate or invent values.
