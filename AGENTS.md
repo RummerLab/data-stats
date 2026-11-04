@@ -122,6 +122,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - φ is apparent: death and leaving look the same, and moving to another nursery counts as leaving. Nurseries need ≥ 10 pups seen again in a later fortnight of the same season. The transience model gives the first fortnight after tagging its own φ.
 - `fitCjs` is generic and validated on simulated histories in `survival.test.ts`. Reuse it rather than writing another fitter. Wald intervals are on the logit scale and are null at the boundary (φ ≈ 1).
 
+### Scar transitions (#126)
+
+- `analytics/scarTransitions.ts` pairs consecutive field captures of one shark within a season that both have a scar stage. Unknown stages are skipped. These pairs are left out: identity conflicts, a capture sharing its day with another, pairs spanning two seasons and pairs with a lab stay in between. Backward transitions stay visible and are counted for the lab.
+- The days are time between captures, not healing time or age. A transition gets a box only from five pairs (`MIN_BOX_PAIRS`). Labels match the rest of /neonates: open, healing, healed.
+
 ### School holidays (#25)
 
 - `fetch-external.mjs --only=school` writes `external/school-holidays.csv` (first and last day off, local dates). 2013-14 to 2016-17 are transcribed in the script from the Polynesian government's calendar orders for collèges and lycées (arrêtés 0270/CM 2013, 0399, 0401 and 0403/CM 2014), archived from education.pf by the Wayback Machine; the national dataset only starts in 2017-18. From 2017-18 it is the Ministry's `fr-en-calendrier-scolaire` open data (Polynésie, Licence Ouverte 2.0, credit it): pupils only, a day counts when either level is off, `end_date` is the day classes resume.

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ScarTransitions from '#lib/components/ScarTransitions.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import LineChart from '#lib/components/charts/LineChart.svelte';
@@ -185,4 +186,6 @@
 			/>
 		</ChartCard>
 	</section>
+
+	<ScarTransitions groups={data.scarTransitions} />
 </div>
