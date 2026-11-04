@@ -1,6 +1,6 @@
 <script lang="ts">
-	import SamplingConditions from '#lib/components/SamplingConditions.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
+	import SamplingConditions from '#lib/components/SamplingConditions.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
 	import Histogram from '#lib/components/charts/Histogram.svelte';
@@ -22,7 +22,6 @@
 				.join(' · ')}.
 		</p>
 	</header>
-	<SamplingConditions data={data.samplingConditions} />
 
 	<section class="section">
 		<ChartCard title="Sets per nursery and season" subtitle="Gillnet sets (numbers in cells)">
@@ -44,6 +43,8 @@
 			/>
 		</ChartCard>
 	</section>
+
+	<SamplingConditions data={data.samplingConditions} />
 
 	<section class="section grid-2">
 		<ChartCard

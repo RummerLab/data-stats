@@ -95,8 +95,6 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Cyclones and heavy rain (#24)
 
-- Sampling-condition distributions (#124) compare distinct dates within a selected nursery/calendar month. Both groups use identical daily environmental values; reference dates include sampled days. Never pool dates across nursery-month strata without explicit weights or test the overlapping groups as independent samples.
-
 - `fetch-external.mjs --only=cyclones` downloads the IBTrACS South Pacific CSV (~36 MB) and keeps track points within 750 km of Moorea since 2013 (`external/cyclones.csv`, `cyclone_points` table). Analyses use 500 km.
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
@@ -134,6 +132,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `fetch-external.mjs --only=school` writes `external/school-holidays.csv` (first and last day off, local dates). 2013-14 to 2016-17 are transcribed in the script from the Polynesian government's calendar orders for collèges and lycées (arrêtés 0270/CM 2013, 0399, 0401 and 0403/CM 2014), archived from education.pf by the Wayback Machine; the national dataset only starts in 2017-18. From 2017-18 it is the Ministry's `fr-en-calendrier-scolaire` open data (Polynésie, Licence Ouverte 2.0, credit it): pupils only, a day counts when either level is off, `end_date` is the day classes resume.
 - The national data has slips (the 2023 November break "starts" on 28 September): fix them in `SCHOOL_ERRATA`. The job throws if breaks overlap, so a new typo fails the weekly refresh instead of reaching the site.
 - `dayType` precedence: public holiday > festive window > school holidays > weekend. The pressure page also compares school-holiday weekdays with term-time weekdays, which keeps weekends out of the contrast.
+
+### Sampling conditions (#124)
+
+- `analytics/samplingConditions.ts` compares daily rain, daily maximum wind and SST on fieldwork nights (distinct dates with a nursery gillnet set: island-wide series, so a night counts once) with every day of the same calendar months. Each month's days are weighted by its fieldwork nights ÷ its days with a value, so the reference has the fieldwork's seasonal mix. One nursery-month holds a median of two nights, too few to plot alone.
+- The reference contains the fieldwork nights, so no two-sample test: the statistic is checked against seeded random draws of the same number of days from each month (`DRAWS`). Fieldwork nights are a little drier and calmer than their months (about 0.7 mm less rain); describe it as coverage, not as weather stopping trips.
 
 ### Adding a new season
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
-test('new charts render on mobile and pass both-theme accessibility', async ({ page }) => {
+test('sampling conditions fit a phone and pass axe in both themes', async ({ page }) => {
 	await page.setViewportSize({ width: 375, height: 800 });
 	await page.goto('/effort');
 	await expect(
