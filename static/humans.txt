@@ -1,0 +1,22 @@
+/* TEAM */
+Scientist: Dr Jodie Rummer
+Site: RummerLab, James Cook University
+Contact: https://physioshark.org/ · https://rummerlab.com/
+Location: Townsville, Australia / Mo'orea, French Polynesia
+
+Developer: Luen Warneke
+Contact: https://github.com/Luen
+From: Australia
+
+Collaboration: CRIOBE (Centre de Recherches Insulaires et Observatoire de l'Environnement)
+
+/* THANKS */
+Field crews, students and volunteers named in thirteen seasons of Physioshark set logs
+Open environmental data providers: Open-Meteo (ERA5), NOAA (OISST, Coral Reef Watch, IBTrACS, CPC ENSO, VIIRS chlorophyll), UHSLC Papeete tide gauge, French Polynesia school calendars
+
+/* SITE */
+Standards: HTML5, CSS
+Components: SvelteKit, Svelte 5, Drizzle ORM, SQLite, Tailwind CSS
+Software: Node.js, pnpm, Docker
+Language: English
+Doctype: HTML5
