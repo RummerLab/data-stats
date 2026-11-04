@@ -94,6 +94,20 @@ describe('import of the synthetic fixture', () => {
 		for (const b of d.schoolHolidays) expect(b.start <= b.end).toBe(true);
 	});
 
+	it('loads offshore chlorophyll and joins it to sets (#23)', () => {
+		// external/ is the committed public satellite snapshot, not synthetic data.
+		const weeks = d.chlorophyll.filter((w) => w.chl != null);
+		expect(weeks.length).toBeGreaterThan(500);
+		// Open South Pacific water: well under 1 mg/m³. Coastal pixels would push this up.
+		for (const w of weeks) expect(w.chl!).toBeLessThan(0.5);
+		const set = d.sets.find((s) => s.date && s.chl != null)!;
+		const t = Date.parse(`${set.date}T00:00:00Z`);
+		const week = weeks.find(
+			(w) => Math.abs(Date.parse(`${w.date}T00:00:00Z`) - t) <= 3 * 86_400_000
+		);
+		expect(set.chl).toBe(week?.chl);
+	});
+
 	it('computes findings without throwing', () => {
 		expect(topFindings(d).length).toBeGreaterThan(3);
 	});

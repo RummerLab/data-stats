@@ -1,6 +1,8 @@
 import { memo, tideExtrema, tideHourlyAll } from '#lib/server/data';
 import { binnedMean, cpueOf, effortSets, fieldCaptures, round } from '#lib/server/analytics/common';
-import { countBy, histogram, mean } from '#lib/stats';
+import { chiSquareP, countBy, histogram, mean } from '#lib/stats';
+import { rateSlopeText, rateTest, rateText } from '#lib/server/analytics/tests';
+import { num, pValue } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -61,8 +63,34 @@ export const load: PageServerLoad = () =>
 			avail[next > h.mm + 2 ? 'rising' : next < h.mm - 2 ? 'falling' : 'slack']++;
 		}
 		const totalAvail = avail.rising + avail.slack + avail.falling || 1;
+		// Goodness of fit: are captures spread over tide states as the evening offers them?
+		const share = [avail.rising, avail.slack, avail.falling].map((v) => v / totalAvail);
+		const gof = (counts: number[], name: string) => {
+			const n = counts.reduce((a, b) => a + b, 0);
+			if (n < 30) return null;
+			const stat = counts.reduce((a, o, i) => a + (o - n * share[i]) ** 2 / (n * share[i]), 0);
+			const p = chiSquareP(stat, 2);
+			return `${name}: ${p < 0.05 ? 'not spread as the tide states occur' : 'spread as the tide states occur'} (χ² goodness of fit = ${num(stat, 1)}, df = 2, ${pValue(p)}, ${num(n)} captures; sharks from one set aren't independent, so p is optimistic).`;
+		};
+		const fieldKey = (s: (typeof sets)[number]) =>
+			['low', 'high', 'incoming', 'outgoing', 'flooding', 'ebbing'].find(
+				(k) => s.tideRaw && new RegExp(`^${k}`, 'i').test(s.tideRaw.trim())
+			) ?? null;
+		const stats = {
+			state: [gof(trendCounts('Cm'), 'Blacktips'), gof(trendCounts('Na'), 'Sicklefin lemons')],
+			height: rateSlopeText(
+				rateTest(sets, { valueOf: (s) => (s.tideMidMm == null ? null : s.tideMidMm / 100) }),
+				'tide height'
+			),
+			direction: rateText(
+				rateTest(sets, { groupOf: (s) => s.tideTrend }),
+				'rising, slack and falling tides'
+			),
+			field: rateText(rateTest(sets, { groupOf: fieldKey }), "the crew's tide notes")
+		};
 
 		return {
+			stats,
 			heat,
 			daily,
 			highsEdges: Array.from({ length: 25 }, (_, i) => i),

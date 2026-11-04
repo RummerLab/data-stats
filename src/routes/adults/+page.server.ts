@@ -1,6 +1,8 @@
 import { memo } from '#lib/server/data';
 import { round } from '#lib/server/analytics/common';
-import { countBy, histogram, linearFit, mean, pairs } from '#lib/stats';
+import { countBy, histogram, linearFit, mean, pairedT, pairs } from '#lib/stats';
+import { twoGroupText } from '#lib/server/analytics/tests';
+import { num, pValue } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -24,7 +26,45 @@ export const load: PageServerLoad = () =>
 				return times.length ? times[0] - e.baitInMin! : null;
 			})
 			.filter((v): v is number => v != null && v >= 0);
+		// Pregnant females vs other females at the same length: girth residuals from a line fitted
+		// to the non-pregnant sharks.
+		const girthFit = linearFit(
+			a
+				.filter((x) => x.tlMm && x.pecGirthMm && x.pregnant !== 'Y')
+				.map((x) => [x.tlMm!, x.pecGirthMm!] as [number, number])
+		);
+		const resid = (x: (typeof a)[number]) =>
+			girthFit && x.tlMm && x.pecGirthMm
+				? x.pecGirthMm - (girthFit.intercept + girthFit.slope * x.tlMm)
+				: null;
+		const lactT = pairedT(
+			a
+				.filter((x) => x.lact1 != null && x.lact2 != null)
+				.map((x) => [x.lact1!, x.lact2!] as [number, number])
+		);
+		const stats = {
+			size: twoGroupText(
+				a.filter((x) => x.sex === 'F').map((x) => x.tlMm),
+				a.filter((x) => x.sex === 'M').map((x) => x.tlMm),
+				'females and males',
+				'mm for females'
+			),
+			lact: lactT
+				? `Second draw ${lactT.diff >= 0 ? '+' : '−'}${num(Math.abs(lactT.diff), 1)} mmol/L on average, ${lactT.p < 0.05 ? 'a real change' : 'no more than chance'} (paired t-test, ${pValue(lactT.p)}, n = ${num(lactT.df + 1)}).`
+				: null,
+			girth: girthFit
+				? `Girth on length (non-pregnant sharks): R² = ${num(girthFit.r2, 2)}, ${pValue(girthFit.p)}. ${
+						twoGroupText(
+							a.filter((x) => x.pregnant === 'Y').map(resid),
+							a.filter((x) => x.sex === 'F' && x.pregnant !== 'Y').map(resid),
+							'pregnant and other females at the same length',
+							'mm of girth when pregnant'
+						) ?? ''
+					}`
+				: null
+		};
 		return {
+			stats,
 			n: a.length,
 			sex: Object.fromEntries(countBy(a, (x) => x.sex)),
 			maturity: [...countBy(a, (x) => x.maturity ?? 'Unknown').entries()].map(([k, n]) => ({

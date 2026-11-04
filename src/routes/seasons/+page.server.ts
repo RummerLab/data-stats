@@ -9,6 +9,7 @@ import {
 	round
 } from '#lib/server/analytics/common';
 import { mean } from '#lib/stats';
+import { groupsText, tableText, trendText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -51,5 +52,46 @@ export const load: PageServerLoad = () =>
 				crew: people.size
 			};
 		});
-		return { rows };
+		const firstBy = d.seasons.map((season) =>
+			firstPerSeason(caps.filter((c) => c.season === season))
+		);
+		const effBy = d.seasons.map((season) => eff.filter((s) => s.season === season));
+		const stats = {
+			zero: [
+				tableText(
+					effBy.map((ss) => [
+						ss.filter((s) => !s.nTotal).length,
+						ss.filter((s) => s.nTotal).length
+					]),
+					'seasons'
+				),
+				trendText(rows.map((r) => r.zero))
+			],
+			neonates: [
+				tableText(
+					firstBy.map((f) => [f.filter(isNeonate).length, f.filter((c) => !isNeonate(c)).length]),
+					'seasons'
+				),
+				trendText(rows.map((r) => r.neonatePct))
+			],
+			tlCm: [
+				groupsText(
+					firstBy.map((f) => f.filter((c) => c.species === 'Cm').map((c) => c.tlMm)),
+					'seasons'
+				),
+				trendText(
+					rows.map((r) => r.tlCm),
+					'mm'
+				)
+			],
+			sst: trendText(
+				rows.map((r) => r.sst),
+				'°C'
+			),
+			crew: trendText(
+				rows.map((r) => r.crew),
+				'people'
+			)
+		};
+		return { rows, stats };
 	});

@@ -44,6 +44,7 @@ export interface Dataset {
 	notes: (typeof schema.fieldNotes.$inferSelect)[];
 	weather: WeatherDay[];
 	ocean: OceanDay[];
+	chlorophyll: (typeof schema.chlorophyllWeekly.$inferSelect)[];
 	climate: (typeof schema.climateMonthly.$inferSelect)[];
 	cyclones: (typeof schema.cyclonePoints.$inferSelect)[];
 	schoolHolidays: (typeof schema.schoolHolidays.$inferSelect)[];
@@ -97,6 +98,11 @@ export function dataset(): Dataset {
 		notes: db.select().from(schema.fieldNotes).all(),
 		weather: db.select().from(schema.weatherDaily).orderBy(asc(schema.weatherDaily.date)).all(),
 		ocean: db.select().from(schema.oceanDaily).orderBy(asc(schema.oceanDaily.date)).all(),
+		chlorophyll: db
+			.select()
+			.from(schema.chlorophyllWeekly)
+			.orderBy(asc(schema.chlorophyllWeekly.date))
+			.all(),
 		climate: db.select().from(schema.climateMonthly).orderBy(asc(schema.climateMonthly.ym)).all(),
 		cyclones: db.select().from(schema.cyclonePoints).orderBy(asc(schema.cyclonePoints.ts)).all(),
 		schoolHolidays: db

@@ -8,7 +8,9 @@ import {
 	siteName
 } from '#lib/server/analytics/common';
 import { vonBertalanffy } from '#lib/server/analytics/population';
-import { histogram, linearFit, mean, median, pairs } from '#lib/stats';
+import { histogram, linearFit, mean, median, pairedT, pairs } from '#lib/stats';
+import { fitText, groupsText, rankText, twoGroupText } from '#lib/server/analytics/tests';
+import { num, pValue } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -64,7 +66,62 @@ export const load: PageServerLoad = () =>
 			.filter((l) => l.rate > -1 && l.rate < 3);
 
 		const nurseries = activeNurseries(d);
+		const ofSp = (sp: string) => within.filter((g) => g.species === sp);
+		const named = (name: string, text: string | null) => (text ? `${name}: ${text}` : null);
+		const spread = (sp: string) => {
+			const m = median(ofSp(sp).map((g) => g.rate)) ?? 0;
+			return ofSp(sp).map((g) => [g.days, Math.abs(g.rate - m)] as [number, number]);
+		};
+		const massVsZero = (sp: string, name: string) => {
+			const t = pairedT(
+				ofSp(sp)
+					.filter((g) => g.massRate != null)
+					.map((g) => [0, g.massRate!] as [number, number])
+			);
+			return t
+				? `${name}: mean ${t.diff >= 0 ? '+' : '−'}${num(Math.abs(t.diff), 1)} g per day, ${t.p < 0.05 ? 'different from' : 'not different from'} no change (t-test, ${pValue(t.p)}, n = ${num(t.df + 1)}).`
+				: null;
+		};
+		const stats = {
+			dist: twoGroupText(
+				ofSp('Cm').map((g) => g.rate),
+				ofSp('Na').map((g) => g.rate),
+				'blacktips and sicklefin lemons',
+				'mm per day'
+			),
+			noise: named(
+				'Distance from the median growth rate against days between captures (blacktips)',
+				rankText(spread('Cm'))
+			),
+			size: ['Cm', 'Na'].map((sp) =>
+				named(
+					sp === 'Cm' ? 'Blacktips' : 'Sicklefin lemons',
+					fitText(
+						ofSp(sp).map((g) => [g.tl0, g.rate]),
+						'mm/day per mm'
+					)
+				)
+			),
+			site: groupsText(
+				nurseries.map((id) => within.filter((g) => g.site === id).map((g) => g.rate)),
+				'nurseries (all species)'
+			),
+			mass: [massVsZero('Cm', 'Blacktips'), massVsZero('Na', 'Sicklefin lemons')],
+			labTl: twoGroupText(
+				lab.map((l) => l.rate),
+				ofSp('Cm').map((g) => g.rate),
+				'lab and field blacktips',
+				'mm per day in the lab'
+			),
+			labMass: twoGroupText(
+				lab.map((l) => l.massRate),
+				ofSp('Cm').map((g) => g.massRate),
+				'lab and field blacktips',
+				'g per day in the lab'
+			)
+		};
 		return {
+			stats,
 			vbgf: vonBertalanffy(d),
 			n: within.length,
 			medianCm: round(median(within.filter((g) => g.species === 'Cm').map((g) => g.rate)), 2),

@@ -13,12 +13,12 @@
 	let { data }: PageProps = $props();
 	const seasons = $derived(data.kSeasons.map(season));
 	const sexFit = (sp: 'Cm' | 'Na') => data.sexModel.find((m) => m.species === sp)?.fit ?? null;
-	/** Mixed-model season test for a per-season chart (#117). */
-	const seasonNote = (sp: 'Cm' | 'Na') => {
+	/** Mixed-model test for the nursery or season charts (#117), shown as the ChartCard stats line. */
+	const sexStats = (sp: 'Cm' | 'Na', by: 'nursery' | 'season') => {
 		const f = sexFit(sp);
-		return f
-			? `Mixed model (nursery and season as random effects): seasons vary by SD ${num(f.seasonSd, 2)} on the log-odds scale, likelihood-ratio ${pValue(f.seasonP)}${f.seasonP != null && f.seasonP >= 0.05 ? ': no more than chance' : ''}.`
-			: undefined;
+		if (!f) return null;
+		const [sd, p] = by === 'nursery' ? [f.nurserySd, f.nurseryP] : [f.seasonSd, f.seasonP];
+		return `Logistic mixed model (nursery and season as random effects): ${by === 'nursery' ? 'nurseries' : 'seasons'} vary by SD ${num(sd, 2)} on the log-odds scale, likelihood-ratio ${pValue(p)}${p != null && p >= 0.05 ? ': no more than chance' : ''}.`;
 	};
 	// Nurseries with at least 20 sharks; smaller ones sit at the typical share by design.
 	const nurseryRows = (sp: 'Cm' | 'Na') => (sexFit(sp)?.nurseries ?? []).filter((r) => r.n >= 20);
@@ -43,6 +43,7 @@
 		<ChartCard
 			title="Length-frequency"
 			subtitle={`Total length at first capture. Median: blacktip ${num(data.medianTl.Cm)} mm, sicklefin lemon ${num(data.medianTl.Na)} mm.`}
+			stats={data.stats.lf}
 		>
 			<Histogram
 				edges={data.edges}
@@ -66,6 +67,7 @@
 					: '',
 				'b ≈ 3 means mass grows with the cube of length (isometric growth).'
 			].join(' ')}
+			stats={data.stats.lw}
 		>
 			<Scatter
 				points={lwPoints}
@@ -101,6 +103,7 @@
 			title="Newborn blacktip condition by nursery"
 			papers={['weideli2019condition']}
 			subtitle="Fulton's K = 100·mass(g)/TL(cm)³ for newborns (open or healing umbilical scar)"
+			stats={data.stats.kSite}
 		>
 			<BoxPlot
 				boxes={data.kBySite.map((b) => ({ ...b, color: SPECIES.Cm.color }))}
@@ -112,6 +115,7 @@
 			title="Newborn condition by season"
 			papers={['weideli2019condition', 'debaere2023umbilicus']}
 			subtitle="Mean Fulton's K of newborns"
+			stats={data.stats.kSeason}
 		>
 			<LineChart
 				series={[
@@ -132,7 +136,11 @@
 				yFormat={(v) => num(v, 2)}
 			/>
 		</ChartCard>
-		<ChartCard title="Blacktip size by season" subtitle="Total length at first capture">
+		<ChartCard
+			title="Blacktip size by season"
+			subtitle="Total length at first capture"
+			stats={data.stats.tlSeason}
+		>
 			<BoxPlot
 				boxes={data.tlCm.map((b) => ({ ...b, color: SPECIES.Cm.color }))}
 				yLabel="TL (mm)"
@@ -189,6 +197,7 @@
 					<ChartCard
 						title={`Share of females by nursery: ${speciesName(sp).toLowerCase()}`}
 						subtitle="Mixed-model estimate for each nursery with ≥ 20 sharks (first captures, n in brackets). Whiskers: approximate 95% intervals. Estimates are pulled towards the typical share when the data are thin."
+						stats={sexStats(sp, 'nursery')}
 					>
 						<BarChart
 							horizontal
@@ -211,7 +220,7 @@
 			<ChartCard
 				title="Share of females per season: blacktip"
 				subtitle="Bars show the share, whiskers the 95% Wilson interval; 50% is an even ratio"
-				note={seasonNote('Cm')}
+				stats={sexStats('Cm', 'season')}
 			>
 				<BarChart
 					categories={data.sexCm.map((r) => season(r.season))}
@@ -222,7 +231,10 @@
 					valueFormat={(v) => pct(v)}
 				/>
 			</ChartCard>
-			<ChartCard title="Share of females per season: sicklefin lemon" note={seasonNote('Na')}>
+			<ChartCard
+				title="Share of females per season: sicklefin lemon"
+				stats={sexStats('Na', 'season')}
+			>
 				<BarChart
 					categories={data.sexNa.map((r) => season(r.season))}
 					series={[
@@ -262,6 +274,7 @@
 			<ChartCard
 				title="Clasper development"
 				subtitle="Inner clasper length against total length in males: claspers lengthen as males approach maturity"
+				stats={data.stats.claspers}
 			>
 				<Scatter
 					points={data.claspers}

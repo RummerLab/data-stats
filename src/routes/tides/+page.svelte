@@ -97,6 +97,7 @@
 			<ChartCard
 				title="Tide state when sharks were caught"
 				subtitle="Share of captures on a rising, slack or falling tide, against how often each state occurs in the evening (17–21 h)"
+				stats={data.stats.state}
 			>
 				<BarChart
 					categories={['Rising', 'Slack', 'Falling']}
@@ -119,6 +120,7 @@
 				title="Catch rate by tide height mid-set"
 				papers={['debaere2024lunar']}
 				subtitle="Whiskers: 95% confidence intervals"
+				stats={data.stats.height}
 			>
 				<BarChart
 					categories={data.cpueHeight.map((b) => b.label)}
@@ -133,7 +135,11 @@
 					valueFormat={(v) => num(v, 2)}
 				/>
 			</ChartCard>
-			<ChartCard title="Catch rate by tide direction mid-set" papers={['debaere2024lunar']}>
+			<ChartCard
+				title="Catch rate by tide direction mid-set"
+				papers={['debaere2024lunar']}
+				stats={data.stats.direction}
+			>
 				<BarChart
 					categories={data.cpueTrend.map((t) => `${t.k} (${t.n})`)}
 					series={[
@@ -151,6 +157,7 @@
 				<ChartCard
 					title="Tide stage written in the field logs"
 					subtitle="Catch rate by the crew's own tide note (sets in brackets)"
+					stats={data.stats.field}
 				>
 					<BarChart
 						categories={data.fieldTide.map((t) => `${t.k} (${t.n})`)}

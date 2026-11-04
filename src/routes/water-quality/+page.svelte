@@ -169,7 +169,7 @@
 	{/if}
 
 	<section class="section grid-2">
-		<ChartCard title="Water temperature at the net">
+		<ChartCard title="Water temperature at the net" stats={data.stats.temp}>
 			<BoxPlot
 				boxes={data.temp.map((b) => ({ ...b, color: 'var(--series-2)' }))}
 				yLabel="°C"
@@ -202,7 +202,7 @@
 				r={4}
 			/>
 		</ChartCard>
-		<ChartCard title="pH" papers={['bouyoucos2024abiotic']}>
+		<ChartCard title="pH" papers={['bouyoucos2024abiotic']} stats={data.stats.ph}>
 			<BoxPlot
 				boxes={data.ph.map((b) => ({ ...b, color: 'var(--series-7)' }))}
 				yLabel="pH"
@@ -213,6 +213,7 @@
 			title="Salinity"
 			papers={['bouyoucos2024abiotic']}
 			subtitle="ppt; freshwater runoff lowers it near streams"
+			stats={data.stats.sal}
 		>
 			<BoxPlot
 				boxes={data.sal.map((b) => ({ ...b, color: 'var(--series-1)' }))}
@@ -225,6 +226,7 @@
 				title="Dissolved oxygen"
 				papers={['bouyoucos2021oxygen', 'bouyoucos2024abiotic']}
 				subtitle="mg/L"
+				stats={data.stats.doMg}
 			>
 				<BoxPlot
 					boxes={data.doMg.map((b) => ({ ...b, color: 'var(--series-3)' }))}

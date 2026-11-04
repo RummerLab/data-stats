@@ -11,6 +11,7 @@ import {
 } from '#lib/server/analytics/insitu';
 import { cloudWater } from '#lib/server/analytics/cloud';
 import { linearFit, mean, pairs } from '#lib/stats';
+import { groupsText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 const dayNum = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
@@ -39,6 +40,16 @@ export const load: PageServerLoad = () =>
 				sst: null
 			}))
 		];
+		const nurseryTest = (k: 'temp' | 'ph' | 'doMg' | 'sal', lo: number, hi: number) =>
+			groupsText(
+				nurseries.map((id) =>
+					readings
+						.filter((r) => r.siteId === id)
+						.map((r) => r[k])
+						.filter((v) => v != null && v >= lo && v <= hi)
+				),
+				'nurseries'
+			);
 		const by = (k: 'temp' | 'ph' | 'doMg' | 'sal', lo: number, hi: number) =>
 			nurseries
 				.map((id) => ({
@@ -134,6 +145,12 @@ export const load: PageServerLoad = () =>
 			ph: by('ph', 7, 9),
 			doMg: by('doMg', 1, 15),
 			sal: by('sal', 25, 45),
+			stats: {
+				temp: nurseryTest('temp', 20, 40),
+				ph: nurseryTest('ph', 7, 9),
+				doMg: nurseryTest('doMg', 1, 15),
+				sal: nurseryTest('sal', 25, 45)
+			},
 			tempVsSst: tv.map((s) => ({
 				x: s.sst!,
 				y: s.waterTemp!,

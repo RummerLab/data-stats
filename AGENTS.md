@@ -47,6 +47,8 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
                          glmm.ts (binomial mixed model, crossed random intercepts) · sex.ts
+                         survival.ts (Cormack–Jolly–Seber apparent survival, BFGS)
+                         tests.ts (the statistic behind each chart, worded for ChartCard stats)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
                          school holidays (schoolDays) and the one-label-per-date dayType
@@ -98,6 +100,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
 
+### Chlorophyll-a (#23)
+
+- `fetch-external.mjs --only=chlorophyll` reads NOAA S-NPP VIIRS science-quality weekly chlorophyll (`noaacwNPPVIIRSSQchlaWeekly` on coastwatch.noaa.gov ERDDAP; the pfeg copy only redirects there) for a box around Moorea and writes one median per week (`external/chlorophyll-weekly.csv`, `chlorophyll_weekly` table, `sets.chl` for the week holding the set date).
+- The median covers an offshore ring: pixels within 30 km of Moorea's centre and ≥ 10 km from any pixel with no value in more than half the weeks (land and coast, Tahiti's included). Coastal pixels read tens of times the open ocean (land in the pixel, lagoon floor, haze), and some get a value often enough that "never valid" misses them. The job throws if the ring shrinks below 40 pixels.
+- Science-quality weeks lag by about six weeks. It is the ocean around the island, not lagoon water; don't describe it as conditions in the nurseries.
+
 ### Catch model (#54)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
@@ -108,6 +116,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/sex.ts`: female (1) vs male (0) per individual, counted once at its first capture, with the nursery and season of that capture as crossed random intercepts (`glmm.ts`: Laplace approximation, PIRLS as lme4's nAGQ = 0, SDs by Nelder–Mead). Tests fix one SD at 0 and halve the χ²₁ p (boundary).
 - Reuse `fitBinomialGlmm` for any yes/no outcome with grouping (fed or empty, recaptured or not) instead of pooling groups; there is no R in CI, so validate new uses against simulated data as `glmm.test.ts` does.
+
+### Apparent survival (#42)
+
+- `analytics/survival.ts`: Cormack–Jolly–Seber per species on 14-day blocks of the season. One history per pup, nursery and season, starting at its first capture there, so pups born later don't bias it. φ is shared, or one per nursery for the nursery test. Capture probability is cloglog(aₙ + β·log net-hours) for that fortnight, with an intercept per nursery and p = 0 in fortnights with no set. Untimed sets count as a typical set, and a catch in a fortnight with no set on record counts as one.
+- φ is apparent: death and leaving look the same, and moving to another nursery counts as leaving. Nurseries need ≥ 10 pups seen again in a later fortnight of the same season. The transience model gives the first fortnight after tagging its own φ.
+- `fitCjs` is generic and validated on simulated histories in `survival.test.ts`. Reuse it rather than writing another fitter. Wald intervals are on the logit scale and are null at the boundary (φ ≈ 1).
 
 ### School holidays (#25)
 
@@ -123,6 +137,7 @@ Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (
 
 - Follow the dataviz method: categorical slots in fixed order (`--series-1…8`, validated light and dark), sequential = one hue (`--seq-*`), diverging = blue ↔ red with a neutral midpoint, one y-axis only (never dual axes), legends for ≥ 2 series, text in ink tokens (never the series colour), 4 px rounded bar ends, 2 px lines, hover tooltips, data tables via `ChartCard table`.
 - Every chart registers its data with the enclosing `ChartCard` (`registerCsv` in `charts/csv.ts`), which shows **Download CSV**. A new chart component must call `registerCsv` too. An explicit `ChartCard table` takes precedence.
+- Back every trend, relationship or group difference with a test (#119): compute it in the load function with `analytics/tests.ts` and pass the sentence to `ChartCard stats`. Catch rates: `rateTest`/`rateText` (negative-binomial LRT with log net-hours offset, raw and adjusted for nursery, season and day of the season; pass `skip` for the factor under test). Values across groups: `groupsText` (Kruskal–Wallis). Shares: `tableText` (χ²). One value per season: `trendText`. Scatters: `fitText` (R², p, Spearman) or `rankText`. Copy and findings that name a "best" or "highest" group must check the test first (the moon finding picked the best of eight phases, #118).
 - Cite the study behind a chart with `<ChartCard papers={['debaere2024lunar']}>` (ids in `src/lib/publications.ts`). Link only papers that analysed the same question with this dataset; check the abstract first. PDFs are served at `rummerlab.com/papers/<file>` (metadata in the rummerlab-website repo, `data/papers.json`).
 - Species colours come from `src/lib/species.ts` (blacktip = slot 1, sicklefin lemon = slot 2).
 - Charts measure their width (`bind:clientWidth`) and carry a `viewBox` so pre-hydration renders scale down instead of overflowing.
@@ -182,11 +197,12 @@ Questions for the lab go to Dr Jodie Rummer (`@JodieRummer`) on GitHub: label th
 
 ## Changelog for agents
 
-| When    | Note                                                                                                                                                                                                                                                   |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-11 | v0.1.0: importer for all 13 seasons + adults + GPS + pressure ranking; external snapshots; 25 pages / 130+ charts; Docker, CI, release workflows; issues #1–#75.                                                                                       |
-| 2026-11 | v0.2.0: Physioshark logo/icon, footer version, OG image, CSV download on every chart, histogram overlay, busy-day (holiday) analysis, season rewind; unreadable DATA_DIR no longer fatal.                                                              |
-| 2026-11 | v0.2.1: interactive Leaflet map (satellite/street tiles); in-situ temperature loggers (#10: HOBO + EnvLogger CSVs, cross-checked between nurseries) with water-quality and nursery charts, set variable, finding; logger data-quality issues #95–#100. |
-| 2026-11 | v0.2.2: GF read as tawny nurse shark (#12); charts cite the Physioshark paper behind them (ChartCard papers, PDFs on rummerlab.com); cloud cover vs catches, moonlight and nursery water (#104); Schnabel abundance and blacktip VBGF (#43, #44).      |
-| 2026-11 | v0.2.3: negative-binomial catch model on /drivers (#54; SST link is the calendar); gastric lavage diet columns and charts (#40); IBTrACS cyclones and heavy-rain days vs catches (#24); ForestPlot chart, LineChart markers.                           |
-| 2026-11 | v0.2.4: French Polynesia school holidays as a busy-day proxy (#25: archived 2013–17 orders + Ministry open data); lighter scatter plots, compressed pages and ETag revalidation (#76); keyboard-readable charts and reduced motion (#32).              |
+| When    | Note                                                                                                                                                                                                                                                                    |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11 | v0.1.0: importer for all 13 seasons + adults + GPS + pressure ranking; external snapshots; 25 pages / 130+ charts; Docker, CI, release workflows; issues #1–#75.                                                                                                        |
+| 2026-11 | v0.2.0: Physioshark logo/icon, footer version, OG image, CSV download on every chart, histogram overlay, busy-day (holiday) analysis, season rewind; unreadable DATA_DIR no longer fatal.                                                                               |
+| 2026-11 | v0.2.1: interactive Leaflet map (satellite/street tiles); in-situ temperature loggers (#10: HOBO + EnvLogger CSVs, cross-checked between nurseries) with water-quality and nursery charts, set variable, finding; logger data-quality issues #95–#100.                  |
+| 2026-11 | v0.2.2: GF read as tawny nurse shark (#12); charts cite the Physioshark paper behind them (ChartCard papers, PDFs on rummerlab.com); cloud cover vs catches, moonlight and nursery water (#104); Schnabel abundance and blacktip VBGF (#43, #44).                       |
+| 2026-11 | v0.2.3: negative-binomial catch model on /drivers (#54; SST link is the calendar); gastric lavage diet columns and charts (#40); IBTrACS cyclones and heavy-rain days vs catches (#24); ForestPlot chart, LineChart markers.                                            |
+| 2026-11 | v0.2.4: French Polynesia school holidays as a busy-day proxy (#25: archived 2013–17 orders + Ministry open data); lighter scatter plots, compressed pages and ETag revalidation (#76); keyboard-readable charts and reduced motion (#32).                               |
+| 2026-11 | v0.2.5: sex ratio by nursery and season with a binomial mixed model (#117); a Statistics line under every chart with a trend or difference (#119); moon finding tested (#118); adjusted season test on the overview (#120); lab questions go to Jodie Rummer on GitHub. |

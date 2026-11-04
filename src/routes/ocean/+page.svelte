@@ -61,6 +61,7 @@
 		<ChartCard
 			title="SST anomaly"
 			subtitle="Weekly mean difference from Coral Reef Watch climatology"
+			stats={data.anomStats ? `Mean anomaly per calendar year. ${data.anomStats}` : null}
 		>
 			<LineChart
 				xType="date"
@@ -80,6 +81,47 @@
 				valueFormat={(v) => `${num(v, 1)}°`}
 			/>
 		</ChartCard>
+	</section>
+
+	<section class="section" id="chlorophyll">
+		<h2>Ocean colour</h2>
+		<p>
+			Chlorophyll-a, the pigment of phytoplankton, is a satellite proxy for how productive the water
+			is: the base of the food web that ends in the fish the pups eat. Around Mo'orea it is
+			typically
+			{num(data.chl.typical, 3)} mg/m³. Pixels beside an island are unreliable (part land, the lagoon
+			floor showing through, haze off the coast), so each week is the median of up to {num(
+				data.chl.pixels
+			)} ocean pixels within 30 km of Mo'orea's centre and at least 10 km from any land or coastal pixel,
+			Tahiti's included. It describes the ocean around the island, not the water inside the lagoon.
+		</p>
+		<div class="grid-2">
+			<ChartCard
+				title="Chlorophyll-a offshore"
+				subtitle="Weekly median of the offshore ring (mg/m³)"
+				source="NOAA S-NPP VIIRS, NOAA STAR and CoastWatch ERDDAP"
+			>
+				<LineChart
+					xType="date"
+					bands={data.bands}
+					series={[{ name: 'Chlorophyll-a', color: 'var(--series-4)', points: data.chl.series }]}
+					yFormat={(v) => num(v, 3)}
+				/>
+			</ChartCard>
+			<ChartCard
+				title="Seasonal cycle of chlorophyll"
+				subtitle={data.chl.high != null && data.chl.low != null
+					? `Median by calendar month, all years: highest in ${MONTH_NAMES[data.chl.high]}, lowest in ${MONTH_NAMES[data.chl.low]}`
+					: 'Median by calendar month, all years'}
+				stats={data.chl.stats}
+			>
+				<BarChart
+					categories={MONTH_NAMES}
+					series={[{ name: 'Chlorophyll-a', color: 'var(--series-4)', values: data.chl.clim }]}
+					valueFormat={(v) => num(v, 3)}
+				/>
+			</ChartCard>
+		</div>
 	</section>
 
 	<section class="section" id="enso">
@@ -127,7 +169,7 @@
 		<p>
 			One point per season. With only thirteen seasons, these are hints rather than conclusions.
 		</p>
-		<div class="grid-3">
+		<div class="grid-2">
 			<ChartCard
 				title="Sea temperature vs catch rate"
 				papers={['bouyoucos2024abiotic', 'eustache2024density']}
@@ -182,6 +224,25 @@
 					height={240}
 				/>
 			</ChartCard>
+			<ChartCard
+				title="Chlorophyll vs catch rate"
+				subtitle="Mean offshore chlorophyll-a in the weeks of each season's sets"
+				stats={data.chl.cpueStats}
+				note="Season is left out of the set-by-set adjustment because chlorophyll differs mostly between seasons. Seasons differ in many ways, and this is one of several ocean measures on this page: a lead to test, not a cause."
+			>
+				<Scatter
+					points={rows
+						.filter((r) => r.chl != null && r.cpue != null)
+						.map((r) => ({ x: r.chl!, y: r.cpue!, label: season(r.season) }))}
+					xLabel="Chlorophyll-a (mg/m³)"
+					yLabel="Sharks / net-hour"
+					xFormat={(v) => num(v, 3)}
+					yFormat={(v) => num(v, 2)}
+					r={6}
+					opacity={0.85}
+					height={240}
+				/>
+			</ChartCard>
 		</div>
 	</section>
 
@@ -201,5 +262,11 @@
 			/>
 		</ChartCard>
 	</section>
-	{#if data.lastDate}<p class="muted small">Ocean data to {date(data.lastDate)}.</p>{/if}
+	{#if data.lastDate}
+		<p class="muted small">
+			Ocean data to {date(data.lastDate)}{data.chl.last
+				? `; chlorophyll to ${date(data.chl.last)} (science-quality satellite weeks arrive later)`
+				: ''}.
+		</p>
+	{/if}
 </div>

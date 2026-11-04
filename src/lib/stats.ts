@@ -327,6 +327,47 @@ export function welch(
 	return { t, df, p: tTestP(t, df), diff: mx - my };
 }
 
+/** Paired t-test of b − a (e.g. second vs first blood draw of the same shark). */
+export function pairedT(
+	pairs: [number, number][]
+): { t: number; df: number; p: number; diff: number } | null {
+	const d = pairs
+		.filter(([a, b]) => Number.isFinite(a) && Number.isFinite(b))
+		.map(([a, b]) => b - a);
+	if (d.length < 3) return null;
+	const m = mean(d)!;
+	const s = sd(d)!;
+	if (!s) return null;
+	const t = m / (s / Math.sqrt(d.length));
+	return { t, df: d.length - 1, p: tTestP(t, d.length - 1), diff: m };
+}
+
+/** Kruskal–Wallis test across groups (rank-based one-way ANOVA), with the tie correction. */
+export function kruskal(groups: Num[][]): { h: number; df: number; p: number; n: number } | null {
+	const gs = groups.map(finite).filter((g) => g.length > 0);
+	if (gs.length < 2) return null;
+	const all = gs.flatMap((g, k) => g.map((v) => [v, k] as const)).sort((a, b) => a[0] - b[0]);
+	const n = all.length;
+	const rankSum = new Array<number>(gs.length).fill(0);
+	let ties = 0;
+	for (let i = 0; i < n;) {
+		let j = i;
+		while (j + 1 < n && all[j + 1][0] === all[i][0]) j++;
+		const r = (i + j) / 2 + 1;
+		for (let k = i; k <= j; k++) rankSum[all[k][1]] += r;
+		const t = j - i + 1;
+		ties += t ** 3 - t;
+		i = j + 1;
+	}
+	const c = 1 - ties / (n ** 3 - n);
+	if (n < 3 || c <= 0) return null;
+	const h =
+		((12 / (n * (n + 1))) * gs.reduce((a, g, k) => a + rankSum[k] ** 2 / g.length, 0) -
+			3 * (n + 1)) /
+		c;
+	return { h, df: gs.length - 1, p: chiSquareP(h, gs.length - 1), n };
+}
+
 // --- grouping ----------------------------------------------------------------------------------
 
 export function groupBy<T, K extends string | number>(

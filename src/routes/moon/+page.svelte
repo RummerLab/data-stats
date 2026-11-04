@@ -28,6 +28,7 @@
 			title="Catch rate around the lunar cycle"
 			papers={['debaere2024lunar']}
 			subtitle="Sharks per net-hour by moon phase (wedge area ∝ catch rate). New moon at the top, full moon at the bottom."
+			stats={data.stats.phases}
 		>
 			<Polar
 				sectors={data.phases.map((p) => ({
@@ -52,6 +53,7 @@
 				],
 				rows: data.phases
 			}}
+			stats={[data.stats.phasesCm, data.stats.phasesNa]}
 		>
 			<BarChart
 				categories={data.phases.map((p) => p.name)}
@@ -75,6 +77,7 @@
 			title="Catch rate by moon illumination"
 			papers={['debaere2024lunar', 'bouyoucos2024abiotic']}
 			subtitle="Whiskers: 95% confidence intervals"
+			stats={data.stats.illum}
 		>
 			<BarChart
 				categories={data.illum.map((b) => b.label)}
@@ -93,6 +96,7 @@
 			title="Is the moon up?"
 			papers={['debaere2024lunar']}
 			subtitle="Catch rate when the moon is above or below the horizon at mid-set"
+			stats={data.stats.up}
 		>
 			<BarChart
 				categories={data.upDown.map((u) => `${u.k} (${u.n})`)}

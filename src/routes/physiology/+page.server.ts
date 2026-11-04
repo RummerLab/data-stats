@@ -1,7 +1,9 @@
 import { memo } from '#lib/server/data';
 import { diet } from '#lib/server/analytics/diet';
 import { boxOf, fulton, round, seasonDay, siteName } from '#lib/server/analytics/common';
-import { countBy, histogram, linearFit, mean, pairs } from '#lib/stats';
+import { countBy, histogram, linearFit, mean, pairedT, pairs } from '#lib/stats';
+import { groupsText, rankText } from '#lib/server/analytics/tests';
+import { num, pValue } from '#lib/format';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -80,7 +82,29 @@ export const load: PageServerLoad = () =>
 			})
 			.filter((s) => s.points.length > 5);
 
+		const bySite = (k: 'hct' | 'cholesterol' | 'triglycerides') =>
+			groupsText(
+				sites.map((s) => blood.filter((b) => b.siteId === s).map((b) => b[k])),
+				'nurseries'
+			);
+		const massT = pairedT(massPairs.map((m) => [m.x, m.y] as [number, number]));
+		const feedPairs = [...feedDays.entries()].flatMap(([day, v]) =>
+			v.map((pct) => [day, pct] as [number, number])
+		);
+		const stats = {
+			hct: bySite('hct'),
+			tg: bySite('triglycerides'),
+			chol: bySite('cholesterol'),
+			mass: massT
+				? `Mean change ${massT.diff >= 0 ? '+' : '−'}${num(Math.abs(massT.diff) * 1000)} g between arrival and release, ${massT.p < 0.05 ? 'different from' : 'not different from'} no change (paired t-test, ${pValue(massT.p)}, n = ${num(massT.df + 1)}).`
+				: null,
+			feeding: (() => {
+				const r = rankText(feedPairs);
+				return r ? `% eaten against days since the first feed, one point per feed: ${r}` : null;
+			})()
+		};
 		return {
+			stats,
 			diet: diet(d),
 			nBlood: blood.length,
 			hct: metric('hct'),

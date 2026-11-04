@@ -97,6 +97,8 @@ export const sets = sqliteTable(
 		sst: real('sst'),
 		sstAnom: real('sst_anom'),
 		dhw: real('dhw'),
+		// Offshore chlorophyll-a of the satellite week holding the set date, mg m⁻³ (#23).
+		chl: real('chl'),
 		waveHeight: real('wave_height'),
 		swellHeight: real('swell_height'),
 		oni: real('oni'),
@@ -472,6 +474,13 @@ export const oceanDaily = sqliteTable('ocean_daily', {
 	wavePeriod: real('wave_period'),
 	waveDir: real('wave_dir'),
 	swellMax: real('swell_max')
+});
+
+/** Weekly offshore chlorophyll-a around Moorea, NOAA VIIRS (#23). `date` is the week's centre. */
+export const chlorophyllWeekly = sqliteTable('chlorophyll_weekly', {
+	date: text('date').primaryKey(),
+	chl: real('chl'), // median of the offshore ring, mg m⁻³
+	pixels: integer('pixels').notNull() // cloud-free ring pixels that week
 });
 
 export const tideHourly = sqliteTable('tide_hourly', {

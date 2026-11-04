@@ -11,6 +11,7 @@ import {
 } from '#lib/server/analytics/common';
 import { DAY_TYPES, dayType, holidayOn, schoolDays } from '#lib/server/holidays';
 import { mean, median, pairs, se, spearman, welch } from '#lib/stats';
+import { rankText, rateTest, rateText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -58,19 +59,37 @@ export const load: PageServerLoad = () =>
 			['k', 'Newborn condition (K)'],
 			['growth', 'Growth (mm/day)']
 		] as const;
+		const rhoOf = (mk: (typeof metrics)[number][0], ok: (typeof outcomes)[number][0]) =>
+			spearman(
+				pairs(
+					rows,
+					(x) => x[mk] as number | null,
+					(x) => x[ok] as number | null
+				)
+			);
 		const corr = metrics.map(([mk, ml]) => ({
 			metric: ml,
 			values: outcomes.map(([ok]) => {
-				const r = spearman(
-					pairs(
-						rows,
-						(x) => x[mk] as number | null,
-						(x) => x[ok] as number | null
-					)
-				);
+				const r = rhoOf(mk, ok);
 				return r ? round(r.rho, 2) : null;
 			})
 		}));
+		// With ten nurseries only strong correlations can reach significance (#119).
+		const cells = metrics.flatMap(([mk, ml]) =>
+			outcomes.map(([ok, ol]) => ({
+				label: `${ml.toLowerCase()} vs ${ol.toLowerCase()}`,
+				r: rhoOf(mk, ok)
+			}))
+		);
+		const sig = cells.filter((c) => c.r && c.r.p < 0.05);
+		const scatter = (mk: (typeof metrics)[number][0], ok: (typeof outcomes)[number][0]) =>
+			rankText(
+				pairs(
+					rows,
+					(x) => x[mk] as number | null,
+					(x) => x[ok] as number | null
+				)
+			);
 		// Busy days (#25): do weekends and holidays, when more people are on the water, change the
 		// evening catch? Mean per-set catch rate with a ±1.96·SE interval.
 		const dated = eff.filter((s) => s.date && s.cpue != null);
@@ -124,7 +143,20 @@ export const load: PageServerLoad = () =>
 		}
 		const counts = (m: Map<string, number>) =>
 			[...m].sort((a, b) => b[1] - a[1]).map(([name, n]) => ({ name, n }));
+		const stats = {
+			corr: `Spearman tests across ${rows.length} nurseries (${cells.filter((c) => c.r).length} pairs): ${sig.length ? `significant at p < 0.05: ${sig.map((c) => `${c.label} (ρ = ${c.r!.rho.toFixed(2)}, p = ${c.r!.p.toFixed(3)})`).join('; ')}. With ${cells.filter((c) => c.r).length} tests about one in twenty is expected by chance; ${cells.filter((c) => c.r && c.r.p < 0.05 / cells.filter((x) => x.r).length).length} pass a Bonferroni-corrected threshold.` : 'none is significant at p < 0.05.'}`,
+			fishing: [
+				`Blacktips: ${scatter('fishing', 'cpueCm') ?? '–'}`,
+				`Sicklefin lemons: ${scatter('fishing', 'cpueNa') ?? '–'}`
+			],
+			artif: scatter('artif', 'k'),
+			human: scatter('human', 'growth'),
+			composite: scatter('composite', 'cpueCm'),
+			dayType: rateText(rateTest(dated, { groupOf: (s) => type(s) }), 'types of day'),
+			weekday: rateText(rateTest(dated, { groupOf: (s) => s.weekday }), 'days of the week')
+		};
 		return {
+			stats,
 			rows,
 			metrics,
 			outcomes: outcomes.map((o) => o[1]),
