@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SST_SOURCE } from '#lib/sst';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
@@ -112,7 +113,8 @@
 		</ChartCard>
 		<ChartCard
 			title="Sea temperature during fieldwork"
-			subtitle="Mean OISST sea-surface temperature on sampling nights"
+			subtitle="Mean satellite sea-surface temperature on sampling nights"
+			source={SST_SOURCE}
 			stats={data.stats.sst}
 		>
 			<LineChart

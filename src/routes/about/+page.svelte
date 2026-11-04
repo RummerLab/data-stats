@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SST_SOURCE } from '#lib/sst';
 	import { PUBLICATIONS, paperHref } from '#lib/publications';
 	import { date } from '#lib/format';
 	import type { PageProps } from './$types';
@@ -44,7 +45,7 @@
 				<a href="https://open-meteo.com/">Open-Meteo</a> Historical Weather API (CC BY 4.0).
 			</li>
 			<li><b>Waves:</b> ERA5-ocean via the Open-Meteo Marine API.</li>
-			<li><b>Sea-surface temperature:</b> NOAA OISST v2.1 daily, via NOAA CoastWatch ERDDAP.</li>
+			<li><b>Sea-surface temperature:</b> {SST_SOURCE}, via ERDDAP.</li>
 			<li>
 				<b>Heat stress:</b> NOAA Coral Reef Watch 5 km daily SST anomaly, HotSpot and Degree Heating Weeks,
 				via PacIOOS ERDDAP.

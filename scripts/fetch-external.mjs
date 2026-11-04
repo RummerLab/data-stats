@@ -4,6 +4,7 @@
  *
  *   node scripts/fetch-external.mjs            # everything since 2013-08-01
  *   node scripts/fetch-external.mjs --only=tide,climate
+ *   node scripts/fetch-external.mjs --only=oisst # repair SST in the existing ocean snapshot
  *
  * Sources (all free, no API key):
  * - Open-Meteo Historical Weather API (ERA5 / ERA5-Land reanalysis, CC BY 4.0)
@@ -21,10 +22,12 @@
  * Output files are small CSVs (hourly series gzipped) committed to the repo, so the app and CI
  * never need network access. No spreadsheet data is read or sent anywhere.
  */
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+
+import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.EXTERNAL_DIR || join(root, 'external');
@@ -48,6 +51,7 @@ async function get(url, { json = false, tries = 5 } = {}) {
 	for (let i = 0; i < tries; i++) {
 		try {
 			const res = await fetch(url, {
+				signal: AbortSignal.timeout(120_000),
 				headers: {
 					'user-agent': 'physioshark-data-stats (+https://github.com/RummerLab/data-stats)'
 				}
@@ -62,19 +66,6 @@ async function get(url, { json = false, tries = 5 } = {}) {
 		await sleep(2000 * (i + 1) ** 2);
 	}
 	throw new Error(`failed: ${url}`);
-}
-
-/** Yearly [start, end] chunks between two ISO dates. */
-function chunks(start, end) {
-	const out = [];
-	let y = Number(start.slice(0, 4));
-	const endY = Number(end.slice(0, 4));
-	for (; y <= endY; y++) {
-		const s = y === Number(start.slice(0, 4)) ? start : `${y}-01-01`;
-		const e = y === endY ? end : `${y}-12-31`;
-		out.push([s, e]);
-	}
-	return out;
 }
 
 const fmt = (v, dp = 2) =>
@@ -160,51 +151,75 @@ async function weather() {
 	);
 }
 
-async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = false) {
-	const rows = new Map();
-	const all = chunks(start, end);
-	for (const [s, e] of all) {
-		// The final chunk ends at `last` so a dataset that lags a day or two never 404s.
-		const stop = e === all[all.length - 1][1] ? 'last' : `${e}T12:00:00Z`;
-		const sel = (v) =>
-			`${v}%5B(${s}T12:00:00Z):1:(${stop})%5D${zlev ? '%5B(0.0)%5D' : ''}%5B(${lat})%5D%5B(${lon})%5D`;
-		const url = `${base}/griddap/${dataset}.csv?${vars.map(sel).join(',')}`;
-		let text;
-		try {
-			text = await get(url);
-		} catch (err) {
-			console.warn(`[external] ${dataset} ${s}…${e}: ${err.message}`);
-			continue;
-		}
-		const lines = text.trim().split('\n').slice(2);
-		const head = text.split('\n')[0].split(',');
-		for (const line of lines) {
-			const cols = line.split(',');
-			const date = cols[0].slice(0, 10);
-			const rec = rows.get(date) ?? {};
-			for (const v of vars) {
-				const val = Number(cols[head.indexOf(v)]);
-				rec[v] = Number.isFinite(val) ? val : null;
-			}
-			rows.set(date, rec);
-		}
-		await sleep(1000);
+async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = false, lagDays = 0) {
+	return readSeries({
+		base,
+		dataset,
+		vars,
+		lat,
+		lon,
+		chunks: chunks(start, end, lagDays),
+		zlev,
+		get,
+		sleep
+	});
+}
+
+// OISST uses 0–360° longitude and a surface zlev dimension.
+async function fetchOisst(end) {
+	const rows = await erddapSeries(
+		'https://upwell.pfeg.noaa.gov/erddap',
+		'ncdcOisst21Agg',
+		['sst'],
+		-17.625,
+		210.125,
+		START,
+		end,
+		true,
+		OISST_MAX_LAG_DAYS
+	);
+	// The legacy aggregation omits some archived dates. Recover those from NOAA's
+	// complete OISST v2.1 final-product mirror, never interpolate or invent values.
+	const last = [...rows.keys()].sort().at(-1);
+	for (let t = Date.parse(START); t <= Date.parse(last); t += 86400000) {
+		const date = new Date(t).toISOString().slice(0, 10);
+		if (rows.get(date)?.sst != null) continue;
+		const recovered = await readSeries({
+			base: 'https://upwell.pfeg.noaa.gov/erddap',
+			dataset: 'oisst_rclone',
+			vars: ['sst'],
+			lat: -17.625,
+			lon: 210.125,
+			zlev: true,
+			chunks: [[date, date]],
+			latest: false,
+			get,
+			sleep
+		});
+		rows.set(date, recovered.get(date));
 	}
+	validateDaily(rows, 'sst', START, end);
 	return rows;
+}
+
+// Repair only SST without refreshing the independent CRW and wave snapshots.
+async function oisst() {
+	const values = await fetchOisst(daysAgo(2));
+	const lines = readFileSync(join(OUT, 'ocean-daily.csv'), 'utf8').trim().split(/\r?\n/);
+	const header = lines.shift().split(',');
+	const col = header.indexOf('oisst');
+	if (col < 0) throw new Error('ocean snapshot has no oisst column');
+	const rows = lines.map((line) => {
+		const row = line.split(',');
+		row[col] = fmt(values.get(row[0])?.sst);
+		return row;
+	});
+	writeCsv('ocean-daily.csv', header, rows);
 }
 
 async function ocean() {
 	const end = daysAgo(2);
-	const oisst = await erddapSeries(
-		'https://coastwatch.pfeg.noaa.gov/erddap',
-		'ncdcOisst21Agg_LonPM180',
-		['sst'],
-		-17.625,
-		-149.875,
-		START,
-		end,
-		true
-	);
+	const oisst = await fetchOisst(end);
 	const crw = await erddapSeries(
 		'https://pae-paha.pacioos.hawaii.edu/erddap',
 		'dhw_5km',
@@ -584,7 +599,16 @@ async function school() {
 	writeCsv('school-holidays.csv', ['school_year', 'name', 'start', 'end', 'source'], rows);
 }
 
-const jobs = { weather, ocean, chlorophyll, tide, climate, cyclones, school };
+const jobs = {
+	weather,
+	...(only.includes('oisst') ? { oisst } : {}),
+	ocean,
+	chlorophyll,
+	tide,
+	climate,
+	cyclones,
+	school
+};
 for (const [name, job] of Object.entries(jobs)) {
 	if (!want(name)) continue;
 	try {

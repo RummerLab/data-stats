@@ -108,7 +108,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 ### Catch model (#54)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
-- The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
+- The headline: sea temperature's raw link with catch rate (≈ −22% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - Fit diagnostics (#125, `analytics/modelDiagnostics.ts`) reuse each fit's own rows, design matrix, counts and offsets, so they can't drift from the model. NB2 variance is μ + μ²/θ; P(0) falls back to Poisson when θ is infinite. Calibration rates are summed sharks over summed net-hours per group of sets. They are in-sample checks: not forecasting skill, and no leave-one-season-out (season is a fixed effect). Only rounded columns reach the page; keep it that way (the first draft sent 500 kB of JSON).
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
 - The synthetic fixture's second season (2022-23: 200 sets, lemons at Vaiane and Haapiti) is sized so all three fits converge in unit tests and e2e (#153); `catchModel.test.ts` fails if a threshold change or a fixture edit stops that.
@@ -141,6 +141,13 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/samplingConditions.ts` compares daily rain, daily maximum wind and SST on fieldwork nights (distinct dates with a nursery gillnet set: island-wide series, so a night counts once) with every day of the same calendar months. Each month's days are weighted by its fieldwork nights ÷ its days with a value, so the reference has the fieldwork's seasonal mix. One nursery-month holds a median of two nights, too few to plot alone.
 - The reference contains the fieldwork nights, so no two-sample test: the statistic is checked against seeded random draws of the same number of days from each month (`DRAWS`). Fieldwork nights are a little drier and calmer than their months (about 0.7 mm less rain); describe it as coverage, not as weather stopping trips.
+
+### Satellite SST (#154)
+
+- OISST v2.1 is `ncdcOisst21Agg`, in 0–360° longitude: the cell is −17.625, 210.125 (−149.875), surface `zlev` 0. The script asks upwell.pfeg.noaa.gov, which redirects that dataset to coastwatch.pfeg.noaa.gov. The `_LonPM180` copy there returned 503, and the old fetch quietly wrote an empty column. The aggregation skips some days (19 so far) even though the request succeeds; those come one at a time from upwell's own `oisst_rclone` (same final product and grid, surface dimension `depth`). Never interpolate.
+- ERDDAP failures are fatal (`scripts/erddap.mjs`), for Coral Reef Watch too: a historical chunk that fails or comes back blank stops the ocean job before it writes, so a flaky server can't blank a column (PacIOOS returned 404s for 2023–26 on 2 Nov 2026 and answered again two days later). Only the final chunk may be missing (404). OISST must be continuous and at most 17 days behind the end date (final OISST lags about two weeks); in early January the last yearly chunks are merged so the request ending at `last` still covers that window.
+- `node scripts/fetch-external.mjs --only=oisst` rewrites just the OISST column of the existing snapshot. `pnpm test` also runs `scripts/erddap.test.mjs` with `node --test`.
+- Analyses use OISST, else Coral Reef Watch (`oisst ?? crwSst`). Credit it with `SST_SOURCE` from `src/lib/sst.ts`. A snapshot change already rebuilds caches, so no `IMPORTER_VERSION` bump.
 
 ### Adding a new season
 
