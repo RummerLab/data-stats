@@ -14,7 +14,7 @@
 		"preview": "vite preview",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
-		"test": "node --test scripts/erddap.test.mjs && vitest run",
+		"test": "node --test scripts/erddap.test.mjs scripts/external-refresh.test.mjs && vitest run",
 		"test:related": "vitest related --run",
 		"test:watch": "vitest",
 		"test:e2e": "playwright test",

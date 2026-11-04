@@ -22,10 +22,12 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # A full run took 48 minutes on 4 Nov 2026 with NOAA ERDDAP stalls and 429 backoff possible on top.
+    timeout-minutes: 120
     outputs:
       version: ${{ steps.version.outputs.version }}
       changed: ${{ steps.diff.outputs.changed }}
+      fetch-outcome: ${{ steps.fetch.outcome }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,6 +38,8 @@ jobs:
           node-version: 26
 
       - name: Fetch snapshots
+        id: fetch
+        continue-on-error: true
         run: node scripts/fetch-external.mjs
 
       - name: Detect changes
@@ -61,16 +65,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
+          FETCH_OUTCOME: ${{ steps.fetch.outcome }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add external package.json
+          # Name what changed: after a partial refresh, not every source was updated (#159).
+          FILES="$(git diff --cached --name-only -- external | sed 's#^external/##' | paste -sd, - | sed 's/,/, /g')"
+          NOTES="Weekly refresh of the environmental snapshots. Updated: ${FILES}."
+          if [ "$FETCH_OUTCOME" = "failure" ]; then
+            NOTES="${NOTES} Some sources failed and kept their previous snapshot; see ${RUN_URL}."
+          fi
           git commit -m "chore(data): weekly environmental data refresh (v${VERSION})"
           git pull --rebase origin main
           git tag "v${VERSION}"
           git push origin HEAD:main "v${VERSION}"
-          gh release create "v${VERSION}" --target main --title "v${VERSION}" --notes "Weekly refresh of weather, ocean, tide and ENSO snapshots."
+          gh release create "v${VERSION}" --target main --title "v${VERSION}" --notes "$NOTES"
 
   docker:
     needs: refresh
@@ -81,3 +93,15 @@ jobs:
       packages: write
     with:
       ref: v${{ needs.refresh.outputs.version }}
+
+  # Wait for the release/image before surfacing partial failure. Otherwise a failed
+  # refresh dependency would skip Docker and leave successful snapshots undeployed.
+  report:
+    needs: [refresh, docker]
+    if: always() && needs.refresh.outputs.fetch-outcome == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report source failures
+        run: |
+          echo "::error::Some environmental sources failed. See the refresh job summary and fetch log. Successful snapshots were eligible for release; failed sources retained their previous snapshots."
+          exit 1

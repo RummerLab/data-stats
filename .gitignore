@@ -44,3 +44,6 @@ vite.config.ts.timestamp-*
 
 # Local preview config
 /.claude/
+
+# Incomplete environmental refresh staging (normally removed automatically)
+.external-refresh-*/

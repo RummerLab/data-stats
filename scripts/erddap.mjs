@@ -40,7 +40,9 @@ export async function readSeries({
 			`${v}%5B(${start}T12:00:00Z):1:(${final && latest ? 'last' : end + 'T12:00:00Z'})%5D${zlev ? '%5B(0.0)%5D' : ''}%5B(${lat})%5D%5B(${lon})%5D`;
 		let text;
 		try {
-			text = await get(`${base}/griddap/${dataset}.csv?${vars.map(select).join(',')}`);
+			text = await get(`${base}/griddap/${dataset}.csv?${vars.map(select).join(',')}`, {
+				retry404: !final || !latest
+			});
 		} catch (err) {
 			// Only a final chunk with no published observations may be absent. Outages are fatal.
 			if (!final || !String(err).includes('404')) throw err;
