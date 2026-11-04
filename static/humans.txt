@@ -15,10 +15,8 @@ Field crews, students and volunteers named in thirteen seasons of Physioshark se
 Open environmental data providers: Open-Meteo (ERA5), NOAA (OISST, Coral Reef Watch, IBTrACS, CPC ENSO, VIIRS chlorophyll), UHSLC Papeete tide gauge, French Polynesia school calendars
 
 /* SITE */
-Last update: 2026
 Standards: HTML5, CSS
 Components: SvelteKit, Svelte 5, Drizzle ORM, SQLite, Tailwind CSS
 Software: Node.js, pnpm, Docker
 Language: English
 Doctype: HTML5
-IDE: Cursor, VS Code
