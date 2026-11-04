@@ -47,6 +47,7 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
                          glmm.ts (binomial mixed model, crossed random intercepts) · sex.ts
+                         survival.ts (Cormack–Jolly–Seber apparent survival, BFGS)
                          tests.ts (the statistic behind each chart, worded for ChartCard stats)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
@@ -85,6 +86,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Site: EnvLogger by download GPS (≤ 400 m from a nursery), then custom name, file-name prefix (`PIAENA_2_…`), then the register workbook (detected by its `Serial number` + `Custom name` header, checked before the `/gps|location/` file-name rule). HOBO by the file-name suffix (`…_Intercontinental`), then the season workbooks' HOBO log (logger number + date overlap). A name/GPS disagreement is a warning on the Data quality page.
 - Cleaning: trim 2 h at the start of each file and 2 h (EnvLogger) or 24 h (HOBO, read out back at the station) at the end; drop readings outside 15–40 °C; merge repeated downloads of one logger by timestamp. Days need ≥ 18 site-hours. Tables: `logger_files`, `logger_daily`, `logger_diel`, plus `sets.insitu_temp`.
 - Comparisons between nurseries only use those logged ≥ 1 year with both seasons covered (a summer-only logger looks hottest).
+- Month × hour calendars (#127, `analytics/thermalCalendar.ts`) read `logger_diel`, whose `n` is contributing days (one nursery-wide hourly mean per day), not sensor samples. Cells need ≥ 10 days. Every nursery shares one colour domain taken from the supported cells, in whole degrees (24–33 °C with the current loggers): the 15–40 °C cleaning window squeezed the lagoon into two colour steps. Pooled means can't show peaks or hours above a threshold.
 
 ### Cloud cover (#104)
 
@@ -97,6 +99,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
 
+### Chlorophyll-a (#23)
+
+- `fetch-external.mjs --only=chlorophyll` reads NOAA S-NPP VIIRS science-quality weekly chlorophyll (`noaacwNPPVIIRSSQchlaWeekly` on coastwatch.noaa.gov ERDDAP; the pfeg copy only redirects there) for a box around Moorea and writes one median per week (`external/chlorophyll-weekly.csv`, `chlorophyll_weekly` table, `sets.chl` for the week holding the set date).
+- The median covers an offshore ring: pixels within 30 km of Moorea's centre and ≥ 10 km from any pixel with no value in more than half the weeks (land and coast, Tahiti's included). Coastal pixels read tens of times the open ocean (land in the pixel, lagoon floor, haze), and some get a value often enough that "never valid" misses them. The job throws if the ring shrinks below 40 pixels.
+- Science-quality weeks lag by about six weeks. It is the ocean around the island, not lagoon water; don't describe it as conditions in the nurseries.
+
 ### Catch model (#54)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
@@ -107,6 +115,17 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/sex.ts`: female (1) vs male (0) per individual, counted once at its first capture, with the nursery and season of that capture as crossed random intercepts (`glmm.ts`: Laplace approximation, PIRLS as lme4's nAGQ = 0, SDs by Nelder–Mead). Tests fix one SD at 0 and halve the χ²₁ p (boundary).
 - Reuse `fitBinomialGlmm` for any yes/no outcome with grouping (fed or empty, recaptured or not) instead of pooling groups; there is no R in CI, so validate new uses against simulated data as `glmm.test.ts` does.
+
+### Apparent survival (#42)
+
+- `analytics/survival.ts`: Cormack–Jolly–Seber per species on 14-day blocks of the season. One history per pup, nursery and season, starting at its first capture there, so pups born later don't bias it. φ is shared, or one per nursery for the nursery test. Capture probability is cloglog(aₙ + β·log net-hours) for that fortnight, with an intercept per nursery and p = 0 in fortnights with no set. Untimed sets count as a typical set, and a catch in a fortnight with no set on record counts as one.
+- φ is apparent: death and leaving look the same, and moving to another nursery counts as leaving. Nurseries need ≥ 10 pups seen again in a later fortnight of the same season. The transience model gives the first fortnight after tagging its own φ.
+- `fitCjs` is generic and validated on simulated histories in `survival.test.ts`. Reuse it rather than writing another fitter. Wald intervals are on the logit scale and are null at the boundary (φ ≈ 1).
+
+### Scar transitions (#126)
+
+- `analytics/scarTransitions.ts` pairs consecutive field captures of one shark within a season that both have a scar stage. Unknown stages are skipped. These pairs are left out: identity conflicts, a capture sharing its day with another, pairs spanning two seasons and pairs with a lab stay in between. Backward transitions stay visible and are counted for the lab.
+- The days are time between captures, not healing time or age. A transition gets a box only from five pairs (`MIN_BOX_PAIRS`). Labels match the rest of /neonates: open, healing, healed.
 
 ### School holidays (#25)
 

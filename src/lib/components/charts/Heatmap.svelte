@@ -50,8 +50,9 @@
 	const absMax = $derived(Math.max(Math.abs(lo), Math.abs(hi)) || 1);
 
 	function fill(v: number | null): { color: string; opacity: number; dark: boolean } {
-		if (v == null || !Number.isFinite(v))
-			return { color: 'var(--surface-2)', opacity: 0.6, dark: false };
+		// No data: an empty dashed cell, never a colour from the scale (the lightest steps are
+		// close to --surface-2, in dark mode especially).
+		if (v == null || !Number.isFinite(v)) return { color: 'none', opacity: 1, dark: false };
 		if (mode === 'div') {
 			const t = Math.max(-1, Math.min(1, v / absMax));
 			if (Math.abs(t) < 0.06) return { color: 'var(--div-mid)', opacity: 1, dark: false };
@@ -118,6 +119,9 @@
 					rx="3"
 					fill={f.color}
 					fill-opacity={f.opacity}
+					stroke={f.color === 'none' ? 'var(--axis)' : undefined}
+					stroke-dasharray={f.color === 'none' ? '3 2' : undefined}
+					pointer-events={f.color === 'none' ? 'all' : undefined}
 					role="presentation"
 					data-mark={r * xLabels.length + c}
 					onpointermove={(e) => show(pointerIn(e), r, c)}

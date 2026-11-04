@@ -39,10 +39,10 @@
 		<p class="eyebrow">Environment</p>
 		<h1>What drives catches?</h1>
 		<p class="lede">
-			Every timed gillnet set ({num(data.n)} of them) joined with the sea temperature, heat stress, moon,
-			tide, weather, waves and El Niño state of that evening. Catch rate (sharks per net-hour) is compared
-			with each variable using Spearman rank correlation, which copes with the many zero-catch nights
-			({pct(data.zero / Math.max(1, data.n))}).
+			Every timed gillnet set ({num(data.n)} of them) joined with the sea temperature, heat stress, ocean
+			colour, moon, tide, weather, waves and El Niño state of that evening. Catch rate (sharks per net-hour)
+			is compared with each variable using Spearman rank correlation, which copes with the many zero-catch
+			nights ({pct(data.zero / Math.max(1, data.n))}).
 		</p>
 		<p class="callout small">
 			These are single-variable associations: sites, seasons and variables overlap (warm years are
