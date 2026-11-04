@@ -22,10 +22,11 @@ permissions:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 60
     outputs:
       version: ${{ steps.version.outputs.version }}
       changed: ${{ steps.diff.outputs.changed }}
+      fetch-outcome: ${{ steps.fetch.outcome }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -36,6 +37,8 @@ jobs:
           node-version: 26
 
       - name: Fetch snapshots
+        id: fetch
+        continue-on-error: true
         run: node scripts/fetch-external.mjs
 
       - name: Detect changes
@@ -81,3 +84,15 @@ jobs:
       packages: write
     with:
       ref: v${{ needs.refresh.outputs.version }}
+
+  # Wait for the release/image before surfacing partial failure. Otherwise a failed
+  # refresh dependency would skip Docker and leave successful snapshots undeployed.
+  report:
+    needs: [refresh, docker]
+    if: always() && needs.refresh.outputs.fetch-outcome == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Report source failures
+        run: |
+          echo "::error::Some environmental sources failed. See the refresh job summary and fetch log. Successful snapshots were eligible for release; failed sources retained their previous snapshots."
+          exit 1

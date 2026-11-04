@@ -22,10 +22,12 @@
  * Output files are small CSVs (hourly series gzipped) committed to the repo, so the app and CI
  * never need network access. No spreadsheet data is read or sent anywhere.
  */
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
+
+import { createGet, refreshJobs, sleep, WEATHER_CHUNK_DELAY_MS } from './external-refresh.mjs';
 
 import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 
@@ -43,39 +45,19 @@ const want = (name) => only.length === 0 || only.includes(name);
 
 mkdirSync(OUT, { recursive: true });
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const get = createGet();
+let writeSnapshot;
 const isoDay = (d) => d.toISOString().slice(0, 10);
 const daysAgo = (n) => isoDay(new Date(Date.now() - n * 86_400_000));
-
-async function get(url, { json = false, tries = 5 } = {}) {
-	for (let i = 0; i < tries; i++) {
-		try {
-			const res = await fetch(url, {
-				signal: AbortSignal.timeout(120_000),
-				headers: {
-					'user-agent': 'physioshark-data-stats (+https://github.com/RummerLab/data-stats)'
-				}
-			});
-			if (res.ok) return json ? res.json() : res.text();
-			if (res.status === 404) throw new Error(`404 ${url}`);
-			console.warn(`[external] ${res.status} ${url}`);
-		} catch (err) {
-			if (String(err).includes('404')) throw err;
-			console.warn(`[external] ${err.message ?? err}`);
-		}
-		await sleep(2000 * (i + 1) ** 2);
-	}
-	throw new Error(`failed: ${url}`);
-}
 
 const fmt = (v, dp = 2) =>
 	v == null || Number.isNaN(v) ? '' : String(Math.round(v * 10 ** dp) / 10 ** dp);
 
 function writeCsv(name, header, rows, gzip = false) {
 	const body = [header.join(','), ...rows.map((r) => r.join(','))].join('\n') + '\n';
-	const path = join(OUT, gzip ? `${name}.gz` : name);
-	writeFileSync(path, gzip ? gzipSync(body, { level: 9 }) : body);
-	console.log(`[external] wrote ${path} (${rows.length} rows)`);
+	const file = gzip ? `${name}.gz` : name;
+	writeSnapshot(file, gzip ? gzipSync(body, { level: 9 }) : body);
+	console.log(`[external] staged ${file} (${rows.length} rows)`);
 }
 
 async function weather() {
@@ -122,7 +104,7 @@ async function weather() {
 		j.hourly.time.forEach((t, i) => {
 			hourly.push([t.slice(0, 13), ...hourlyVars.map((v) => fmt(j.hourly[v][i], 1))]);
 		});
-		await sleep(1500);
+		await sleep(WEATHER_CHUNK_DELAY_MS);
 	}
 	writeCsv(
 		'weather-daily.csv',
@@ -243,13 +225,7 @@ async function ocean() {
 				`https://marine-api.open-meteo.com/v1/marine?latitude=${LAT + 0.06}&longitude=${LON}` +
 				`&start_date=${s}&end_date=${e}&timezone=${encodeURIComponent(TZ)}` +
 				`&daily=${waveVars.join(',')}${model === 'era5_ocean' ? '&models=era5_ocean' : ''}`;
-			let j;
-			try {
-				j = await get(url, { json: true });
-			} catch (err) {
-				console.warn(`[external] waves ${model} ${s}: ${err.message}`);
-				continue;
-			}
+			const j = await get(url, { json: true });
 			j.daily.time.forEach((t, i) => {
 				const prev = waves.get(t) ?? {};
 				for (const v of waveVars) if (prev[v] == null) prev[v] = j.daily[v][i];
@@ -385,10 +361,11 @@ async function chlorophyll() {
 		let text;
 		try {
 			text = await get(
-				`${base}?chlor_a%5B(${s}T00:00:00Z):1:(${final ? 'last' : `${e}T23:59:59Z`})%5D${box}`
+				`${base}?chlor_a%5B(${s}T00:00:00Z):1:(${final ? 'last' : `${e}T23:59:59Z`})%5D${box}`,
+				{ retry404: !final }
 			);
 		} catch (err) {
-			if (!final) throw err;
+			if (!final || err.status !== 404) throw err;
 			console.warn(`[external] chlorophyll ${s}…: ${err.message}`);
 			continue;
 		}
@@ -609,12 +586,27 @@ const jobs = {
 	cyclones,
 	school
 };
-for (const [name, job] of Object.entries(jobs)) {
-	if (!want(name)) continue;
-	try {
-		await job();
-	} catch (err) {
-		console.error(`[external] ${name} failed: ${err.message ?? err}`);
-		process.exitCode = 1;
-	}
+const selected = Object.fromEntries(
+	Object.entries(jobs)
+		.filter(([name]) => want(name))
+		.map(([name, job]) => [
+			name,
+			async (write) => {
+				writeSnapshot = write;
+				await job();
+			}
+		])
+);
+const failed = await refreshJobs(OUT, selected);
+if (process.env.GITHUB_STEP_SUMMARY) {
+	appendFileSync(
+		process.env.GITHUB_STEP_SUMMARY,
+		`## Environmental refresh\n\n${Object.keys(selected)
+			.map(
+				(name) =>
+					`- ${name}: ${failed.includes(name) ? 'FAILED — retained previous snapshot; see fetch log' : 'refreshed'}`
+			)
+			.join('\n')}\n`
+	);
 }
+if (failed.length) process.exitCode = 1;
