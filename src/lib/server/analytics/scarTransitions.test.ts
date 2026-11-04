@@ -31,7 +31,20 @@ it('skips unknown stages but retains backward transitions and per-shark contribu
 		backward: 1,
 		contributions: [{ pairs: 2, sharks: 1 }]
 	});
-	expect(r.rows[2].stats?.median).toBe(7);
+	// One open → healed pair: counted, but too few for a box.
+	expect(r.rows[2]).toMatchObject({ from: 'Open', to: 'Healed', pairs: 1, stats: null });
+});
+it('draws a days-between box once a transition has five pairs', () => {
+	const d = {
+		captures: ['a', 'b', 'c', 'd', 'e'].flatMap((id, i) => [
+			cap(id, '2020-10-01', 'open'),
+			cap(id, `2020-10-${String(5 + i * 2).padStart(2, '0')}`, 'closed')
+		]),
+		individuals: [],
+		labSharks: []
+	};
+	// Gaps of 4, 6, 8, 10 and 12 days.
+	expect(scarTransitions(d)[0].rows[2].stats?.median).toBe(8);
 });
 it('excludes conflicts, same-day observations, season boundaries and lab interruptions', () => {
 	const d = {

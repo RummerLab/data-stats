@@ -3,12 +3,15 @@ import { boxStats } from '#lib/stats';
 import { recapturePairs } from './common';
 
 const stages = ['open', 'semi', 'closed'];
-export const SCAR_LABELS = ['Open', 'Healing', 'Closed'];
+// The labels /neonates uses elsewhere ("open → healing → healed").
+export const SCAR_LABELS = ['Open', 'Healing', 'Healed'];
+/** A transition needs this many pairs before its days-between box is drawn. */
+export const MIN_BOX_PAIRS = 5;
 
 /** Consecutive known-stage field observations, within one season; never infer healing dates. */
 export function scarTransitions(d: Pick<Dataset, 'captures' | 'individuals' | 'labSharks'>) {
 	const conflicts = new Set(d.individuals.filter((i) => i.conflict).map((i) => i.id));
-	return ['Cm', 'Na'].map((species) => {
+	return (['Cm', 'Na'] as const).map((species) => {
 		const field = d.captures.filter((c) => c.kind === 'field' && c.species === species);
 		const known = field.filter(
 			(c) => c.umbilical && stages.includes(c.umbilical) && c.date && c.individualId
@@ -59,7 +62,7 @@ export function scarTransitions(d: Pick<Dataset, 'captures' | 'individuals' | 'l
 					pairs: ps.length,
 					sharks: new Set(ps.map((p) => p.id)).size,
 					backward: j < i,
-					stats: boxStats(ps.map((p) => p.days))
+					stats: ps.length >= MIN_BOX_PAIRS ? boxStats(ps.map((p) => p.days)) : null
 				};
 			})
 		);
@@ -67,6 +70,7 @@ export function scarTransitions(d: Pick<Dataset, 'captures' | 'individuals' | 'l
 		for (const p of pairs) contributions.set(p.id, (contributions.get(p.id) ?? 0) + 1);
 		return {
 			species,
+			labels: SCAR_LABELS,
 			rows,
 			values: stages.map((_, i) => rows.slice(i * 3, i * 3 + 3).map((r) => r.pairs)),
 			pairs: pairs.length,

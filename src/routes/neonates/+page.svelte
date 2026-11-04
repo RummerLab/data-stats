@@ -26,7 +26,6 @@
 			when mothers give birth, and how big pups are when they arrive.
 		</p>
 	</header>
-	<ScarTransitions groups={data.scarTransitions} />
 
 	<section class="section grid-2">
 		<ChartCard
@@ -187,4 +186,6 @@
 			/>
 		</ChartCard>
 	</section>
+
+	<ScarTransitions groups={data.scarTransitions} />
 </div>
