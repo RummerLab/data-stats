@@ -136,6 +136,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - The national data has slips (the 2023 November break "starts" on 28 September): fix them in `SCHOOL_ERRATA`. The job throws if breaks overlap, so a new typo fails the weekly refresh instead of reaching the site.
 - `dayType` precedence: public holiday > festive window > school holidays > weekend. The pressure page also compares school-holiday weekdays with term-time weekdays, which keeps weekends out of the contrast.
 
+### Sampling conditions (#124)
+
+- `analytics/samplingConditions.ts` compares daily rain, daily maximum wind and SST on fieldwork nights (distinct dates with a nursery gillnet set: island-wide series, so a night counts once) with every day of the same calendar months. Each month's days are weighted by its fieldwork nights ÷ its days with a value, so the reference has the fieldwork's seasonal mix. One nursery-month holds a median of two nights, too few to plot alone.
+- The reference contains the fieldwork nights, so no two-sample test: the statistic is checked against seeded random draws of the same number of days from each month (`DRAWS`). Fieldwork nights are a little drier and calmer than their months (about 0.7 mm less rain); describe it as coverage, not as weather stopping trips.
+
 ### Adding a new season
 
 Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (the `YYYY-YYYY` in the file name sets the season). Check the Data quality page for unknown sites, unmatched headers ("Sheet not imported") and unit warnings, and extend aliases if needed. Never rename columns in the workbook to make the importer happy.
