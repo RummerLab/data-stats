@@ -28,7 +28,6 @@
 				)} to {monthYear(ins.summary.last)}.{/if}
 		</p>
 	</header>
-	<ThermalCalendar sites={data.thermalCalendar} />
 
 	{#if ins}
 		<section class="section">
@@ -167,6 +166,8 @@
 			</ChartCard>
 		</section>
 	{/if}
+
+	<ThermalCalendar calendar={data.thermalCalendar} />
 
 	<section class="section grid-2">
 		<ChartCard title="Water temperature at the net" stats={data.stats.temp}>

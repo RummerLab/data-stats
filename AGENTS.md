@@ -86,10 +86,9 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - Site: EnvLogger by download GPS (≤ 400 m from a nursery), then custom name, file-name prefix (`PIAENA_2_…`), then the register workbook (detected by its `Serial number` + `Custom name` header, checked before the `/gps|location/` file-name rule). HOBO by the file-name suffix (`…_Intercontinental`), then the season workbooks' HOBO log (logger number + date overlap). A name/GPS disagreement is a warning on the Data quality page.
 - Cleaning: trim 2 h at the start of each file and 2 h (EnvLogger) or 24 h (HOBO, read out back at the station) at the end; drop readings outside 15–40 °C; merge repeated downloads of one logger by timestamp. Days need ≥ 18 site-hours. Tables: `logger_files`, `logger_daily`, `logger_diel`, plus `sets.insitu_temp`.
 - Comparisons between nurseries only use those logged ≥ 1 year with both seasons covered (a summer-only logger looks hottest).
+- Month × hour calendars (#127, `analytics/thermalCalendar.ts`) read `logger_diel`, whose `n` is contributing days (one nursery-wide hourly mean per day), not sensor samples. Cells need ≥ 10 days. Every nursery shares one colour domain taken from the supported cells, in whole degrees (24–33 °C with the current loggers): the 15–40 °C cleaning window squeezed the lagoon into two colour steps. Pooled means can't show peaks or hours above a threshold.
 
 ### Cloud cover (#104)
-
-- Month-hour nursery heatmaps (#127) use `logger_diel.n` as contributing site-hour days, not sensor samples. Mask cells with fewer than ten days and keep a common 15–40 °C scale; pooled historical means cannot establish threshold-exceedance duration.
 
 - ERA5 `cloud_evening` covers every set; the crew's 1–4 `cloud_cover` score exists only in 2020–22 and tracks ERA5 (score 1 ≈ 43%, 4 ≈ 94%). `moonlight()` in `analytics/cloud.ts` = illumination × sin(moon altitude) × clear-sky fraction.
 - Cloud vs water temperature must be compared within the same month: the cloudy wet season is also the warmest, so raw correlations are ~0 while within-month ones are strongly negative.
