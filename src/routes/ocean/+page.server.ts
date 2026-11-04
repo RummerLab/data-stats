@@ -8,8 +8,14 @@ import {
 	isNeonate,
 	round
 } from '#lib/server/analytics/common';
-import { linearFit, mean, pairs } from '#lib/stats';
-import { trendText } from '#lib/server/analytics/tests';
+import { linearFit, mean, median, pairs } from '#lib/stats';
+import {
+	fitText,
+	groupsText,
+	rateSlopeText,
+	rateTest,
+	trendText
+} from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
 const toDay = (iso: string) => Math.round(Date.parse(`${iso}T00:00:00Z`) / 86_400_000);
@@ -48,6 +54,7 @@ export const load: PageServerLoad = () =>
 			return {
 				season,
 				sst: round(mean(sets.map((s) => s.sst)), 2),
+				chl: round(mean(sets.map((s) => s.chl)), 4),
 				oni: round(mean(sets.map((s) => s.oni)), 2),
 				maxDhwBefore: round(Math.max(0, ...preSummer.map((r) => r.crwDhw ?? 0)), 1),
 				cpue: round(cpueOf(eff.filter((s) => s.season === season))),
@@ -84,7 +91,48 @@ export const load: PageServerLoad = () =>
 			.map((y) => o.filter((r) => r.date.startsWith(y) && r.crwAnom != null))
 			.map((rs) => (rs.length >= 300 ? mean(rs.map((r) => r.crwAnom)) : null));
 		const anomStats = trendText(annual, '°C', 'year');
+
+		// Offshore chlorophyll-a (#23). The seasonal test uses one median per calendar month and
+		// year, so a month's weekly values (which follow each other) count once.
+		const chl = d.chlorophyll.filter((r) => r.chl != null);
+		const byYm = new Map<string, number[]>();
+		for (const r of chl) {
+			const l = byYm.get(r.date.slice(0, 7));
+			if (l) l.push(r.chl!);
+			else byYm.set(r.date.slice(0, 7), [r.chl!]);
+		}
+		const chlMonths = months.map((m) =>
+			[...byYm].filter(([ym]) => Number(ym.slice(5)) === m).map(([, v]) => median(v)!)
+		);
+		const chlClim = chlMonths.map((g) => round(median(g), 4));
+		const order = months.map((_, i) => i).filter((i) => chlClim[i] != null);
+		order.sort((a, b) => chlClim[b]! - chlClim[a]!);
+		const chlCpue = pairs(
+			seasonRows,
+			(r) => (r.chl == null ? null : r.chl * 100),
+			(r) => r.cpue
+		);
 		return {
+			chl: {
+				series: chl.map((r) => ({ x: toDay(r.date), y: r.chl })),
+				clim: chlClim,
+				high: order[0] ?? null,
+				low: order.at(-1) ?? null,
+				stats: groupsText(chlMonths, 'calendar months (one median per month and year)'),
+				cpueStats: [
+					fitText(chlCpue, 'sharks/net-hour per 0.01 mg/m³'),
+					// Set by set, holding nursery and the calendar fixed. Not season: chlorophyll
+					// varies mostly between seasons, so a season term would absorb it.
+					rateSlopeText(
+						rateTest(eff, { valueOf: (s) => s.chl }, 'cpue', ['season']),
+						'offshore chlorophyll that week'
+					)
+				].filter((x): x is string => x != null),
+				typical: round(median(chl.map((r) => r.chl)), 3),
+				pixels: Math.max(0, ...chl.map((r) => r.pixels)),
+				first: chl[0]?.date ?? null,
+				last: chl.at(-1)?.date ?? null
+			},
 			anomStats,
 			bands,
 			sst: weekly(o, (r) => r.oisst ?? r.crwSst),
