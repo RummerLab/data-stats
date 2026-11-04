@@ -11,6 +11,11 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
+	type Est = { est: number; lo: number | null; hi: number | null };
+	const ci = (e: Est) =>
+		e.lo != null && e.hi != null ? ` (95% interval ${pct(e.lo)}–${pct(e.hi)})` : '';
+	const chi = (t: { lr: number; df: number; p: number }) =>
+		`likelihood-ratio χ²(${t.df}) = ${num(t.lr, 1)}, ${pValue(t.p)}`;
 </script>
 
 <div class="container">
@@ -105,6 +110,71 @@
 			/>
 		</ChartCard>
 	</section>
+
+	{#if data.stay.length}
+		<section class="section" id="survival">
+			<h2>How long do pups stay?</h2>
+			<p>
+				A Cormack–Jolly–Seber model follows each tagged pup from its first capture at a nursery
+				through the rest of that season, in {data.occasionDays}-day steps, and separates two things
+				a simple recapture rate mixes up: how likely a pup is to still be there, and how likely the
+				net is to catch it when it is. The second rises with that fortnight's net-hours; a single
+				typical set catches {data.stay
+					.map((r) => `${pct(r.pTypicalSet)} of the ${speciesName(r.species).toLowerCase()} pups`)
+					.join(' and ')} present. Because each pup enters at its own first capture, pups born later in
+				the season don't bias the answer.
+			</p>
+			<p>
+				{#each data.stay as r (r.species)}
+					{speciesName(r.species)}: {pct(r.month.est)} of pups are still at their nursery 30 days later{ci(
+						r.month
+					)}, an average stay of about {num(r.residenceDays)} days ({num(r.histories)}
+					pups, {`${num(r.recaptured)} seen again later in the season). `}
+				{/each}
+			</p>
+			<p class="muted small">
+				"Still there" means alive and not moved away: the model can't tell a pup that died from one
+				that left, and a pup that moved to another nursery counts as gone (the movement chart above
+				shows how often recaptures cross nurseries). Nurseries need at least ten pups seen again
+				within a season to get their own estimate.
+			</p>
+			<div class="grid-2">
+				{#each data.stay as r (r.species)}
+					<ChartCard
+						title={`Still at the nursery a month later: ${speciesName(r.species).toLowerCase()}`}
+						subtitle="Share of pups at a nursery still there 30 days later (pups tagged there in brackets). Whiskers: 95% intervals."
+						stats={[
+							r.nurseryTest
+								? `${r.nurseryTest.p < 0.05 ? 'Nurseries differ' : 'No detectable difference between nurseries'} (one rate per nursery vs one shared, ${chi(r.nurseryTest)}).`
+								: null,
+							r.transience
+								? `${r.transience.p < 0.05 ? 'Newly tagged pups leave faster' : 'No sign that newly tagged pups leave faster'}: ${pct(r.transience.first.est)} stay their first fortnight, ${pct(r.transience.later.est)} each later one (${chi(r.transience)}).`
+								: null
+						]}
+						note={r.transience && r.transience.p < 0.05
+							? 'Some pups caught once are passing through, or move off after being handled; those that stay, stay longer.'
+							: undefined}
+					>
+						<BarChart
+							horizontal
+							categories={r.nurseries.map((n) => `${n.name} (${n.histories})`)}
+							series={[
+								{
+									name: 'Still there after 30 days',
+									color: SPECIES[r.species].color,
+									values: r.nurseries.map((n) => n.month.est)
+								}
+							]}
+							errors={r.nurseries.map((n) =>
+								n.month.lo != null && n.month.hi != null ? [n.month.lo, n.month.hi] : null
+							)}
+							valueFormat={(v) => pct(v)}
+						/>
+					</ChartCard>
+				{/each}
+			</div>
+		</section>
+	{/if}
 
 	<section class="section grid-2">
 		<div class="card">

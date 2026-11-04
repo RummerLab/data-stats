@@ -47,6 +47,7 @@ src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env
                          events.ts (cyclones and heavy-rain days vs catches)
                          glm.ts (NB/Poisson GLM, splines) · catchModel.ts (joint catch model)
                          glmm.ts (binomial mixed model, crossed random intercepts) · sex.ts
+                         survival.ts (Cormack–Jolly–Seber apparent survival, BFGS)
                          tests.ts (the statistic behind each chart, worded for ChartCard stats)
 src/lib/server/astro.ts  sunset/twilight/moon (local formulas) · tides.ts (extrema, interpolation)
 src/lib/server/holidays.ts French Polynesia public holidays (Easter-based too), festive window,
@@ -107,6 +108,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/sex.ts`: female (1) vs male (0) per individual, counted once at its first capture, with the nursery and season of that capture as crossed random intercepts (`glmm.ts`: Laplace approximation, PIRLS as lme4's nAGQ = 0, SDs by Nelder–Mead). Tests fix one SD at 0 and halve the χ²₁ p (boundary).
 - Reuse `fitBinomialGlmm` for any yes/no outcome with grouping (fed or empty, recaptured or not) instead of pooling groups; there is no R in CI, so validate new uses against simulated data as `glmm.test.ts` does.
+
+### Apparent survival (#42)
+
+- `analytics/survival.ts`: Cormack–Jolly–Seber per species on 14-day blocks of the season. One history per pup, nursery and season, starting at its first capture there, so pups born later don't bias it. φ is shared, or one per nursery for the nursery test. Capture probability is cloglog(aₙ + β·log net-hours) for that fortnight, with an intercept per nursery and p = 0 in fortnights with no set. Untimed sets count as a typical set, and a catch in a fortnight with no set on record counts as one.
+- φ is apparent: death and leaving look the same, and moving to another nursery counts as leaving. Nurseries need ≥ 10 pups seen again in a later fortnight of the same season. The transience model gives the first fortnight after tagging its own φ.
+- `fitCjs` is generic and validated on simulated histories in `survival.test.ts`. Reuse it rather than writing another fitter. Wald intervals are on the logit scale and are null at the boundary (φ ≈ 1).
 
 ### School holidays (#25)
 
