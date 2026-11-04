@@ -109,7 +109,10 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
+- Fit diagnostics (#125, `analytics/modelDiagnostics.ts`) reuse each fit's own rows, design matrix, counts and offsets, so they can't drift from the model. NB2 variance is μ + μ²/θ; P(0) falls back to Poisson when θ is infinite. Calibration rates are summed sharks over summed net-hours per group of sets. They are in-sample checks: not forecasting skill, and no leave-one-season-out (season is a fixed effect). Only rounded columns reach the page; keep it that way (the first draft sent 500 kB of JSON).
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
+- `selectCatchModel()` holds the sample filters (`MIN_SITE_SETS`, `MIN_SITE_CATCH`, `MIN_MODEL_SETS`); the fits and the "Which sets does the model use?" chart (#123, `modelSelectionFlow`) both call it, so change filters there. The first steps are sequential; each species model restarts from the all-shark sample.
+- Measurement coverage on /data-quality (#123, `analytics/measurementCoverage.ts`) counts records with a value over eligible records, per season: availability, not validity. Zero is recorded; a cell with no eligible records stays empty, not 0%. Lavage results only count captures marked lavaged or with a result.
 
 ### Sex ratio mixed model (#117)
 
@@ -132,6 +135,11 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `fetch-external.mjs --only=school` writes `external/school-holidays.csv` (first and last day off, local dates). 2013-14 to 2016-17 are transcribed in the script from the Polynesian government's calendar orders for collèges and lycées (arrêtés 0270/CM 2013, 0399, 0401 and 0403/CM 2014), archived from education.pf by the Wayback Machine; the national dataset only starts in 2017-18. From 2017-18 it is the Ministry's `fr-en-calendrier-scolaire` open data (Polynésie, Licence Ouverte 2.0, credit it): pupils only, a day counts when either level is off, `end_date` is the day classes resume.
 - The national data has slips (the 2023 November break "starts" on 28 September): fix them in `SCHOOL_ERRATA`. The job throws if breaks overlap, so a new typo fails the weekly refresh instead of reaching the site.
 - `dayType` precedence: public holiday > festive window > school holidays > weekend. The pressure page also compares school-holiday weekdays with term-time weekdays, which keeps weekends out of the contrast.
+
+### Sampling conditions (#124)
+
+- `analytics/samplingConditions.ts` compares daily rain, daily maximum wind and SST on fieldwork nights (distinct dates with a nursery gillnet set: island-wide series, so a night counts once) with every day of the same calendar months. Each month's days are weighted by its fieldwork nights ÷ its days with a value, so the reference has the fieldwork's seasonal mix. One nursery-month holds a median of two nights, too few to plot alone.
+- The reference contains the fieldwork nights, so no two-sample test: the statistic is checked against seeded random draws of the same number of days from each month (`DRAWS`). Fieldwork nights are a little drier and calmer than their months (about 0.7 mm less rain); describe it as coverage, not as weather stopping trips.
 
 ### Adding a new season
 

@@ -72,6 +72,7 @@
 		content="Physioshark Data: thirteen seasons of baby sharks, in numbers"
 	/>
 	<meta name="twitter:card" content="summary_large_image" />
+	<link rel="describedby" href="/llms.txt" />
 	<link rel="author" type="text/plain" href="/humans.txt" />
 </svelte:head>
 

@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { measurementCoverage } from '#lib/server/analytics/measurementCoverage';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = () =>
@@ -11,6 +12,7 @@ export const load: PageServerLoad = () =>
 			cats.set(k, c);
 		}
 		return {
+			coverage: measurementCoverage(d),
 			summary: [...cats.values()].sort((a, b) => b.n - a.n),
 			issues: d.issues.map((i) => ({
 				...i,

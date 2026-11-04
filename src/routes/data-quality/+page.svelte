@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MeasurementCoverage from '#lib/components/MeasurementCoverage.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import { date, num } from '#lib/format';
 	import type { PageProps } from './$types';
@@ -33,6 +34,7 @@
 					{ key: 'sheets', label: 'Sheets / CSVs', num: true }
 				]}
 				rows={data.files}
+				label="Imported files"
 			/>
 			<p class="small">
 				{Object.entries(data.counts)
@@ -55,9 +57,12 @@
 					{ key: 'n', label: 'Notes', num: true }
 				]}
 				rows={data.summary}
+				label="Notes by type"
 			/>
 		</div>
 	</section>
+
+	<MeasurementCoverage data={data.coverage} />
 
 	<section class="section card">
 		<label class="filter"
@@ -79,6 +84,7 @@
 				{ key: 'value', label: 'Value' }
 			]}
 			rows={shown}
+			label="Data notes"
 		/>
 	</section>
 </div>
