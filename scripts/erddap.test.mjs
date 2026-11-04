@@ -79,8 +79,7 @@ test('rejects completely absent series', async () => {
 	);
 });
 
-test('daily validation rejects holes and stale tails', async () => {
-	const { validateDaily } = await import('./erddap.mjs');
+test('daily validation rejects holes and stale tails', () => {
 	const rows = new Map([
 		['2013-08-01', { sst: 25 }],
 		['2013-08-03', { sst: 26 }]

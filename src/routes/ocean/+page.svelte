@@ -11,6 +11,13 @@
 	const fitNote = (f: { r2: number | null; p: number; n: number } | null) =>
 		f ? `R² ${num(f.r2, 2)}, ${pValue(f.p)}, ${f.n} seasons.` : '';
 	const rows = $derived(data.seasonRows);
+	const days = (n: number) => `${num(n)} ${n === 1 ? 'day' : 'days'}`;
+	const sstNote = $derived.by(() => {
+		const c = data.sstCoverage;
+		const fill = c.crw ? `; Coral Reef Watch fills ${days(c.crw)} without it` : '';
+		const gap = c.missing ? `; ${days(c.missing)} ${c.missing === 1 ? 'has' : 'have'} neither` : '';
+		return `OISST on ${days(c.oisst)}${fill}${gap}.`;
+	});
 </script>
 
 <div class="container">
@@ -22,10 +29,6 @@
 			quickly it grows. These series come from satellites and reanalysis just offshore of Mo'orea;
 			shaded bands mark the September–February fieldwork seasons.
 		</p>
-		<p>
-			Daily SST coverage: {data.sstCoverage.oisst} OISST days, {data.sstCoverage.crw} Coral Reef Watch
-			fallback days, and {data.sstCoverage.missing} days without SST.
-		</p>
 	</header>
 
 	<section class="section grid-2">
@@ -34,6 +37,7 @@
 			papers={['bouyoucos2020sharkparks']}
 			subtitle="Weekly mean satellite SST; OISST cell south-west of Mo'orea, CRW cell north of the island"
 			source={SST_SOURCE}
+			note={sstNote}
 		>
 			<LineChart
 				xType="date"

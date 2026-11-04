@@ -144,9 +144,10 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Satellite SST (#154)
 
-- OISST v2.1 comes from NOAA upwell ERDDAP, dataset `ncdcOisst21Agg`, dimensions time / zlev=0 / latitude=-17.625 / longitude=210.125 (0–360°, equivalent to −149.875). The old `LonPM180` endpoint returned 503 and left the series empty. The aggregation also omits historical dates: recover those from NOAA upwell `oisst_rclone` (same grid and final product, surface dimension named `depth`), then validate continuity before writing.
-- `node scripts/fetch-external.mjs --only=oisst` repairs only the OISST column of the existing ocean snapshot; the regular ocean job refreshes all ocean variables. Historical failures and missing daily OISST values are fatal; only up to 17 days of lag relative to the requested end date are allowed. Keep the full 17-day publication-lag window in the final `last` request (merge the last yearly chunks in early January); December 31 may still be unpublished. Run `node --test scripts/erddap.test.mjs` (also included in `pnpm test`).
-- SST consumers prefer OISST, then CRW CoralTemp. Use `SST_SOURCE` from `src/lib/sst.ts` for source copy; /ocean reports source coverage. A snapshot change already invalidates caches, so no importer-version bump is needed without import-logic changes.
+- OISST v2.1 is `ncdcOisst21Agg`, in 0–360° longitude: the cell is −17.625, 210.125 (−149.875), surface `zlev` 0. The script asks upwell.pfeg.noaa.gov, which redirects that dataset to coastwatch.pfeg.noaa.gov. The `_LonPM180` copy there returned 503, and the old fetch quietly wrote an empty column. The aggregation skips some days (19 so far) even though the request succeeds; those come one at a time from upwell's own `oisst_rclone` (same final product and grid, surface dimension `depth`). Never interpolate.
+- ERDDAP failures are fatal (`scripts/erddap.mjs`), for Coral Reef Watch too: a historical chunk that fails or comes back blank stops the ocean job before it writes, so a flaky server can't blank a column (PacIOOS returned 404s for 2023–26 on 2 Nov 2026 and answered again two days later). Only the final chunk may be missing (404). OISST must be continuous and at most 17 days behind the end date (final OISST lags about two weeks); in early January the last yearly chunks are merged so the request ending at `last` still covers that window.
+- `node scripts/fetch-external.mjs --only=oisst` rewrites just the OISST column of the existing snapshot. `pnpm test` also runs `scripts/erddap.test.mjs` with `node --test`.
+- Analyses use OISST, else Coral Reef Watch (`oisst ?? crwSst`). Credit it with `SST_SOURCE` from `src/lib/sst.ts`. A snapshot change already rebuilds caches, so no `IMPORTER_VERSION` bump.
 
 ### Adding a new season
 

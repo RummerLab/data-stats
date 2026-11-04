@@ -1,7 +1,8 @@
 # OISST restoration validation (#154)
 
-Validated on 4 November 2026. The NOAA upwell `ncdcOisst21Agg` aggregation
-returns OISST v2.1 final SST at −17.625°, 210.125°E (−149.875°), surface zlev=0.
+Validated on 4 November 2026. The NOAA `ncdcOisst21Agg` aggregation (requested from
+upwell.pfeg.noaa.gov, which redirects it to coastwatch.pfeg.noaa.gov) returns OISST v2.1
+final SST at −17.625°, 210.125°E (−149.875°), surface zlev=0.
 It omits 19 historical dates despite successful HTTP responses. Those observations
 were recovered from NOAA's `oisst_rclone` representation of the same final product,
 with the same coordinates and depth=0. No values were interpolated.
@@ -36,6 +37,6 @@ caches. Shared source copy describes both products and /ocean displays live sour
 coverage. `node scripts/fetch-external.mjs --only=oisst` repairs the OISST column
 without refreshing independent wave or CRW variables.
 
-Validation: nine fetch regression tests (included in `pnpm test`), lint, Svelte
+Validation: fetch regression tests (included in `pnpm test`), lint, Svelte
 checks, unit tests, read-only real-data import and analysis comparison, production
 build, and Playwright/axe. The private comparison output stays in ignored cache/.
