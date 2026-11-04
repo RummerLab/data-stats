@@ -24,7 +24,8 @@
 				: String(v);
 </script>
 
-<div class="table-scroll">
+<!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard users need to scroll wide tables.) -->
+<div class="table-scroll" role="region" aria-label="Scrollable data table" tabindex="0">
 	<table class="data">
 		<thead>
 			<tr>

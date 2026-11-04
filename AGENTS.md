@@ -107,6 +107,8 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Catch model (#54)
 
+- Coverage (#123) reports recorded/eligible counts, not measurement validity. Lavage results use sampled-or-result-present captures. `selectCatchModel()` owns the shared model and selection-flow filters; sequential exclusions must reconcile without double-counting.
+
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.

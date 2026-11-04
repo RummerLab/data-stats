@@ -1,4 +1,5 @@
 <script lang="ts">
+	import MeasurementCoverage from '#lib/components/MeasurementCoverage.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import { date, num } from '#lib/format';
 	import type { PageProps } from './$types';
@@ -21,6 +22,7 @@
 			the source sheets.
 		</p>
 	</header>
+	<MeasurementCoverage data={data.coverage} />
 
 	<section class="section grid-2">
 		<div class="card">

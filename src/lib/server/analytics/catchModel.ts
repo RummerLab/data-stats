@@ -48,7 +48,7 @@ function count(s: SetRow, r: Response): number {
 /** A species gets its own nursery effect only where it was caught at least this often. */
 const MIN_SITE_CATCH = 10;
 
-export function catchModel(d: Dataset) {
+export function selectCatchModel(d: Dataset) {
 	const vars = TERMS.map((k) => SET_VARIABLES.find((v) => v.key === k)!);
 	const complete = effortSets(d).filter(
 		(s) => s.cpue != null && s.date && s.siteId && vars.every((v) => v.get(s) != null)
@@ -61,6 +61,17 @@ export function catchModel(d: Dataset) {
 		.sort();
 	const base = complete.filter((s) => sites.includes(s.siteId!));
 	const seasons = [...new Set(base.map((s) => s.season))].sort();
+	const selectSpecies = (r: Response) => {
+		const caught = new Map<string, number>();
+		for (const s of base) caught.set(s.siteId!, (caught.get(s.siteId!) ?? 0) + count(s, r));
+		const own = sites.filter((id) => r === 'all' || (caught.get(id) ?? 0) >= MIN_SITE_CATCH);
+		return { own, rows: base.filter((s) => own.includes(s.siteId!)) };
+	};
+	return { vars, complete, perSite, sites, base, seasons, selectSpecies };
+}
+
+export function catchModel(d: Dataset) {
+	const { vars, perSite, sites, base, seasons, selectSpecies } = selectCatchModel(d);
 	if (base.length < 200 || sites.length < 2 || seasons.length < 2) return null;
 
 	// Scales and spline knots come from the full model so every species shares the same units.
@@ -79,10 +90,7 @@ export function catchModel(d: Dataset) {
 	const iEnv = 1;
 	const iDay = iEnv + vars.length;
 	const fitFor = (r: Response) => {
-		const caught = new Map<string, number>();
-		for (const s of base) caught.set(s.siteId!, (caught.get(s.siteId!) ?? 0) + count(s, r));
-		const own = sites.filter((id) => r === 'all' || (caught.get(id) ?? 0) >= MIN_SITE_CATCH);
-		const rows = base.filter((s) => own.includes(s.siteId!));
+		const { own, rows } = selectSpecies(r);
 		const ownSeasons = seasons.filter((x) => rows.some((s) => s.season === x));
 		const days = rows.map((s) => seasonDay(s.date!));
 		const meanBasis = new Array<number>(nSpline).fill(0);

@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { modelSelectionFlow } from '#lib/server/analytics/measurementCoverage';
 import { binnedMean, cpueOf, effortSets, round } from '#lib/server/analytics/common';
 import { catchModel } from '#lib/server/analytics/catchModel';
 import { correlations, SET_VARIABLES } from '#lib/server/analytics/env';
@@ -72,6 +73,7 @@ export const load: PageServerLoad = () =>
 			crew: rateSlopeText(rateTest(sets, { valueOf: (s) => s.crewSize }), 'crew size')
 		};
 		return {
+			selection: modelSelectionFlow(d),
 			stats,
 			model: memo('catchModel', catchModel),
 			n: sets.length,

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ModelSelection from '#lib/components/ModelSelection.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
@@ -49,6 +50,7 @@
 			The model further down estimates them together.
 		</p>
 	</header>
+	<ModelSelection groups={data.selection} />
 
 	<section class="section grid-2">
 		<ChartCard
