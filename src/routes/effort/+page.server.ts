@@ -1,4 +1,5 @@
-import { memo } from '#lib/server/data';
+import { dataset, memo } from '#lib/server/data';
+import { samplingConditions } from '#lib/server/analytics/samplingConditions';
 import {
 	activeNurseries,
 	cpueOf,
@@ -11,8 +12,8 @@ import { histogram } from '#lib/stats';
 import { rateSlopeText, rateTest, tableText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
-export const load: PageServerLoad = () =>
-	memo('effort', (d) => {
+export const load: PageServerLoad = ({ url }) => {
+	const summary = memo('effort', (d) => {
 		const gill = d.sets.filter((s) => s.gear === 'Gillnet');
 		const eff = effortSets(d);
 		const nurseries = activeNurseries(d);
@@ -86,3 +87,12 @@ export const load: PageServerLoad = () =>
 			other: d.sets.filter((s) => s.siteId && d.siteById.get(s.siteId)?.kind !== 'nursery').length
 		};
 	});
+	return {
+		...summary,
+		samplingConditions: samplingConditions(
+			dataset(),
+			url.searchParams.get('nursery'),
+			url.searchParams.get('period')
+		)
+	};
+};

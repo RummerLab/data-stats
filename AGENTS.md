@@ -93,6 +93,8 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 ### Cyclones and heavy rain (#24)
 
+- Sampling-condition distributions (#124) compare distinct dates within a selected nursery/calendar month. Both groups use identical daily environmental values; reference dates include sampled days. Never pool dates across nursery-month strata without explicit weights or test the overlapping groups as independent samples.
+
 - `fetch-external.mjs --only=cyclones` downloads the IBTrACS South Pacific CSV (~36 MB) and keeps track points within 750 km of Moorea since 2013 (`external/cyclones.csv`, `cyclone_points` table). Analyses use 500 km.
 - Heavy-rain day = top 1% of ERA5 daily precipitation (the grid cell under-reads mountain rain).
 - After-event catches are compared with other sets in the same season and month (observed / expected, bootstrap interval), never with all sets: storms and downpours cluster in the wet season.
