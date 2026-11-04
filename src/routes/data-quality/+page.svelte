@@ -42,7 +42,8 @@
 			<p class="small muted">
 				Environmental data to: weather {date(data.external.weather)}, ocean {date(
 					data.external.ocean
-				)}, tide {date(data.external.tide)}, climate {data.external.climate ?? '–'}.
+				)}, chlorophyll {date(data.external.chlorophyll)}, tide {date(data.external.tide)}, climate {data
+					.external.climate ?? '–'}.
 			</p>
 		</div>
 		<div class="card">

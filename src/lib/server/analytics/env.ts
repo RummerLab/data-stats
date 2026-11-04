@@ -49,6 +49,7 @@ export const SET_VARIABLES: SetVariable[] = [
 	{ key: 'pressure', label: 'Air pressure', unit: 'hPa', dp: 1, get: (s) => s.pressure },
 	{ key: 'waves', label: 'Wave height (offshore)', unit: 'm', dp: 1, get: (s) => s.waveHeight },
 	{ key: 'swell', label: 'Swell height (offshore)', unit: 'm', dp: 1, get: (s) => s.swellHeight },
+	{ key: 'chl', label: 'Chlorophyll-a (offshore)', unit: 'mg/m³', dp: 3, get: (s) => s.chl },
 	{ key: 'oni', label: 'El Niño index (ONI)', unit: '', dp: 1, get: (s) => s.oni },
 	{
 		key: 'startSunset',
