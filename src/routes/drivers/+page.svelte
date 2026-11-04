@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ModelSelection from '#lib/components/ModelSelection.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
@@ -260,6 +261,18 @@
 					</ul>
 				</div>
 			</div>
+			<ModelSelection flow={data.selection} />
+		</section>
+	{:else}
+		<section class="section" id="model">
+			<h2>All together: a model of catches</h2>
+			<p>
+				There aren't enough complete sets to fit the model. It needs at least {num(
+					data.selection.minModelSets
+				)} sets with every variable, from nurseries with at least {data.selection.minSiteSets} such sets
+				each, across two nurseries and two seasons.
+			</p>
+			<ModelSelection flow={data.selection} />
 		</section>
 	{/if}
 

@@ -71,7 +71,7 @@
 	{#if table && table.rows.length}
 		<details class="tbl">
 			<summary>Show data ({table.rows.length} rows)</summary>
-			<DataTable columns={table.columns} rows={table.rows} max={500} />
+			<DataTable columns={table.columns} rows={table.rows} max={500} label={`Data: ${title}`} />
 		</details>
 	{/if}
 	{#if canDownload}

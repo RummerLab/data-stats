@@ -110,6 +110,8 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
 - The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
+- `selectCatchModel()` holds the sample filters (`MIN_SITE_SETS`, `MIN_SITE_CATCH`, `MIN_MODEL_SETS`); the fits and the "Which sets does the model use?" chart (#123, `modelSelectionFlow`) both call it, so change filters there. The first steps are sequential; each species model restarts from the all-shark sample.
+- Measurement coverage on /data-quality (#123, `analytics/measurementCoverage.ts`) counts records with a value over eligible records, per season: availability, not validity. Zero is recorded; a cell with no eligible records stays empty, not 0%. Lavage results only count captures marked lavaged or with a result.
 
 ### Sex ratio mixed model (#117)
 
