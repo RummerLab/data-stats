@@ -119,8 +119,10 @@
 					const r = layer.sized
 						? 5 + 13 * Math.sqrt(Math.max(0, p.value ?? 0) / max)
 						: (layer.radius ?? 5);
+					const tooltip = document.createElement('span');
+					tooltip.textContent = p.label;
 					L.circleMarker([p.lat, p.lon], { radius: r, className: `ps-layer ps-layer-${i}` })
-						.bindTooltip(p.label)
+						.bindTooltip(tooltip)
 						.bindPopup(() => popup(p))
 						.addTo(group);
 					all.push([p.lat, p.lon]);

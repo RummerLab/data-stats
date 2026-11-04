@@ -210,3 +210,5 @@ Questions for the lab go to Dr Jodie Rummer (`@JodieRummer`) on GitHub: label th
 | 2026-11 | v0.2.3: negative-binomial catch model on /drivers (#54; SST link is the calendar); gastric lavage diet columns and charts (#40); IBTrACS cyclones and heavy-rain days vs catches (#24); ForestPlot chart, LineChart markers.                                            |
 | 2026-11 | v0.2.4: French Polynesia school holidays as a busy-day proxy (#25: archived 2013–17 orders + Ministry open data); lighter scatter plots, compressed pages and ETag revalidation (#76); keyboard-readable charts and reduced motion (#32).                               |
 | 2026-11 | v0.2.5: sex ratio by nursery and season with a binomial mixed model (#117); a Statistics line under every chart with a trend or difference (#119); moon finding tested (#118); adjusted season test on the overview (#120); lab questions go to Jodie Rummer on GitHub. |
+
+- Security scans (#144): use Snyk CLI >=1.1308.3 with `test --all-projects --dev` for the pnpm 12 multi-document lockfile. Remaining upstream advisories and mitigations are tracked in docs/dev/SNYK-144.md.

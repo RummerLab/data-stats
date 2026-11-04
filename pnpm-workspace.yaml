@@ -6,6 +6,11 @@ allowBuilds:
 engineStrict: true
 shamefullyHoist: true
 
+# Security fixes for transitive tooling dependencies (#144).
+overrides:
+  esbuild@<0.28.1: 0.28.1
+  minimatch@<11.0.1: 11.0.1
+
 # pnpm 12 defaults to a release-age gate that breaks frozen CI installs when
 # the lockfile already pins recently published transitive deps. Trust the lockfile.
 minimumReleaseAge: 0
