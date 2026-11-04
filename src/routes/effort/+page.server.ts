@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { samplingConditions } from '#lib/server/analytics/samplingConditions';
 import {
 	activeNurseries,
 	cpueOf,
@@ -83,6 +84,7 @@ export const load: PageServerLoad = () =>
 				g,
 				n: d.sets.filter((s) => s.gear === g).length
 			})),
-			other: d.sets.filter((s) => s.siteId && d.siteById.get(s.siteId)?.kind !== 'nursery').length
+			other: d.sets.filter((s) => s.siteId && d.siteById.get(s.siteId)?.kind !== 'nursery').length,
+			samplingConditions: samplingConditions(d)
 		};
 	});

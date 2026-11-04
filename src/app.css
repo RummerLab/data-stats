@@ -43,6 +43,8 @@
 	--seq-5: #256abf;
 	--seq-6: #184f95;
 	--seq-7: #0d366b;
+	/* Text on the strong end of the scale (seq-5 to seq-7): dark cells in light mode, pale in dark. */
+	--seq-strong-ink: #ffffff;
 	--div-neg: #2a78d6;
 	--div-mid: #f0efec;
 	--div-pos: #e34948;
@@ -83,6 +85,7 @@
 		--seq-5: #5598e7;
 		--seq-6: #86b6ef;
 		--seq-7: #cde2fb;
+		--seq-strong-ink: #08111f;
 		--div-mid: #2a3446;
 		--shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 	}
@@ -120,6 +123,7 @@
 	--seq-5: #5598e7;
 	--seq-6: #86b6ef;
 	--seq-7: #cde2fb;
+	--seq-strong-ink: #08111f;
 	--div-mid: #2a3446;
 	--shadow: 0 1px 2px rgb(0 0 0 / 0.3);
 }

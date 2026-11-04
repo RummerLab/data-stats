@@ -271,3 +271,104 @@ writeFileSync(
 	join(LOG_DIR, '2021-12-20', '0F1E 2D3C 4B5A 69-20211220 101500.csv'),
 	env.join('\n') + '\n'
 );
+
+// --- a second, larger synthetic season (#153) -------------------------------------------------
+// The catch model needs at least 200 complete sets over two seasons, from nurseries with at least
+// 30 sets each, and its species models need two nurseries with at least 10 of that species. One
+// set a night for 200 nights covers all five sites 40 times; lemons turn up at Vaiane and Haapiti.
+// Its own random stream, so the 2021-22 workbook and the loggers above stay exactly as they were.
+{
+	let seed2 = 153;
+	const rand2 = () => (seed2 = (seed2 * 1103515245 + 12345) % 2147483648) / 2147483648;
+	const pick2 = (xs) => xs[Math.floor(rand2() * xs.length)];
+	const sets2 = [setRows[0].slice()];
+	const cm2 = [cm[0].slice()];
+	const na2 = [cm[0].slice()];
+	const tags2 = [];
+	const count = { Cm: 0, Na: 0 };
+	const visits2 = {};
+	const LEMONS = { Vaiane: 0.6, Haapiti: 0.4 };
+	for (let i = 0; i < 200; i++) {
+		const site = SITES[i % SITES.length];
+		visits2[site] = (visits2[site] ?? 0) + 1;
+		const day = new Date(Date.UTC(2022, 8, 1) + i * 86_400_000).toISOString().slice(0, 10);
+		const start = 17 * 60 + Math.floor(rand2() * 40);
+		const end = start + 140 + Math.floor(rand2() * 60);
+		// Clumped like real catches (mostly quiet nights, a few busy ones, so θ stays finite), and
+		// busy nights get rarer as the season goes on, so the day-of-season curve has a trend.
+		const busy = rand2() < (i < 100 ? 0.3 : 0.15);
+		const catches = busy ? 3 + Math.floor(rand2() * 7) : Math.floor(rand2() * 3);
+		let nCm = 0;
+		let nNa = 0;
+		for (let k = 0; k < catches; k++) {
+			const sp = rand2() < (LEMONS[site] ?? 0) ? 'Na' : 'Cm';
+			// Recaptures keep their species and sex and grow about 0.3 mm a day, so this season adds
+			// no identity conflicts to the Data quality page (2021-22 keeps its handful).
+			const recap = tags2.length > 10 && rand2() < 0.15;
+			const prev = recap ? pick2(tags2) : null;
+			const species = prev ? prev.sp : sp;
+			const tl = prev
+				? prev.tl + Math.round(0.3 * (i - prev.i))
+				: Math.round(species === 'Cm' ? 540 + rand2() * 90 : 620 + rand2() * 90);
+			const sex = prev ? prev.sex : rand2() < 0.5 ? 'F' : 'M';
+			const tag = prev ? prev.tag : String(955000009100000 + tags2.length);
+			if (prev) Object.assign(prev, { tl, i });
+			else tags2.push({ tag, sp, sex, tl, i });
+			const fl = Math.round(tl * 0.82);
+			const mass = Math.round(3.2e-9 * tl ** 3.1 * (0.9 + rand2() * 0.2) * 1000) / 1000;
+			const open = i < 120 && rand2() < 0.5;
+			(species === 'Cm' ? cm2 : na2).push([
+				site,
+				i + 1,
+				visits2[site],
+				D(day),
+				++count[species],
+				recap ? 2 : 1,
+				tag,
+				species,
+				open ? 'Neonate' : 'Juvenile',
+				sex,
+				'Yes',
+				Math.round(fl * 0.88),
+				fl,
+				tl,
+				Math.round(tl * 0.36),
+				Math.round(tl * 0.33),
+				Math.round(tl * 0.12),
+				mass,
+				T(start + 20 + k * 25),
+				T(start + 30 + k * 25),
+				open ? 'Open' : 'Closed',
+				'Yes',
+				null,
+				'no',
+				'no sample',
+				'na'
+			]);
+			if (species === 'Cm') nCm++;
+			else nNa++;
+		}
+		sets2.push([
+			i + 1,
+			site,
+			visits2[site],
+			D(day),
+			`${pick2(CREW)}, ${pick2(CREW)}, ${pick2(CREW)}`,
+			T(start),
+			T(end),
+			T(end - start),
+			nCm,
+			nNa,
+			nCm + nNa,
+			null,
+			null,
+			pick2(['Flooding', 'Ebbing']),
+			null
+		]);
+	}
+	workbook('Physioshark_Shark Log 2022-2023.xlsx', {
+		'Set Log': sets2,
+		'Cm Log Juv': cm2,
+		'Na Log Juv': na2
+	});
+}

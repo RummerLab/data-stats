@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { NAV } from '#lib/nav';
 	import { date, season } from '#lib/format';
+	import GoogleAnalytics from '#lib/components/GoogleAnalytics.svelte';
 	import PhysiosharkIcon from '#lib/components/PhysiosharkIcon.svelte';
 	import type { LayoutProps } from './$types';
 
@@ -56,6 +57,8 @@
 	);
 </script>
 
+<GoogleAnalytics enabled={data.ga} />
+
 <svelte:head>
 	<title>{title}</title>
 	<meta name="description" content={description} />
@@ -72,6 +75,8 @@
 		content="Physioshark Data: thirteen seasons of baby sharks, in numbers"
 	/>
 	<meta name="twitter:card" content="summary_large_image" />
+	<link rel="describedby" href="/llms.txt" />
+	<link rel="author" type="text/plain" href="/humans.txt" />
 </svelte:head>
 
 <a class="skip" href="#main">Skip to content</a>
