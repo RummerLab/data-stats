@@ -1,14 +1,9 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-test('model fit checks follow the catch model', async ({ page }) => {
+test('model fit checks render and pass axe for every model', async ({ page }) => {
 	await page.goto('/drivers');
 	const summary = page.getByText('How well does the model describe the catches?', { exact: true });
-	// The synthetic fixture has too few complete sets to fit the model, so there is nothing to check.
-	if (!(await page.getByRole('heading', { name: 'Sea temperature, step by step' }).count())) {
-		await expect(summary).toHaveCount(0);
-		return;
-	}
 	await summary.click();
 	const model = page.getByRole('combobox', { name: 'Model', exact: true });
 	await expect(model).toBeVisible();

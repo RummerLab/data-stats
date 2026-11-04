@@ -11,9 +11,10 @@ describe('import of the synthetic fixture', () => {
 	const d = dataset();
 
 	it('imports sets, captures and sites', () => {
-		expect(d.sets.length).toBe(40);
-		expect(d.captures.length).toBeGreaterThan(40);
-		expect(d.seasons).toEqual(['2021-2022']);
+		// 2021-22: 40 sets; 2022-23: 200, sized for the catch model (#153).
+		expect(d.sets.length).toBe(240);
+		expect(d.captures.length).toBeGreaterThan(240);
+		expect(d.seasons).toEqual(['2021-2022', '2022-2023']);
 		const haapiti = d.siteById.get('haapiti')!;
 		expect(haapiti.lat).toBeCloseTo(-17.5542, 3);
 		expect(haapiti.coordSource).toBe('Logger GPS sheet');
