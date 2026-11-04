@@ -1,4 +1,5 @@
 import { memo } from '#lib/server/data';
+import { scarTransitions } from '#lib/server/analytics/scarTransitions';
 import {
 	fieldCaptures,
 	firstPerSeason,
@@ -181,6 +182,7 @@ export const load: PageServerLoad = () =>
 			)
 		};
 		return {
+			scarTransitions: scarTransitions(d),
 			stats,
 			weeks,
 			openCm: openShare('Cm'),

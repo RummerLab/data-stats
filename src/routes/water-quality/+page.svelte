@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ThermalCalendar from '#lib/components/ThermalCalendar.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BoxPlot from '#lib/components/charts/BoxPlot.svelte';
@@ -165,6 +166,8 @@
 			</ChartCard>
 		</section>
 	{/if}
+
+	<ThermalCalendar calendar={data.thermalCalendar} />
 
 	<section class="section grid-2">
 		<ChartCard title="Water temperature at the net" stats={data.stats.temp}>

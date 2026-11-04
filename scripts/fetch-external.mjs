@@ -10,6 +10,7 @@
  * - Open-Meteo Marine API with `models=era5_ocean` (waves, swell)
  * - NOAA OISST v2.1 daily SST via NOAA CoastWatch ERDDAP
  * - NOAA Coral Reef Watch 5 km daily heat stress via PacIOOS ERDDAP
+ * - NOAA S-NPP VIIRS weekly chlorophyll-a (NOAA STAR / CoastWatch ERDDAP), offshore ring (#23)
  * - UHSLC fast-delivery hourly sea level, Papeete (station 015)
  * - NOAA CPC Oceanic Niño Index and Southern Oscillation Index
  * - NOAA IBTrACS v04r01 South Pacific best tracks (cyclone positions near Moorea, #24)
@@ -346,6 +347,79 @@ function km(lat1, lon1, lat2, lon2) {
 	return 6371 * 2 * Math.asin(Math.sqrt(a));
 }
 
+/**
+ * Chlorophyll-a offshore of Moorea (#23): NOAA S-NPP VIIRS science-quality weekly composites
+ * (4 km, NOAA STAR and CoastWatch), a productivity proxy. Pixels beside small islands are
+ * unreliable (land in the pixel, the lagoon floor showing through, haze off the land), so each
+ * week is the median of an offshore ring: ocean pixels within 30 km of Moorea's centre and at
+ * least 10 km from any land or coast pixel, Tahiti's included. A land or coast pixel is one with
+ * no value in more than half of the weeks (coastal pixels get a value now and then, open ocean
+ * in about four weeks out of five). Weeks with fewer than 10 cloud-free ring pixels are blank.
+ */
+async function chlorophyll() {
+	const base = 'https://coastwatch.noaa.gov/erddap/griddap/noaacwNPPVIIRSSQchlaWeekly.csv';
+	const [cLat, cLon] = [-17.535, -149.835];
+	const box = '%5B(0.0)%5D%5B(-17.20):1:(-17.85)%5D%5B(-150.15):1:(-149.50)%5D';
+	const cells = new Map(); // "lat|lon" → [lat, lon]
+	const weeks = new Map(); // date → Map("lat|lon" → mg m⁻³)
+	const all = chunks('2013-07-28', daysAgo(0));
+	for (const [s, e] of all) {
+		// Science-quality weeks lag by a month or more, so the last chunk ends at `last`, and in
+		// January it may have no weeks yet. Any other failure keeps the old file.
+		const final = e === all[all.length - 1][1];
+		let text;
+		try {
+			text = await get(
+				`${base}?chlor_a%5B(${s}T00:00:00Z):1:(${final ? 'last' : `${e}T23:59:59Z`})%5D${box}`
+			);
+		} catch (err) {
+			if (!final) throw err;
+			console.warn(`[external] chlorophyll ${s}…: ${err.message}`);
+			continue;
+		}
+		for (const line of text.trim().split('\n').slice(2)) {
+			const [time, , lat, lon, chl] = line.split(',');
+			const key = `${lat}|${lon}`;
+			cells.set(key, [Number(lat), Number(lon)]);
+			const week = weeks.get(time.slice(0, 10)) ?? new Map();
+			const v = Number(chl);
+			if (Number.isFinite(v) && v > 0) week.set(key, v);
+			weeks.set(time.slice(0, 10), week);
+		}
+		await sleep(1000);
+	}
+	const valid = new Map();
+	for (const w of weeks.values()) for (const k of w.keys()) valid.set(k, (valid.get(k) ?? 0) + 1);
+	const isLand = (k) => (valid.get(k) ?? 0) < weeks.size / 2;
+	const land = [...cells].filter(([k]) => isLand(k)).map(([, c]) => c);
+	const ring = new Set(
+		[...cells]
+			.filter(
+				([k, [lat, lon]]) =>
+					!isLand(k) &&
+					km(lat, lon, cLat, cLon) <= 30 &&
+					land.every(([a, b]) => km(lat, lon, a, b) >= 10)
+			)
+			.map(([k]) => k)
+	);
+	// The grid or the land mask changing upstream would quietly move the ring: fail instead.
+	if (ring.size < 40 || land.length < 5)
+		throw new Error(`chlorophyll: ring of ${ring.size} pixels, ${land.length} land pixels`);
+	console.log(`[external] chlorophyll ring: ${ring.size} pixels (${land.length} land pixels)`);
+	const median = (xs) => {
+		const s = [...xs].sort((a, b) => a - b);
+		const m = s.length >> 1;
+		return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+	};
+	const rows = [...weeks.entries()]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.map(([date, w]) => {
+			const vals = [...w].filter(([k]) => ring.has(k)).map(([, v]) => v);
+			return [date, vals.length >= 10 ? fmt(median(vals), 4) : '', String(vals.length)];
+		});
+	writeCsv('chlorophyll-weekly.csv', ['date', 'chl', 'pixels'], rows);
+}
+
 /** Tropical cyclone track points within 750 km of Moorea since START (IBTrACS, 3-hourly, UTC). */
 async function cyclones() {
 	console.log('[external] cyclones (IBTrACS South Pacific)');
@@ -510,7 +584,7 @@ async function school() {
 	writeCsv('school-holidays.csv', ['school_year', 'name', 'start', 'end', 'source'], rows);
 }
 
-const jobs = { weather, ocean, tide, climate, cyclones, school };
+const jobs = { weather, ocean, chlorophyll, tide, climate, cyclones, school };
 for (const [name, job] of Object.entries(jobs)) {
 	if (!want(name)) continue;
 	try {
