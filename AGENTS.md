@@ -108,7 +108,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 ### Catch model (#54)
 
 - `analytics/catchModel.ts`: negative-binomial counts per timed gillnet set, offset log(net-hours), natural-spline day of season (knots at the 0/25/50/75/100% quantiles), nursery and season as effect-coded fixed effects (each level vs the average; no random effects), and nine environment terms per +1 SD. Complete cases only; nurseries need ≥ 30 complete sets, and a species gets a nursery effect only where ≥ 10 of it were caught (otherwise the estimate runs off to zero or infinity).
-- The headline: sea temperature's raw link with catch rate (≈ −25% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
+- The headline: sea temperature's raw link with catch rate (≈ −22% per °C) vanishes once day of the season is in the model. Don't describe SST as a driver of catches on other pages.
 - Fit diagnostics (#125, `analytics/modelDiagnostics.ts`) reuse each fit's own rows, design matrix, counts and offsets, so they can't drift from the model. NB2 variance is μ + μ²/θ; P(0) falls back to Poisson when θ is infinite. Calibration rates are summed sharks over summed net-hours per group of sets. They are in-sample checks: not forecasting skill, and no leave-one-season-out (season is a fixed effect). Only rounded columns reach the page; keep it that way (the first draft sent 500 kB of JSON).
 - `glm.ts` is generic (IRLS + ML θ, Wald intervals via `contrast`); reuse it rather than writing another fitter.
 - The synthetic fixture's second season (2022-23: 200 sets, lemons at Vaiane and Haapiti) is sized so all three fits converge in unit tests and e2e (#153); `catchModel.test.ts` fails if a threshold change or a fixture edit stops that.
@@ -141,6 +141,12 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `analytics/samplingConditions.ts` compares daily rain, daily maximum wind and SST on fieldwork nights (distinct dates with a nursery gillnet set: island-wide series, so a night counts once) with every day of the same calendar months. Each month's days are weighted by its fieldwork nights ÷ its days with a value, so the reference has the fieldwork's seasonal mix. One nursery-month holds a median of two nights, too few to plot alone.
 - The reference contains the fieldwork nights, so no two-sample test: the statistic is checked against seeded random draws of the same number of days from each month (`DRAWS`). Fieldwork nights are a little drier and calmer than their months (about 0.7 mm less rain); describe it as coverage, not as weather stopping trips.
+
+### Satellite SST (#154)
+
+- OISST v2.1 comes from NOAA upwell ERDDAP, dataset `ncdcOisst21Agg`, dimensions time / zlev=0 / latitude=-17.625 / longitude=210.125 (0–360°, equivalent to −149.875). The old `LonPM180` endpoint returned 503 and left the series empty. The aggregation also omits historical dates: recover those from NOAA upwell `oisst_rclone` (same grid and final product, surface dimension named `depth`), then validate continuity before writing.
+- `node scripts/fetch-external.mjs --only=oisst` repairs only the OISST column of the existing ocean snapshot; the regular ocean job refreshes all ocean variables. Historical failures and missing daily OISST values are fatal; only up to 17 days of lag relative to the requested end date are allowed. Run `node --test scripts/erddap.test.mjs` (also included in `pnpm test`).
+- SST consumers prefer OISST, then CRW CoralTemp. Use `SST_SOURCE` from `src/lib/sst.ts` for source copy; /ocean reports source coverage. A snapshot change already invalidates caches, so no importer-version bump is needed without import-logic changes.
 
 ### Adding a new season
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SST_SOURCE } from '#lib/sst';
 	import ThermalCalendar from '#lib/components/ThermalCalendar.svelte';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
@@ -70,7 +71,8 @@
 			<ChartCard
 				title="Nursery water vs offshore sea temperature"
 				papers={['trujillo2025shallows']}
-				subtitle="Monthly means: all logged nurseries, and satellite SST (OISST) on the same days"
+				subtitle="Monthly means: all logged nurseries, and satellite SST on the same days"
+				source={SST_SOURCE}
 				note={ins.diff != null
 					? `Over ${num(ins.nPairs)} days with both, nursery water averaged ${num(Math.abs(ins.diff), 2)} °C ${ins.diff >= 0 ? 'warmer' : 'cooler'} than the satellite reading offshore.`
 					: ''}
@@ -181,7 +183,7 @@
 			title="Spot readings at the net vs satellite sea temperature"
 			subtitle="Each dot is a set with an in-water reading, taken in the evening"
 			note={data.fit
-				? `Nursery water averaged ${num(data.fit.diff, 2)} °C ${data.fit.diff! >= 0 ? 'warmer' : 'cooler'} than offshore OISST (R² ${num(data.fit.r2, 2)}, n = ${data.fit.n}).${data.fit.diff! > 0.3 ? ' Satellite SST understates the temperatures pups live in.' : ''}`
+				? `Nursery water averaged ${num(data.fit.diff, 2)} °C ${data.fit.diff! >= 0 ? 'warmer' : 'cooler'} than offshore satellite SST (R² ${num(data.fit.r2, 2)}, n = ${data.fit.n}).${data.fit.diff! > 0.3 ? ' Satellite SST understates the temperatures pups live in.' : ''}`
 				: ''}
 		>
 			<Scatter

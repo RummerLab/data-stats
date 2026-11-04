@@ -135,6 +135,11 @@ export const load: PageServerLoad = () =>
 			},
 			anomStats,
 			bands,
+			sstCoverage: {
+				oisst: o.filter((r) => r.oisst != null).length,
+				crw: o.filter((r) => r.oisst == null && r.crwSst != null).length,
+				missing: o.filter((r) => r.oisst == null && r.crwSst == null).length
+			},
 			sst: weekly(o, (r) => r.oisst ?? r.crwSst),
 			anom: weekly(o, (r) => r.crwAnom),
 			dhw: o

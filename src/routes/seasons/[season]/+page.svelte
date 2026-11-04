@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { SST_SOURCE } from '#lib/sst';
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
 	import FindingCard from '#lib/components/FindingCard.svelte';
@@ -106,8 +107,8 @@
 		</ChartCard>
 		<ChartCard
 			title="Ocean during the season"
-			subtitle="Daily sea-surface temperature (NOAA OISST)"
-			source="NOAA OISST v2.1"
+			subtitle="Daily satellite sea-surface temperature"
+			source={SST_SOURCE}
 		>
 			<LineChart
 				xType="date"

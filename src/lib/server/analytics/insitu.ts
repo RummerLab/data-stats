@@ -120,7 +120,7 @@ export function dailyMaxBySite(d: Dataset) {
 		.sort((a, b) => b.stats!.median - a.stats!.median);
 }
 
-/** Logger daily mean against offshore OISST on the same days. */
+/** Logger daily mean against offshore satellite SST (OISST, then CRW) on the same days. */
 export function versusSst(d: Dataset) {
 	const sst = new Map(d.ocean.map((o) => [o.date, o.oisst ?? o.crwSst]));
 	const pairs: { date: string; logger: number; sst: number }[] = [];
