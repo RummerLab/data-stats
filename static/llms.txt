@@ -1,0 +1,46 @@
+# Physioshark Data
+
+> Thirteen seasons (2013–14 → present) of Mo'orea shark-nursery surveys from the Physioshark project (Dr Jodie Rummer, RummerLab / James Cook University, with CRIOBE), joined with weather, ocean, tide, climate and sun/moon data at https://data.physioshark.org/
+
+Analyses on this site are exploratory (correlation ≠ cause). The unpublished survey spreadsheets are the source of truth: the app only reads them. Species codes: Cm = blacktip reef shark, Na = sicklefin lemon shark, Nf = tawny nurse shark. Mo'orea is UTC−10 with no DST.
+
+## Explore
+
+- [Overview](https://data.physioshark.org/): Thirteen seasons at a glance
+- [Seasons](https://data.physioshark.org/seasons): Season-by-season report cards
+- [Nurseries](https://data.physioshark.org/nurseries): Map and profiles of every nursery
+- [Sharks](https://data.physioshark.org/sharks): Every tagged individual
+- [Findings](https://data.physioshark.org/findings): Interesting, quirky and fun facts
+
+## Biology
+
+- [Body size & condition](https://data.physioshark.org/morphometrics): Lengths, mass, condition, sex ratios
+- [Newborns](https://data.physioshark.org/neonates): Umbilical scars and birth timing
+- [Growth](https://data.physioshark.org/growth): How fast pups grow between captures
+- [Recaptures](https://data.physioshark.org/recaptures): Site fidelity and returning sharks
+- [Adult blacktips](https://data.physioshark.org/adults): Maturity, pregnancy and capture stress
+- [Physiology & lab](https://data.physioshark.org/physiology): Blood, lab growth, feeding, diet
+
+## Environment
+
+- [What drives catches?](https://data.physioshark.org/drivers): Catch rate against every variable
+- [Ocean & heat stress](https://data.physioshark.org/ocean): Sea temperature, heatwaves, ENSO, waves
+- [Weather](https://data.physioshark.org/weather): Air temperature, rain, wind, cloud
+- [Tides](https://data.physioshark.org/tides): Sun-locked tides and catches
+- [Moon](https://data.physioshark.org/moon): Lunar phase and illumination
+- [Time of day](https://data.physioshark.org/time-of-day): When sharks hit the net
+- [Human pressure](https://data.physioshark.org/pressure): Fishing, trampling, artificial coast
+
+## Fieldwork
+
+- [Sampling effort](https://data.physioshark.org/effort): Nets set, hours fished, zero-catch nights
+- [Crew](https://data.physioshark.org/crew): Who has been out on the most nights
+- [Water quality](https://data.physioshark.org/water-quality): Field and tank readings, loggers
+- [Field notes](https://data.physioshark.org/notes): Every note from the logs, searchable
+
+## About
+
+- [About & methods](https://data.physioshark.org/about): Data sources, methods, publications
+- [Data quality](https://data.physioshark.org/data-quality): What the importer noticed in the sheets
+- [Physioshark project](https://physioshark.org/): Project home
+- [Source code](https://github.com/RummerLab/data-stats): SvelteKit app on GitHub
