@@ -6,6 +6,7 @@
  * observational: it adjusts for what is measured, nothing more.
  */
 import { mean, quantile, sd } from '#lib/stats';
+import { modelDiagnostics } from './modelDiagnostics';
 import type { Dataset, SetRow } from '../data';
 import { effortSets, round, seasonDay, seasonDayLabel, siteName } from './common';
 import { SET_VARIABLES } from './env';
@@ -189,6 +190,10 @@ export function catchModel(d: Dataset) {
 
 	return {
 		n: all.rows.length,
+		diagnostics: [all, cm, na].map((m, i) => ({
+			name: ['All sharks', 'Blacktip reef sharks', 'Sicklefin lemon sharks'][i],
+			data: modelDiagnostics(m.fit, m.rows, m.X, m.y, m.offset)
+		})),
 		dropped: effortSets(d).filter((s) => s.cpue != null).length - all.rows.length,
 		knots: knots.map((k) => seasonDayLabel(Math.round(k))),
 		terms: vars.map((v, j) => ({
