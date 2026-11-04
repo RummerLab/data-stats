@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import { NAV } from '#lib/nav';
 	import { date, season } from '#lib/format';
+	import GoogleAnalytics from '#lib/components/GoogleAnalytics.svelte';
 	import PhysiosharkIcon from '#lib/components/PhysiosharkIcon.svelte';
 	import type { LayoutProps } from './$types';
 
@@ -55,6 +56,8 @@
 		`${current && current.href !== '/' ? `${current.label} · ` : ''}Physioshark Data`
 	);
 </script>
+
+<GoogleAnalytics enabled={data.ga} />
 
 <svelte:head>
 	<title>{title}</title>
