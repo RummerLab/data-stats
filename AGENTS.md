@@ -188,7 +188,7 @@ REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # op
 ## What not to do
 
 - Don't edit, rename, re-save or "clean" the spreadsheets. Don't commit them, fixtures derived from them, or SQLite caches.
-- Don't add a chart library or third-party scripts/fonts without updating the CSP in `vite.config.ts` and this file. Map tiles (Esri World Imagery, OpenStreetMap) are the only allowed external images (`img-src`); a new tile host needs the CSP, the e2e tile stub in `e2e/pages.spec.ts` and the attribution.
+- Don't add a chart library or third-party scripts/fonts without updating the CSP in `vite.config.ts` and this file. Allowed third parties: GA4 gtag (`www.googletagmanager.com` / `*.google-analytics.com` / `*.analytics.google.com`; Measurement ID `G-VZF5DR37YH`, loaded only on `data.physioshark.org` / `physioshark.org` via `GoogleAnalytics.svelte`) and map tiles (Esri World Imagery, OpenStreetMap — the only external images besides GA beacons; a new tile host needs the CSP, the e2e tile stub in `e2e/pages.spec.ts` and the attribution).
 - Don't hard-code numbers in page copy; compute them in the load function.
 - Don't claim causation from the correlations; don't overstate the human-pressure results (the source paper found no significant effect).
 - Don't reintroduce dual-axis charts or per-point value labels.

@@ -20,23 +20,31 @@ export default defineConfig({
 			},
 			adapter: adapter({ out: 'build' }),
 			// Per-request nonces for SSR pages; the pre-paint theme script in app.html carries
-			// %sveltekit.nonce%. No third-party scripts or fonts; map tiles are the only external images.
+			// %sveltekit.nonce%. Third-party: GA4 (gtag) and map tiles (images only).
 			csp: {
 				mode: 'auto',
 				directives: {
 					'default-src': ['self'],
-					'script-src': ['self'],
+					'script-src': ['self', 'https://www.googletagmanager.com'],
 					// Svelte `style:` directives use inline styles.
 					'style-src': ['self', 'unsafe-inline'],
 					// Map tiles for the interactive maps (#29): Esri imagery and OpenStreetMap.
+					// GA4 beacons may use image pings.
 					'img-src': [
 						'self',
 						'data:',
 						'https://server.arcgisonline.com',
-						'https://tile.openstreetmap.org'
+						'https://tile.openstreetmap.org',
+						'https://www.google-analytics.com',
+						'https://www.googletagmanager.com'
 					],
 					'font-src': ['self', 'data:'],
-					'connect-src': ['self'],
+					'connect-src': [
+						'self',
+						'https://*.google-analytics.com',
+						'https://*.analytics.google.com',
+						'https://*.googletagmanager.com'
+					],
 					'object-src': ['none'],
 					'base-uri': ['self'],
 					'form-action': ['self'],

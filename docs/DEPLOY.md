@@ -28,6 +28,8 @@ The container listens on `127.0.0.1:${HOST_PORT:-8098}` by default. Put it behin
 
 Set `ORIGIN` in `.env` to the public URL if the proxy does not send `X-Forwarded-Proto`.
 
+GA4 (`G-VZF5DR37YH`, shared Physioshark stream with physioshark.org) loads only when the request host is `data.physioshark.org` (or `physioshark.org`). Localhost and CI never send hits. Filter reports by **Page hostname** if you need data-site traffic alone.
+
 ## 3. Updating the data
 
 - **New or corrected workbook:** copy it into `./data`. The app notices within a minute and rebuilds its cache; no restart needed. Check `/data-quality` afterwards.
