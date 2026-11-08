@@ -213,7 +213,8 @@
 				Weather &amp; waves: Open-Meteo (ERA5, CC BY 4.0). SST: {SST_SOURCE}. Heat stress: NOAA
 				Coral Reef Watch via PacIOOS. Chlorophyll: NOAA STAR and CoastWatch (VIIRS). Tides: UHSLC
 				Papeete gauge. ENSO: NOAA CPC. Cyclones: NOAA IBTrACS. School holidays: Ministère de
-				l'Éducation nationale (Licence Ouverte 2.0). Coastline © OpenStreetMap contributors.
+				l'Éducation nationale (Licence Ouverte 2.0). Human pressure: Bouyoucos et al. (2024), JCU
+				(CC BY-NC 4.0). Coastline © OpenStreetMap contributors.
 			</p>
 		</div>
 	</div>

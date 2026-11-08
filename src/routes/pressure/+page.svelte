@@ -41,9 +41,11 @@
 		<p class="lede">
 			Ten nurseries were scored for three human pressures by Bouyoucos et al. (2024, <i
 				>Marine and Freshwater Research</i
-			> 75, MF24080): relative fin-fish fishing effort (a proxy for bycatch, not shark fishing, banned
-			since 2012), direct human impact (people moving around homes and tourism sites) and coastal artificialisation
-			(walls and embankments). Values here were digitised from the paper's Figure 4.
+			>
+			75, MF24080): relative fin-fish fishing effort (a proxy for bycatch, not shark fishing, banned since
+			2012), direct human impact (people moving around homes and tourism sites) and coastal artificialisation
+			(walls and embankments). The scores are the paper's own, from its
+			<a href="https://doi.org/10.25903/2SFB-QX79">dataset</a> at James Cook University (CC BY-NC 4.0).
 		</p>
 		<p class="callout small">
 			The paper found <b>no significant effect</b> of any of these pressures on newborn abundance. With

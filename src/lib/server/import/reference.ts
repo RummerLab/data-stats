@@ -1,8 +1,10 @@
 /**
  * Reference workbooks (#5, #6): nursery logger GPS, the anthropogenic pressure ranking digitised
- * from Bouyoucos et al. (2024) and the 2025-26 adult blacktip capture datasheet.
+ * from Bouyoucos et al. (2024) and the 2025-26 adult blacktip capture datasheet. The exact
+ * pressure scores come from the paper's dataset in external/ (#131) and replace the digitised ones.
  */
 import { cell, mapColumns, type Matcher } from './columns';
+import { val, type Row } from './external';
 import type { IssueLog } from './issues';
 import { dateOf, dmsToDecimal, durationOf, int, num, sexOf, str, text, timeOf } from './normalize';
 import { resolveSite } from './sites';
@@ -51,6 +53,50 @@ export interface SitePressure {
 	artificialisation: number | null;
 	composite: number | null;
 	tier: string | null;
+}
+
+/**
+ * Per-nursery scores from the Bouyoucos et al. (2024) dataset (JCU Research Data,
+ * doi:10.25903/2SFB-QX79, CC BY-NC 4.0; external/pressure-bouyoucos2024.csv): `fish` is relative
+ * fishing effort, `tramp` direct human impact (trampling) and `art` coastal artificialisation.
+ * The composite follows the ranking workbook: each metric min–max normalised to 0–1 across the
+ * nurseries, averaged, then Low / Medium / High in thirds of 0–1.
+ */
+export function pressureFromDataset(rows: Row[], log: IssueLog, file: string): SitePressure[] {
+	const sites = rows.flatMap((r, i) => {
+		const siteId = resolveSite(r.site);
+		if (!siteId) {
+			log.add('warning', 'sites', `Pressure dataset: unknown site "${r.site}"`, {
+				file,
+				sheet: '',
+				row: i + 2
+			});
+			return [];
+		}
+		return [{ siteId, fish: val(r.fish), tramp: val(r.tramp), art: val(r.art) }];
+	});
+	const norm = (key: 'fish' | 'tramp' | 'art') => {
+		const xs = sites.map((s) => s[key]).filter((v): v is number => v != null);
+		const lo = Math.min(...xs);
+		const span = Math.max(...xs) - lo;
+		return (v: number | null) => (v == null || !(span > 0) ? null : (v - lo) / span);
+	};
+	const [nf, nt, na] = [norm('fish'), norm('tramp'), norm('art')];
+	return sites.map((s) => {
+		const parts = [nf(s.fish), nt(s.tramp), na(s.art)];
+		const composite = parts.every((v) => v != null)
+			? parts.reduce((a, b) => a! + b!, 0)! / parts.length
+			: null;
+		return {
+			siteId: s.siteId,
+			fishingEffort: s.fish,
+			humanImpact: s.tramp,
+			artificialisation: s.art,
+			composite,
+			tier:
+				composite == null ? null : composite < 1 / 3 ? 'Low' : composite < 2 / 3 ? 'Medium' : 'High'
+		};
+	});
 }
 
 export function parsePressure(wb: Workbook, log: IssueLog, file: string): SitePressure[] {

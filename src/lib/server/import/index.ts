@@ -46,6 +46,7 @@ import {
 	parseRecaptures2014,
 	parseSetSheet,
 	recaptureGroups2013,
+	yearOffSetDate,
 	type RawCapture,
 	type RawSet
 } from './logs';
@@ -54,6 +55,7 @@ import {
 	parseAdults,
 	parseNurseryGps,
 	parsePressure,
+	pressureFromDataset,
 	type AdultCapture,
 	type AdultEffort,
 	type SitePressure,
@@ -73,7 +75,7 @@ import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '9';
+export const IMPORTER_VERSION = '10';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -432,6 +434,18 @@ export function runImport(
 	for (const c of caps) {
 		if (c.kind === 'lab_release') continue;
 		let s: (typeof sets)[number] | undefined;
+		const setDate = yearOffSetDate(c, bySeasonNo.get(`${c.season}|${c.setNo}`) ?? []);
+		if (setDate && setDate !== c.date) {
+			log.add(
+				'warning',
+				'dates',
+				`Capture dated ${c.writtenDate} (outside season ${c.season}) is in set ${c.setNo}, dated ${setDate}; read as ${setDate}`,
+				c.ref,
+				'date',
+				c.writtenDate
+			);
+			c.date = setDate;
+		}
 		if (c.setNo != null) {
 			const cands = (bySeasonNo.get(`${c.season}|${c.setNo}`) ?? []).filter(
 				(x) => !c.date || !x.date || Math.abs(daysBetween(x.date, c.date)) <= 1
@@ -775,7 +789,13 @@ export function runImport(
 			aliases.set(x.siteId, s);
 		}
 	const gps = new Map(p.gps.map((g) => [g.siteId, g]));
-	const pressure = new Map(p.pressure.map((g) => [g.siteId, g]));
+	// The paper's dataset (#131) overrides the ranking workbook's values digitised from its Fig. 4.
+	const dataset = pressureFromDataset(
+		readCsv(opts.externalDir, 'pressure-bouyoucos2024.csv'),
+		log,
+		'external/pressure-bouyoucos2024.csv'
+	);
+	const pressure = new Map([...p.pressure, ...dataset].map((g) => [g.siteId, g]));
 	const desc = new Map(p.descriptions.map((g) => [g.siteId, g]));
 	const siteRows: (typeof schema.sites.$inferInsert)[] = SITE_DEFS.map((d) => {
 		const g = gps.get(d.id);

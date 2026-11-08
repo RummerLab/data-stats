@@ -81,6 +81,12 @@
 				<b>Sun and moon:</b> computed for Mo'orea (17.53° S, 149.83° W, UTC−10) from standard astronomical
 				formulas.
 			</li>
+			<li>
+				<b>Human pressure:</b> per-nursery fishing effort, direct human impact and coastal
+				artificialisation from Bouyoucos et al. (2024), Drivers of reef shark neonate abundance in
+				French Polynesia,
+				<a href="https://doi.org/10.25903/2SFB-QX79">James Cook University</a> (CC BY-NC 4.0).
+			</li>
 			<li><b>Coastline:</b> © OpenStreetMap contributors (ODbL), simplified.</li>
 			<li>
 				<b>Interactive maps:</b> street tiles © OpenStreetMap contributors; satellite imagery © Esri,
