@@ -4,6 +4,9 @@
  * with log(net-hours) as the offset, so long and short sets weigh correctly; "adjusted" adds
  * nursery, season and a smooth for the day of the season, the calendar that confounds most
  * comparisons (#54). Each helper returns null when there is too little data to test.
+ *
+ * The lab's conventions (#132): p < 0.05, nursery and season as fixed effects, p-values and R²
+ * shown as they are (the site is mainly for the lab). Each chart is tested on its own.
  */
 import { num, pValue } from '#lib/format';
 import {

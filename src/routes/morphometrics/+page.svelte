@@ -191,6 +191,14 @@
 				{/if}
 			{/each}
 		</p>
+		{#if data.sexModel.some((m) => m.fit?.nurseryP != null && m.fit.nurseryP < 0.05)}
+			<p>
+				Sex was recorded the same way in every season, with claspers checked at each capture, so a
+				difference between nurseries isn't down to how sex was recorded. The lab knows of no reason
+				to expect one: nest temperature sets the sex of sea turtles, but nobody has tested whether
+				anything similar happens in sharks.
+			</p>
+		{/if}
 		<div class="grid-2">
 			{#each ['Cm', 'Na'] as const as sp (sp)}
 				{#if nurseryRows(sp).length}
