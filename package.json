@@ -1,7 +1,7 @@
 {
 	"name": "data-stats",
 	"private": true,
-	"version": "0.2.8",
+	"version": "0.2.9",
 	"description": "Physioshark data explorer: 13 seasons of Moorea shark-nursery surveys joined with weather, ocean, tide and climate data.",
 	"type": "module",
 	"packageManager": "pnpm@12.15.0",
@@ -30,7 +30,7 @@
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
 		"@eslint/js": "^10.0.1",
-		"@playwright/test": "^1.64.1",
+		"@playwright/test": "^1.65.0",
 		"@sveltejs/adapter-node": "^6.0.1",
 		"@sveltejs/kit": "^3.1.1",
 		"@sveltejs/vite-plugin-svelte": "^7.3.1",
@@ -51,7 +51,7 @@
 		"tailwindcss": "^4.3.4",
 		"typescript": "^6.0.3",
 		"typescript-eslint": "^8.72.1",
-		"vite": "^8.3.5",
+		"vite": "^8.3.6",
 		"vitest": "^5.1.0"
 	},
 	"imports": {
