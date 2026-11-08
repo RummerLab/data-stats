@@ -75,7 +75,24 @@ export interface RawCapture {
 	stomachContents: string | null;
 	/** Grouping key from a "Recaptures" sheet (2013-15) used to link untagged captures. */
 	group?: string;
+	/** The date as written, when it was a year outside the season and got moved into it (#133). */
+	writtenDate?: string;
 	ref: SourceRef;
+}
+
+/**
+ * The date of the set a year-off capture belongs to (#133). A capture date a year outside its
+ * season is usually a typo, but it can be the shark's first capture in an earlier season written on
+ * its recapture row; then moving the year lands on that capture's anniversary, not the recapture.
+ * When the set number finds the set (same nursery, or the only set with that number), its date wins.
+ */
+export function yearOffSetDate(
+	c: Pick<RawCapture, 'writtenDate' | 'setNo' | 'siteId'>,
+	sets: { siteId: string | null; date: string | null }[]
+): string | null {
+	if (!c.writtenDate || c.setNo == null) return null;
+	const s = sets.find((x) => x.siteId === c.siteId) ?? (sets.length === 1 ? sets[0] : undefined);
+	return s?.date ?? null;
 }
 
 export interface RawSet {
@@ -317,17 +334,19 @@ export function parseCaptureSheet(
 	): RawCapture | null => {
 		const ref = { file, sheet: sheet.name, row: r };
 		let date = dateOf(cell(row, c.date));
+		let writtenDate: string | undefined;
 		if (date) {
 			const fixed = fixSeasonYear(date, season);
 			if (fixed.fixed) {
 				log.add(
 					'warning',
 					'dates',
-					`Date ${date} outside season ${season}; read as ${fixed.date}`,
+					`Date ${date} outside season ${season}; read as ${fixed.date} (a year typo, or the shark's first capture in an earlier season)`,
 					ref,
 					'date',
 					date
 				);
+				writtenDate = date;
 				date = fixed.date;
 			}
 		}
@@ -378,6 +397,7 @@ export function parseCaptureSheet(
 			siteId,
 			setNo: int(cell(row, c.setNo)) ?? inherit?.setNo ?? null,
 			date,
+			writtenDate,
 			sharkNo: str(cell(row, c.sharkNo)) ?? inherit?.sharkNo ?? null,
 			captureNo: captureNo ?? int(capNoRaw),
 			kind,
@@ -537,7 +557,7 @@ export function parseRecaptures2014(
 				log.add(
 					'warning',
 					'dates',
-					`Date ${date} outside season ${season}; read as ${fixed.date}`,
+					`Date ${date} outside season ${season}; read as ${fixed.date} (a year typo, or the shark's first capture in an earlier season)`,
 					ref,
 					'date',
 					date

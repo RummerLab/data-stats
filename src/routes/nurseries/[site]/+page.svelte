@@ -77,7 +77,7 @@
 		</ChartCard>
 		<ChartCard
 			title="Human pressure"
-			subtitle="Bouyoucos et al. (2024), values digitised from Fig. 4"
+			subtitle="Bouyoucos et al. (2024), scores from the paper's dataset"
 		>
 			{#if s.fishingEffort != null}
 				<table class="data">
