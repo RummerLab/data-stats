@@ -18,8 +18,8 @@
 		<p class="lede">
 			The spreadsheets are the source of truth and this site never changes them. While importing, it
 			notes anything odd: unit conversions, impossible measurements, dates outside their season,
-			tags that disagree, sites it doesn't recognise. This list is for the lab to review and fix in
-			the source sheets.
+			tags that disagree, capture numbers the tags don't back up, sites it doesn't recognise. This
+			list is for the lab to review and fix in the source sheets.
 		</p>
 	</header>
 

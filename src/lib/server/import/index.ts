@@ -71,11 +71,12 @@ import {
 	type RegisterRow
 } from './loggers';
 import { buildLoggerTables } from './insitu';
+import { checkRecaptures } from './recaptures';
 import { SITE_DEFS } from './sites';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '10';
+export const IMPORTER_VERSION = '11';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -488,6 +489,7 @@ export function runImport(
 			else uf.union(o, i);
 		}
 	});
+	const labTags = new Set(p.labSharks.flatMap((l) => l.tags));
 	const comps = new Map<number, number[]>();
 	caps.forEach((_, i) => push(comps as unknown as Map<string, number[]>, String(uf.find(i)), i));
 	const individuals: (typeof schema.individuals.$inferInsert)[] = [];
@@ -516,6 +518,11 @@ export function runImport(
 				`Shark ${id}: captures disagree on ${[...new Set(conflicts)].join(', ')}`,
 				first.ref
 			);
+		checkRecaptures(
+			list,
+			log,
+			tags.some((t) => labTags.has(t))
+		);
 		for (const c of list) c.individualId = id;
 		const siteSeq: string[] = [];
 		for (const c of list)
