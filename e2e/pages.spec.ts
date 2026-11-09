@@ -95,3 +95,25 @@ test('pages are compressed and revalidate with a 304 (#76)', async ({ request })
 	const again = await request.get('/morphometrics', { headers: { 'if-none-match': etag } });
 	expect(again.status()).toBe(304);
 });
+
+test('the content security policy lets Google Analytics hits through (#166)', async ({
+	request
+}) => {
+	const res = await request.get('/');
+	const csp = res.headers()['content-security-policy'] ?? '';
+	const directive = (name: string) =>
+		csp
+			.split(';')
+			.map((d) => d.trim().split(/\s+/))
+			.find(([n]) => n === name)
+			?.slice(1) ?? [];
+	for (const host of [
+		'https://analytics.google.com',
+		'https://*.google-analytics.com',
+		'https://www.google.com',
+		'https://*.g.doubleclick.net'
+	]) {
+		expect(directive('connect-src')).toContain(host);
+		expect(directive('img-src')).toContain(host);
+	}
+});
