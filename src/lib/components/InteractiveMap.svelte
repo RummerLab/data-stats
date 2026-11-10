@@ -25,6 +25,8 @@
 		radius?: number;
 		/** Value that gets the largest circle; fix it to keep sizes comparable as points change. */
 		max?: number;
+		/** Radius in px of the largest sized circle (default 18). */
+		maxRadius?: number;
 	}
 
 	/** Base maps (#29). Hosts must match img-src in vite.config.ts. */
@@ -57,6 +59,8 @@
 		lineLayers = [],
 		lineLabel = '',
 		density,
+		lineMax: fixedLineMax,
+		traveller,
 		label,
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
@@ -70,6 +74,15 @@
 		lineLabel?: string;
 		/** Drawn under everything else, with its own toggle. */
 		density?: MapDensity;
+		/** Value that gets the widest line; fix it so widths don't jump as lines are added. */
+		lineMax?: number;
+		/** A dot that glides from `from` to `to` whenever `key` changes (a Play button). */
+		traveller?: {
+			key: string | number;
+			from: { lat: number; lon: number };
+			to: { lat: number; lon: number };
+			color: string;
+		};
 		/** Accessible name of the map region. */
 		label: string;
 		valueLabel?: string;
@@ -176,10 +189,9 @@
 			d.control.remove();
 		}
 		const overlays: Record<string, import('leaflet').LayerGroup> = {};
-		const lineMax = Math.max(
-			1e-9,
-			...currentLines.flatMap((g) => g.lines.map((l) => l.value ?? 1))
-		);
+		const lineMax =
+			fixedLineMax ??
+			Math.max(1e-9, ...currentLines.flatMap((g) => g.lines.map((l) => l.value ?? 1)));
 		const densityGroups = currentDensity
 			? [
 					(() => {
@@ -229,7 +241,9 @@
 				const r = empty
 					? 5
 					: layer.sized
-						? 5 + 13 * Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
+						? 5 +
+							((layer.maxRadius ?? 18) - 5) *
+								Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
 						: (layer.radius ?? 5);
 				L.circleMarker([p.lat, p.lon], {
 					radius: r,
@@ -254,6 +268,41 @@
 			)
 			.addTo(m);
 		drawn = [{ groups: [...densityGroups, ...lineGroups, ...groups], control }];
+	});
+
+	// Glide a dot along the traveller's line; reduced motion (#32) just places it at the end.
+	let dot: import('leaflet').CircleMarker | undefined;
+	$effect(() => {
+		const m = map;
+		const L = leaflet;
+		const t = traveller;
+		if (!m || !L) return;
+		dot?.remove();
+		dot = undefined;
+		if (!t) return;
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const at = (f: number): [number, number] => [
+			t.from.lat + (t.to.lat - t.from.lat) * f,
+			t.from.lon + (t.to.lon - t.from.lon) * f
+		];
+		const marker = L.circleMarker(at(still ? 1 : 0), {
+			radius: 7,
+			className: 'ps-traveller',
+			interactive: false
+		}).addTo(m);
+		(marker.getElement() as SVGElement | undefined)?.style.setProperty('fill', t.color);
+		dot = marker;
+		if (still) return;
+		const start = performance.now();
+		let frame = 0;
+		const step = (now: number) => {
+			const f = Math.min(1, (now - start) / 800);
+			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
+			marker.setLatLng(at(eased));
+			if (f < 1) frame = requestAnimationFrame(step);
+		};
+		frame = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(frame);
 	});
 
 	const style = $derived(
@@ -359,6 +408,11 @@
 	.map :global(.ps-dens-key) {
 		border-radius: 2px;
 		background: linear-gradient(90deg, var(--seq-2), var(--seq-6));
+	}
+	.map :global(.ps-traveller) {
+		stroke: #fff;
+		stroke-width: 2px;
+		fill-opacity: 1;
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
