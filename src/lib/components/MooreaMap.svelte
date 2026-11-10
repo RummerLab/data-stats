@@ -9,6 +9,18 @@
 		href?: string;
 		sub?: string;
 	}
+
+	/** A straight line between two places, e.g. a shark's move between nurseries. */
+	export interface MapLine {
+		id: string;
+		label: string;
+		from: { lat: number; lon: number };
+		to: { lat: number; lon: number };
+		/** Sets the line width (relative to the largest). */
+		value?: number;
+		color?: string;
+		sub?: string;
+	}
 </script>
 
 <script lang="ts">
@@ -18,6 +30,8 @@
 
 	let {
 		points,
+		lines = [],
+		lineLabel = '',
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
 		showLabels = true,
@@ -25,6 +39,9 @@
 		csv = true
 	}: {
 		points: MapPoint[];
+		/** Drawn under the circles; width by value. */
+		lines?: MapLine[];
+		lineLabel?: string;
 		valueLabel?: string;
 		format?: (v: number) => string;
 		showLabels?: boolean;
@@ -36,6 +53,12 @@
 	registerCsv(() => ({
 		columns: ['name', 'lat', 'lon', valueLabel || 'value'],
 		rows: csv ? points.map((p) => [p.label, p.lat, p.lon, p.value]) : []
+	}));
+	registerCsv(() => ({
+		columns: ['line', 'from lat', 'from lon', 'to lat', 'to lon', lineLabel || 'value'],
+		rows: csv
+			? lines.map((l) => [l.label, l.from.lat, l.from.lon, l.to.lat, l.to.lon, l.value])
+			: []
 	}));
 
 	let width = $state(640);
@@ -91,7 +114,22 @@
 		});
 	});
 
+	const lineMax = $derived(Math.max(1e-9, ...lines.map((l) => l.value ?? 1)));
+	const lineW = (v: number | undefined) => 1.5 + 6 * Math.sqrt((v ?? 1) / lineMax);
+
 	let tip = $state<TipState | null>(null);
+	function showLine(e: PointerEvent, l: MapLine) {
+		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+		tip = {
+			x: e.clientX - wrap.left,
+			y: e.clientY - wrap.top,
+			title: l.label,
+			lines: [
+				...(l.value != null && lineLabel ? [{ label: lineLabel, value: format(l.value) }] : []),
+				...(l.sub ? [{ value: l.sub }] : [])
+			]
+		};
+	}
 	function show(e: PointerEvent, p: MapPoint) {
 		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
 		tip = {
@@ -118,6 +156,20 @@
 	>
 		<rect {width} height={h} fill="var(--accent-wash)" rx="10" />
 		<path d={path} fill="var(--surface)" stroke="var(--axis)" stroke-width="1" />
+		{#each lines as l (l.id)}
+			<line
+				x1={px(l.from.lon)}
+				y1={py(l.from.lat)}
+				x2={px(l.to.lon)}
+				y2={py(l.to.lat)}
+				stroke={l.color ?? 'var(--series-1)'}
+				stroke-width={lineW(l.value)}
+				stroke-linecap="round"
+				stroke-opacity="0.7"
+				role="presentation"
+				onpointermove={(e) => showLine(e, l)}
+			/>
+		{/each}
 		{#each sorted as p (p.id)}
 			{@const x = px(p.lon)}
 			{@const y = py(p.lat)}

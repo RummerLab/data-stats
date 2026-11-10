@@ -52,8 +52,18 @@
 			</ChartCard>
 		{/if}
 		{#if data.map.length}
-			<ChartCard title="Where it was caught" subtitle="Circle size = number of captures">
-				<MooreaMap points={data.map} maxR={12} valueLabel="Captures" />
+			<ChartCard
+				title="Where it was caught"
+				subtitle={data.moves.length
+					? 'Circle size = number of captures. Lines join consecutive captures at different nurseries (not the route swum).'
+					: 'Circle size = number of captures'}
+			>
+				<MooreaMap
+					points={data.map}
+					lines={data.moves.map((m) => ({ ...m, color: speciesColor(ind.species) }))}
+					maxR={12}
+					valueLabel="Captures"
+				/>
 			</ChartCard>
 		{/if}
 	</section>

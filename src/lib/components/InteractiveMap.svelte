@@ -1,5 +1,12 @@
 <script lang="ts" module>
-	import type { MapPoint } from './MooreaMap.svelte';
+	import type { MapLine, MapPoint } from './MooreaMap.svelte';
+
+	export interface MapLineLayer {
+		name: string;
+		/** CSS colour, applied through CSS so it follows the theme. */
+		color: string;
+		lines: MapLine[];
+	}
 
 	export interface MapLayer {
 		name: string;
@@ -41,6 +48,8 @@
 
 	let {
 		layers,
+		lineLayers = [],
+		lineLabel = '',
 		label,
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
@@ -49,6 +58,9 @@
 		fallback
 	}: {
 		layers: MapLayer[];
+		/** Lines drawn under the circles, width by value, one toggle per layer. */
+		lineLayers?: MapLineLayer[];
+		lineLabel?: string;
 		/** Accessible name of the map region. */
 		label: string;
 		valueLabel?: string;
@@ -64,18 +76,25 @@
 		columns: ['layer', 'name', 'lat', 'lon', valueLabel || 'value'],
 		rows: layers.flatMap((l) => l.points.map((p) => [l.name, p.label, p.lat, p.lon, p.value]))
 	}));
+	registerCsv(() => ({
+		columns: ['layer', 'line', 'from lat', 'from lon', 'to lat', 'to lon', lineLabel || 'value'],
+		rows: lineLayers.flatMap((g) =>
+			g.lines.map((l) => [g.name, l.label, l.from.lat, l.from.lon, l.to.lat, l.to.lon, l.value])
+		)
+	}));
 
 	let el = $state<HTMLDivElement>();
 	let ready = $state(false);
 
-	function popup(p: MapPoint) {
+	function popup(p: MapPoint | MapLine, unit = valueLabel) {
+		const href = 'href' in p ? p.href : undefined;
 		const box = document.createElement('div');
-		const title = document.createElement(p.href ? 'a' : 'strong');
+		const title = document.createElement(href ? 'a' : 'strong');
 		title.textContent = p.label;
-		if (p.href) (title as HTMLAnchorElement).href = p.href;
+		if (href) (title as HTMLAnchorElement).href = href;
 		box.append(title);
 		for (const line of [
-			p.value != null && valueLabel ? `${valueLabel}: ${format(p.value)}` : null,
+			p.value != null && unit ? `${unit}: ${format(p.value)}` : null,
 			p.sub ?? null
 		]) {
 			if (!line) continue;
@@ -89,7 +108,7 @@
 	let map = $state.raw<import('leaflet').Map>();
 	let leaflet: typeof import('leaflet') | undefined;
 	let drawn: {
-		groups: import('leaflet').LayerGroup[];
+		groups: { key: string; group: import('leaflet').LayerGroup }[];
 		control: import('leaflet').Control.Layers;
 	}[] = [];
 	let bases: Record<string, import('leaflet').TileLayer> = {};
@@ -137,17 +156,42 @@
 		const m = map;
 		const L = leaflet;
 		const current = layers;
+		const currentLines = lineLayers;
 		if (!m || !L || !el) return;
 		const hidden = new Set(
-			drawn.length
-				? current.map((l, i) => (drawn[0].groups[i] && !m.hasLayer(drawn[0].groups[i]) ? i : -1))
-				: []
+			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
 		);
 		for (const d of drawn) {
-			d.groups.forEach((g) => g.remove());
+			d.groups.forEach((g) => g.group.remove());
 			d.control.remove();
 		}
 		const overlays: Record<string, import('leaflet').LayerGroup> = {};
+		const lineMax = Math.max(
+			1e-9,
+			...currentLines.flatMap((g) => g.lines.map((l) => l.value ?? 1))
+		);
+		const lineGroups = currentLines.map((g, i) => {
+			const group = L.layerGroup();
+			for (const l of g.lines)
+				L.polyline(
+					[
+						[l.from.lat, l.from.lon],
+						[l.to.lat, l.to.lon]
+					],
+					{
+						weight: 1.5 + 6 * Math.sqrt((l.value ?? 1) / lineMax),
+						className: `ps-line ps-line-${i}`,
+						lineCap: 'round'
+					}
+				)
+					.bindTooltip(l.label)
+					.bindPopup(() => popup(l, lineLabel))
+					.addTo(group);
+			const key = `line:${i}`;
+			if (!hidden.has(key)) group.addTo(m);
+			overlays[`<span class="ps-key ps-line-key ps-line-${i}"></span>${g.name}`] = group;
+			return { key, group };
+		});
 		const groups = current.map((layer, i) => {
 			const max = layer.max ?? Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
 			const group = L.layerGroup();
@@ -166,17 +210,25 @@
 					.bindPopup(() => popup(p))
 					.addTo(group);
 			}
-			if (!hidden.has(i)) group.addTo(m);
+			const key = `layer:${i}`;
+			if (!hidden.has(key)) group.addTo(m);
 			overlays[`<span class="ps-key ps-layer-${i}"></span>${layer.name}`] = group;
-			return group;
+			return { key, group };
 		});
 		const control = L.control
-			.layers(bases, current.length > 1 ? overlays : {}, { collapsed: el.clientWidth < 560 })
+			.layers(bases, current.length + currentLines.length > 1 ? overlays : {}, {
+				collapsed: el.clientWidth < 560
+			})
 			.addTo(m);
-		drawn = [{ groups, control }];
+		drawn = [{ groups: [...lineGroups, ...groups], control }];
 	});
 
-	const style = $derived(layers.map((l, i) => `--ps-layer-${i}: ${l.color}`).join('; '));
+	const style = $derived(
+		[
+			...layers.map((l, i) => `--ps-layer-${i}: ${l.color}`),
+			...lineLayers.map((l, i) => `--ps-line-${i}: ${l.color}`)
+		].join('; ')
+	);
 </script>
 
 {#if ready}
@@ -189,7 +241,14 @@
 	></div>
 	<p class="hint">Drag to pan, use + / − to zoom. Select a circle for details.</p>
 {:else}
-	<MooreaMap points={fallback ?? layers[0]?.points ?? []} {valueLabel} {format} csv={false} />
+	<MooreaMap
+		points={fallback ?? layers[0]?.points ?? []}
+		lines={lineLayers.flatMap((g) => g.lines.map((l) => ({ ...l, color: g.color })))}
+		{lineLabel}
+		{valueLabel}
+		{format}
+		csv={false}
+	/>
 {/if}
 
 <style>
@@ -245,6 +304,22 @@
 	.map :global(.leaflet-popup-content a) {
 		font-weight: 650;
 		color: #1d5fb8;
+	}
+	.map :global(.leaflet-interactive.ps-line) {
+		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line-key) {
+		border-radius: 2px;
+		height: 4px;
+		vertical-align: 2px;
+	}
+	.map :global(.ps-line-0) {
+		stroke: var(--ps-line-0);
+		background: var(--ps-line-0);
+	}
+	.map :global(.ps-line-1) {
+		stroke: var(--ps-line-1);
+		background: var(--ps-line-1);
 	}
 	.map :global(.ps-layer-0) {
 		fill: var(--ps-layer-0);

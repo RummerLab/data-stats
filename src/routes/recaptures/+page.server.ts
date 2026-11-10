@@ -40,6 +40,61 @@ export const load: PageServerLoad = () =>
 			const k = Math.cos((sa.lat * Math.PI) / 180);
 			return Math.hypot((sa.lat - sb.lat) * 110.574, (sa.lon - sb.lon) * 111.32 * k);
 		};
+		// Moves drawn on the map (#173): one line per nursery pair and species, both directions
+		// pooled. Sharks with identity conflicts are left out.
+		const conflicts = new Set(d.individuals.filter((i) => i.conflict).map((i) => i.id));
+		const place = (id: string | null) => {
+			const s = id ? d.siteById.get(id) : null;
+			return s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null;
+		};
+		const moveLines = (['Cm', 'Na'] as const).map((sp) => {
+			const byPair = new Map<string, { a: string; b: string; ab: number; ba: number }>();
+			for (const p of moved) {
+				if (p.species !== sp || conflicts.has(p.id)) continue;
+				const [a, b] = [p.a.siteId!, p.b.siteId!].sort();
+				const e = byPair.get(`${a}|${b}`) ?? { a, b, ab: 0, ba: 0 };
+				if (p.a.siteId === a) e.ab++;
+				else e.ba++;
+				byPair.set(`${a}|${b}`, e);
+			}
+			return {
+				species: sp,
+				lines: [...byPair.values()].flatMap((e) => {
+					const from = place(e.a);
+					const to = place(e.b);
+					if (!from || !to) return [];
+					const [na, nb] = [siteName(d, e.a), siteName(d, e.b)];
+					return [
+						{
+							id: `${sp}-${e.a}-${e.b}`,
+							label: `${na} ↔ ${nb}`,
+							from,
+							to,
+							value: e.ab + e.ba,
+							sub: `${na} → ${nb}: ${e.ab} · ${nb} → ${na}: ${e.ba} · ${round(dist(e.a, e.b), 1)} km`
+						}
+					];
+				})
+			};
+		});
+		const stayed = nurseries.flatMap((id) => {
+			const at = place(id);
+			if (!at) return [];
+			const n = pairs.filter(
+				(p) => p.a.siteId === id && p.b.siteId === id && !conflicts.has(p.id)
+			).length;
+			const out = moved.filter((p) => p.a.siteId === id && !conflicts.has(p.id)).length;
+			return [
+				{
+					id,
+					label: siteName(d, id),
+					...at,
+					value: n,
+					href: `/nurseries/${id}`,
+					sub: `${n} recaptured at the same nursery, ${out} next caught elsewhere`
+				}
+			];
+		});
 		const longest = moved
 			.map((p) => ({
 				id: p.id,
@@ -112,6 +167,9 @@ export const load: PageServerLoad = () =>
 			bySpecies: rateBy((c) => c.species, ['Cm', 'Na']),
 			nurseryNames: nurseries.map((id) => siteName(d, id)),
 			matrix,
+			moveLines,
+			stayed,
+			conflictsLeftOut: moved.filter((p) => conflicts.has(p.id)).length,
 			fidelity: pairs.length ? round(same / pairs.length, 3) : null,
 			pairs: pairs.length,
 			medianDays: median(pairs.map((p) => p.days)),
