@@ -9,7 +9,57 @@
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
-	const mapped = $derived(data.rows.filter((r) => r.lat != null && r.lon != null));
+
+	// Season slider (#172): the last stop shows every season pooled.
+	let idx = $state(Number.MAX_SAFE_INTEGER);
+	const all = $derived(data.seasons.length);
+	const at = $derived(Math.min(idx, all));
+	const seasonLabel = $derived(at === all ? 'All seasons' : season(data.seasons[at]));
+	// One scale for every frame so circle sizes stay comparable between seasons.
+	const scaleMax = $derived(
+		Math.max(1e-9, ...data.heat.flat().map((v) => v ?? 0), ...data.rows.map((r) => r.cpue ?? 0))
+	);
+	const points = $derived(
+		data.rows.flatMap((r, i) => {
+			if (r.lat == null || r.lon == null) return [];
+			const s = at === all ? null : data.perSeason[i][at];
+			const value = at === all ? r.cpue : data.heat[i][at];
+			return [
+				{
+					id: r.id,
+					label: r.name,
+					lat: r.lat,
+					lon: r.lon,
+					value,
+					href: r.href,
+					sub: s
+						? value == null
+							? s.sets
+								? `${num(s.sets)} sets, none timed`
+								: 'Not sampled this season'
+							: `${num(s.captures)} captures, ${num(s.sets)} sets`
+						: `${num(r.captures)} captures, ${num(r.sets)} sets`
+				}
+			];
+		})
+	);
+
+	let timer: ReturnType<typeof setInterval> | undefined;
+	let playing = $state(false);
+	function stop() {
+		clearInterval(timer);
+		playing = false;
+	}
+	function play() {
+		if (playing) return stop();
+		if (at >= all - 1) idx = 0;
+		playing = true;
+		timer = setInterval(() => {
+			if (idx >= all - 1) stop();
+			else idx = Math.min(idx, all) + 1;
+		}, 1200);
+	}
+	$effect(() => stop);
 </script>
 
 <div class="container">
@@ -26,26 +76,39 @@
 		<ChartCard
 			title="Nurseries around the island"
 			papers={['eustache2024density', 'bouyoucos2022nursery']}
-			subtitle="Circles sized by sharks per net-hour (both species). Switch between satellite and street maps, or show adult blacktip capture spots."
+			subtitle="Circles sized by sharks per net-hour (both species), on one scale for every season. Dashed rings: not sampled with timed sets that season. Switch between satellite and street maps, or show adult blacktip capture spots."
 		>
+			<div class="slider">
+				<button type="button" class="play" onclick={play} aria-pressed={playing}>
+					{playing ? 'Pause' : 'Play seasons'}
+				</button>
+				<label for="season-slider">Season</label>
+				<input
+					id="season-slider"
+					type="range"
+					min="0"
+					max={all}
+					step="1"
+					value={at}
+					oninput={(e) => {
+						stop();
+						idx = Number(e.currentTarget.value);
+					}}
+					aria-valuetext={seasonLabel}
+				/>
+				<output for="season-slider">{seasonLabel}</output>
+			</div>
 			<InteractiveMap
 				label="Map of Mo'orea's shark nurseries"
 				valueLabel="Sharks / net-hour"
 				format={(v) => num(v, 2)}
 				layers={[
 					{
-						name: 'Nurseries',
+						name: at === all ? 'Nurseries' : `Nurseries, ${seasonLabel}`,
 						color: 'var(--series-1)',
 						sized: true,
-						points: mapped.map((r) => ({
-							id: r.id,
-							label: r.name,
-							lat: r.lat!,
-							lon: r.lon!,
-							value: r.cpue,
-							href: r.href,
-							sub: `${num(r.captures)} captures, ${num(r.sets)} sets`
-						}))
+						max: scaleMax,
+						points
 					},
 					...(data.adults.length
 						? [{ name: 'Adult blacktip captures', color: 'var(--series-4)', points: data.adults }]
@@ -138,3 +201,32 @@
 		</p>
 	</section>
 </div>
+
+<style>
+	.slider {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px 12px;
+		margin-bottom: 12px;
+		font-size: 0.9rem;
+	}
+	.slider input {
+		flex: 1 1 220px;
+		accent-color: var(--series-1);
+	}
+	.slider output {
+		min-width: 7.5em;
+		font-weight: 650;
+		font-variant-numeric: tabular-nums;
+	}
+	.play {
+		font: inherit;
+		padding: 4px 12px;
+		border-radius: 999px;
+		border: 1px solid var(--hairline);
+		background: var(--surface-2);
+		color: var(--ink);
+		cursor: pointer;
+	}
+</style>

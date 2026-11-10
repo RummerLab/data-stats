@@ -53,6 +53,14 @@ export const load: PageServerLoad = () =>
 				round(cpueOf(eff.filter((s) => s.siteId === id && s.season === season)))
 			)
 		);
+		// Per-season counts for the map's season slider (#172).
+		const perSeason = ids.map((id) =>
+			d.seasons.map((season) => ({
+				sets: d.sets.filter((x) => x.siteId === id && x.season === season && x.gear === 'Gillnet')
+					.length,
+				captures: caps.filter((c) => c.siteId === id && c.season === season).length
+			}))
+		);
 		// Adult blacktips caught on hook and line, where the datasheet has both coordinates.
 		const adults = d.adults
 			.filter((a) => a.lat != null && a.lon != null && a.lon < 0)
@@ -79,5 +87,5 @@ export const load: PageServerLoad = () =>
 				)
 			)
 		};
-		return { rows, seasons: d.seasons, heat, adults, stats };
+		return { rows, seasons: d.seasons, heat, perSeason, adults, stats };
 	});

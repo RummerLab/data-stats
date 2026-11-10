@@ -10,6 +10,8 @@
 		sized?: boolean;
 		/** Fixed radius in px when not sized (default 5). */
 		radius?: number;
+		/** Value that gets the largest circle; fix it to keep sizes comparable as points change. */
+		max?: number;
 	}
 
 	/** Base maps (#29). Hosts must match img-src in vite.config.ts. */
@@ -84,8 +86,15 @@
 		return box;
 	}
 
+	let map = $state.raw<import('leaflet').Map>();
+	let leaflet: typeof import('leaflet') | undefined;
+	let drawn: {
+		groups: import('leaflet').LayerGroup[];
+		control: import('leaflet').Control.Layers;
+	}[] = [];
+	let bases: Record<string, import('leaflet').TileLayer> = {};
+
 	onMount(() => {
-		let map: import('leaflet').Map | undefined;
 		let cancelled = false;
 		(async () => {
 			const mod = await import('leaflet');
@@ -94,53 +103,77 @@
 			ready = true;
 			await tick();
 			if (!el || cancelled) return;
+			leaflet = L;
 			// Reduced motion (#32): jump instead of animating zooms and fades.
 			const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-			map = L.map(el, {
+			const m = L.map(el, {
 				scrollWheelZoom: false,
 				zoomSnap: 0.5,
 				zoomAnimation: !still,
 				fadeAnimation: !still,
 				markerZoomAnimation: !still
 			});
-			const bases = Object.fromEntries(
+			bases = Object.fromEntries(
 				BASEMAPS.map((b) => [
 					b.name,
 					L.tileLayer(b.url, { attribution: b.attribution, maxZoom: b.maxZoom })
 				])
 			);
-			bases[BASEMAPS[0].name].addTo(map);
-			const overlays: Record<string, import('leaflet').LayerGroup> = {};
-			const all: [number, number][] = [];
-			layers.forEach((layer, i) => {
-				const max = Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
-				const group = L.layerGroup();
-				for (const p of layer.points) {
-					const r = layer.sized
-						? 5 + 13 * Math.sqrt(Math.max(0, p.value ?? 0) / max)
-						: (layer.radius ?? 5);
-					const tooltip = document.createElement('span');
-					tooltip.textContent = p.label;
-					L.circleMarker([p.lat, p.lon], { radius: r, className: `ps-layer ps-layer-${i}` })
-						.bindTooltip(tooltip)
-						.bindPopup(() => popup(p))
-						.addTo(group);
-					all.push([p.lat, p.lon]);
-				}
-				group.addTo(map!);
-				overlays[`<span class="ps-key ps-layer-${i}"></span>${layer.name}`] = group;
-			});
-			L.control
-				.layers(bases, layers.length > 1 ? overlays : {}, { collapsed: el.clientWidth < 560 })
-				.addTo(map);
-			if (focus) map.setView([focus.lat, focus.lon], focus.zoom ?? 14);
-			else if (all.length) map.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 });
-			else map.setView([-17.53, -149.83], 12);
+			bases[BASEMAPS[0].name].addTo(m);
+			const all = layers.flatMap((l) => l.points.map((p) => [p.lat, p.lon] as [number, number]));
+			if (focus) m.setView([focus.lat, focus.lon], focus.zoom ?? 14);
+			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 });
+			else m.setView([-17.53, -149.83], 12);
+			map = m;
 		})();
 		return () => {
 			cancelled = true;
 			map?.remove();
 		};
+	});
+
+	// Redraw the overlays whenever the layers change (e.g. a season slider), keeping the view.
+	$effect(() => {
+		const m = map;
+		const L = leaflet;
+		const current = layers;
+		if (!m || !L || !el) return;
+		const hidden = new Set(
+			drawn.length
+				? current.map((l, i) => (drawn[0].groups[i] && !m.hasLayer(drawn[0].groups[i]) ? i : -1))
+				: []
+		);
+		for (const d of drawn) {
+			d.groups.forEach((g) => g.remove());
+			d.control.remove();
+		}
+		const overlays: Record<string, import('leaflet').LayerGroup> = {};
+		const groups = current.map((layer, i) => {
+			const max = layer.max ?? Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
+			const group = L.layerGroup();
+			for (const p of layer.points) {
+				const empty = layer.sized && p.value == null;
+				const r = empty
+					? 5
+					: layer.sized
+						? 5 + 13 * Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
+						: (layer.radius ?? 5);
+				L.circleMarker([p.lat, p.lon], {
+					radius: r,
+					className: `ps-layer ps-layer-${i}${empty ? ' ps-empty' : ''}`
+				})
+					.bindTooltip(p.label)
+					.bindPopup(() => popup(p))
+					.addTo(group);
+			}
+			if (!hidden.has(i)) group.addTo(m);
+			overlays[`<span class="ps-key ps-layer-${i}"></span>${layer.name}`] = group;
+			return group;
+		});
+		const control = L.control
+			.layers(bases, current.length > 1 ? overlays : {}, { collapsed: el.clientWidth < 560 })
+			.addTo(m);
+		drawn = [{ groups, control }];
 	});
 
 	const style = $derived(layers.map((l, i) => `--ps-layer-${i}: ${l.color}`).join('; '));
@@ -188,6 +221,11 @@
 		font: inherit;
 		font-size: 0.8rem;
 		color: #13213a;
+	}
+	.map :global(.leaflet-interactive.ps-layer.ps-empty) {
+		fill: transparent;
+		stroke: var(--muted);
+		stroke-dasharray: 2 2;
 	}
 	.map :global(.ps-key) {
 		display: inline-block;
