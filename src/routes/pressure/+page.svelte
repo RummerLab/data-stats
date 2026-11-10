@@ -4,7 +4,7 @@
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
 	import Scatter from '#lib/components/charts/Scatter.svelte';
-	import { num } from '#lib/format';
+	import { num, season } from '#lib/format';
 	import { SPECIES } from '#lib/species';
 	import type { PageProps } from './$types';
 
@@ -169,6 +169,54 @@
 			/>
 		</ChartCard>
 	</section>
+
+	{#if data.covid}
+		{@const c = data.covid}
+		<section class="section">
+			<h2>A season with few visitors</h2>
+			<p>
+				Tourism on Moorea fell by more than half in 2020 (ISPF), the closest thing this record has
+				to a season with fewer people on the water. Fieldwork runs from October to February, so the
+				border closure itself (March to July 2020) fell outside it, but the {season(c.season)} season
+				was sampled while visitor numbers were still far below normal. Its catch rate was {num(
+					c.groups[0].mean,
+					2
+				)} sharks per net-hour against {num(c.groups[1].mean, 2)} in the other seasons{c.ratio !=
+				null
+					? ` (${num(c.ratio, 2)} times)`
+					: ''}.
+			</p>
+			<ChartCard
+				title={`Catch rate in ${season(c.season)} and the other seasons`}
+				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+				stats={data.stats.covid}
+				note="One season stands in for low tourism, so anything else that was different that year (weather, which nurseries were sampled, crew, the pups born) is mixed into the comparison. Read it as a description, not as the effect of tourism."
+			>
+				<BarChart
+					categories={c.groups.map(
+						(g) => `${g.label === 'low' ? season(c.season) : 'Other seasons'} (${g.n})`
+					)}
+					series={[
+						{
+							name: 'Sharks / net-hour',
+							color: 'var(--series-1)',
+							values: c.groups.map((g) => g.mean)
+						}
+					]}
+					errors={c.groups.map((g) => (g.lo != null && g.hi != null ? [g.lo, g.hi] : null))}
+					valueFormat={(v) => num(v, 2)}
+				/>
+			</ChartCard>
+			<p class="muted small">
+				Tourism figure: Institut de la statistique de la Polynésie française,
+				<a
+					href="https://data.ispf.pf/docs/default-source/publi-pf-bilans-et-etudes/1308-bilan-tourisme-2020.pdf"
+					>Bilan du tourisme 2020</a
+				>. ISPF's island-level series are published as PDF dashboards, not open tables, so the site
+				doesn't chart tourism over time yet.
+			</p>
+		</section>
+	{/if}
 
 	<section class="section">
 		<h2>Busy days</h2>
