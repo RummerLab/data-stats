@@ -1,6 +1,12 @@
 <script lang="ts" module>
 	import type { MapLine, MapPoint } from './MooreaMap.svelte';
 
+	/** A density surface as grid cells, coloured on the sequential scale by `bin` (1–5). */
+	export interface MapDensity {
+		name: string;
+		cells: { south: number; west: number; north: number; east: number; bin: number }[];
+	}
+
 	export interface MapLineLayer {
 		name: string;
 		/** CSS colour, applied through CSS so it follows the theme. */
@@ -50,6 +56,7 @@
 		layers,
 		lineLayers = [],
 		lineLabel = '',
+		density,
 		label,
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
@@ -61,6 +68,8 @@
 		/** Lines drawn under the circles, width by value, one toggle per layer. */
 		lineLayers?: MapLineLayer[];
 		lineLabel?: string;
+		/** Drawn under everything else, with its own toggle. */
+		density?: MapDensity;
 		/** Accessible name of the map region. */
 		label: string;
 		valueLabel?: string;
@@ -157,6 +166,7 @@
 		const L = leaflet;
 		const current = layers;
 		const currentLines = lineLayers;
+		const currentDensity = density;
 		if (!m || !L || !el) return;
 		const hidden = new Set(
 			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
@@ -170,6 +180,25 @@
 			1e-9,
 			...currentLines.flatMap((g) => g.lines.map((l) => l.value ?? 1))
 		);
+		const densityGroups = currentDensity
+			? [
+					(() => {
+						const group = L.layerGroup();
+						for (const c of currentDensity.cells)
+							L.rectangle(
+								[
+									[c.south, c.west],
+									[c.north, c.east]
+								],
+								{ stroke: false, interactive: false, className: `ps-dens ps-dens-${c.bin}` }
+							).addTo(group);
+						const key = 'density';
+						if (!hidden.has(key)) group.addTo(m);
+						overlays[`<span class="ps-key ps-dens-key"></span>${currentDensity.name}`] = group;
+						return { key, group };
+					})()
+				]
+			: [];
 		const lineGroups = currentLines.map((g, i) => {
 			const group = L.layerGroup();
 			for (const l of g.lines)
@@ -216,11 +245,15 @@
 			return { key, group };
 		});
 		const control = L.control
-			.layers(bases, current.length + currentLines.length > 1 ? overlays : {}, {
-				collapsed: el.clientWidth < 560
-			})
+			.layers(
+				bases,
+				current.length + currentLines.length + densityGroups.length > 1 ? overlays : {},
+				{
+					collapsed: el.clientWidth < 560
+				}
+			)
 			.addTo(m);
-		drawn = [{ groups: [...lineGroups, ...groups], control }];
+		drawn = [{ groups: [...densityGroups, ...lineGroups, ...groups], control }];
 	});
 
 	const style = $derived(
@@ -304,6 +337,28 @@
 	.map :global(.leaflet-popup-content a) {
 		font-weight: 650;
 		color: #1d5fb8;
+	}
+	.map :global(.ps-dens) {
+		fill-opacity: 0.6;
+	}
+	.map :global(.ps-dens-1) {
+		fill: var(--seq-2);
+	}
+	.map :global(.ps-dens-2) {
+		fill: var(--seq-3);
+	}
+	.map :global(.ps-dens-3) {
+		fill: var(--seq-4);
+	}
+	.map :global(.ps-dens-4) {
+		fill: var(--seq-5);
+	}
+	.map :global(.ps-dens-5) {
+		fill: var(--seq-6);
+	}
+	.map :global(.ps-dens-key) {
+		border-radius: 2px;
+		background: linear-gradient(90deg, var(--seq-2), var(--seq-6));
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;

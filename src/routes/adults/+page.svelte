@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
+	import InteractiveMap from '#lib/components/InteractiveMap.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Histogram from '#lib/components/charts/Histogram.svelte';
@@ -46,6 +47,41 @@
 				sub="after the bait goes in"
 			/>
 		</div>
+
+		{#if data.where.points.length}
+			{@const w = data.where}
+			<section class="section">
+				<ChartCard
+					title="Where adults are caught"
+					subtitle={w.density
+						? `Capture density from ${num(w.density.n)} GPS points (Gaussian kernel, ${num(w.density.bandwidthKm, 2)} km bandwidth): darker is more captures. Dots are single captures.`
+						: `Single capture spots. A density surface needs at least ${num(w.minPoints)} GPS points; ${num(w.points.length)} so far.`}
+					note={[
+						'Density shows where the team fished and caught sharks, not where adults spend their time: hook-and-line effort is not spread evenly around the lagoon.',
+						w.setAside.length
+							? `${num(w.setAside.length)} point${w.setAside.length > 1 ? 's' : ''} left out (${[...new Set(w.setAside.map((x) => x.reason))].join(', ')}).`
+							: '',
+						w.missing ? `${num(w.missing)} captures have no GPS point.` : ''
+					]
+						.filter(Boolean)
+						.join(' ')}
+				>
+					<InteractiveMap
+						label="Map of adult blacktip capture density"
+						height={460}
+						density={w.density ? { name: 'Capture density', cells: w.density.cells } : undefined}
+						layers={[
+							{
+								name: 'Adult captures',
+								color: 'var(--series-4)',
+								radius: 4,
+								points: w.points
+							}
+						]}
+					/>
+				</ChartCard>
+			</section>
+		{/if}
 
 		<section class="section grid-2">
 			<ChartCard
