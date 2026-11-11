@@ -18,7 +18,10 @@
 	let step = $state(Number.MAX_SAFE_INTEGER);
 	const at = $derived(Math.min(step, stops));
 	const current = $derived(at < stops ? data.track[at] : null);
-	const previous = $derived(at > 0 && at < stops ? data.track[at - 1] : null);
+	// An unlocated capture breaks the path: do not animate across that unknown stop.
+	const previous = $derived(
+		current && at > 0 && data.track[at - 1].n === current.n - 1 ? data.track[at - 1] : null
+	);
 	const color = $derived(speciesColor(ind.species));
 	const shownMoves = $derived(
 		current ? data.moves.filter((m) => m.at + 1 <= current.n) : data.moves
