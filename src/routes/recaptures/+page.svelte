@@ -100,7 +100,7 @@
 		<ChartCard
 			title="Moves between nurseries on the map"
 			papers={['bouyoucos2020homerange']}
-			subtitle="Lines join the nurseries where a shark was caught one time and the next, both directions pooled; thicker is more moves. Grey circles: recaptures at the same nursery. Each shark's own page can play its moves one by one."
+			subtitle="Lines join the nurseries where a shark was caught one time and the next; arrows show the direction and thicker is more moves. Moves both ways between two nurseries are drawn side by side. Grey circles: recaptures at the same nursery. Each shark's own page can play its moves one by one."
 			note={`Lines join capture sites; they are not the route a shark swam. A shark can pass other nurseries, or move and come back, between two captures.${data.conflictsLeftOut ? ` ${num(data.conflictsLeftOut)} moves by sharks with conflicting records are left out.` : ''}`}
 		>
 			<InteractiveMap

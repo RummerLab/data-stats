@@ -53,6 +53,7 @@
 	import { onMount, tick } from 'svelte';
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
+	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		layers,
@@ -128,6 +129,8 @@
 	}
 
 	let map = $state.raw<import('leaflet').Map>();
+	let zoom = $state(0);
+	const uid = $props.id();
 	let leaflet: typeof import('leaflet') | undefined;
 	let drawn: {
 		groups: { key: string; group: import('leaflet').LayerGroup }[];
@@ -165,6 +168,9 @@
 			if (focus) m.setView([focus.lat, focus.lon], focus.zoom ?? 14);
 			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 });
 			else m.setView([-17.53, -149.83], 12);
+			// Line offsets are in screen pixels, so redraw them at each zoom (#182).
+			m.on('zoomend', () => (zoom = m.getZoom()));
+			zoom = m.getZoom();
 			map = m;
 		})();
 		return () => {
@@ -180,6 +186,7 @@
 		const current = layers;
 		const currentLines = lineLayers;
 		const currentDensity = density;
+		void zoom;
 		if (!m || !L || !el) return;
 		const hidden = new Set(
 			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
@@ -211,23 +218,33 @@
 					})()
 				]
 			: [];
+		// Direction (#182): an arrow mid-line; a move drawn both ways splits into two parallel lines.
+		const back = reversed(currentLines.flatMap((g) => g.lines));
+		let n = 0;
 		const lineGroups = currentLines.map((g, i) => {
 			const group = L.layerGroup();
-			for (const l of g.lines)
-				L.polyline(
-					[
-						[l.from.lat, l.from.lon],
-						[l.to.lat, l.to.lon]
-					],
-					{
-						weight: 1.5 + 6 * Math.sqrt((l.value ?? 1) / lineMax),
-						className: `ps-line ps-line-${i}`,
-						lineCap: 'round'
-					}
-				)
+			for (const l of g.lines) {
+				const weight = lineWidth(l.value, lineMax);
+				const a = m.latLngToLayerPoint([l.from.lat, l.from.lon]);
+				const b = m.latLngToLayerPoint([l.to.lat, l.to.lon]);
+				const pts = directedPoints(a.x, a.y, b.x, b.y, back[n++] ? shiftFor(weight) : 0).map(
+					([x, y]) => m.layerPointToLatLng([x, y])
+				);
+				const line = L.polyline(pts, {
+					weight,
+					className: `ps-line ps-line-${i}`,
+					lineCap: 'round',
+					// Keep the midpoint the arrow marker hangs on (Leaflet would simplify it away).
+					smoothFactor: 0
+				});
+				line.on('add', () =>
+					line.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
+				);
+				line
 					.bindTooltip(l.label)
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
+			}
 			const key = `line:${i}`;
 			if (!hidden.has(key)) group.addTo(m);
 			overlays[`<span class="ps-key ps-line-key ps-line-${i}"></span>${g.name}`] = group;
@@ -321,6 +338,26 @@
 		aria-label={label}
 		style={`${style}; height: ${height}px`}
 	></div>
+	{#if lineLayers.length}
+		<svg class="defs" aria-hidden="true">
+			<defs>
+				{#each lineLayers as g, i (i)}
+					<marker
+						id={`${uid}-arrow-${i}`}
+						viewBox="0 0 10 10"
+						refX="5"
+						refY="5"
+						markerWidth="16"
+						markerHeight="16"
+						markerUnits="userSpaceOnUse"
+						orient="auto"
+					>
+						<path d="M0,0 L10,5 L0,10 z" fill={g.color} stroke="#fff" stroke-width="1" />
+					</marker>
+				{/each}
+			</defs>
+		</svg>
+	{/if}
 	<p class="hint">Drag to pan, use + / − to zoom. Select a circle for details.</p>
 {:else}
 	<MooreaMap
@@ -342,6 +379,12 @@
 		background: var(--surface-2);
 		font: inherit;
 		z-index: 0;
+	}
+	.defs {
+		position: absolute;
+		width: 0;
+		height: 0;
+		overflow: hidden;
 	}
 	.hint {
 		margin: 6px 0 0;

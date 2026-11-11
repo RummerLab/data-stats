@@ -40,22 +40,21 @@ export const load: PageServerLoad = () =>
 			const k = Math.cos((sa.lat * Math.PI) / 180);
 			return Math.hypot((sa.lat - sb.lat) * 110.574, (sa.lon - sb.lon) * 111.32 * k);
 		};
-		// Moves drawn on the map (#173): one line per nursery pair and species, both directions
-		// pooled. Sharks with identity conflicts are left out.
+		// Moves drawn on the map (#173). Sharks with identity conflicts are left out.
 		const conflicts = new Set(d.individuals.filter((i) => i.conflict).map((i) => i.id));
 		const place = (id: string | null) => {
 			const s = id ? d.siteById.get(id) : null;
 			return s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null;
 		};
 		const moveLines = (['Cm', 'Na'] as const).map((sp) => {
-			const byPair = new Map<string, { a: string; b: string; ab: number; ba: number }>();
+			// One line per direction (#182): A → B and B → A are drawn side by side.
+			const byPair = new Map<string, { a: string; b: string; n: number }>();
 			for (const p of moved) {
 				if (p.species !== sp || conflicts.has(p.id)) continue;
-				const [a, b] = [p.a.siteId!, p.b.siteId!].sort();
-				const e = byPair.get(`${a}|${b}`) ?? { a, b, ab: 0, ba: 0 };
-				if (p.a.siteId === a) e.ab++;
-				else e.ba++;
-				byPair.set(`${a}|${b}`, e);
+				const k = `${p.a.siteId}|${p.b.siteId}`;
+				const e = byPair.get(k) ?? { a: p.a.siteId!, b: p.b.siteId!, n: 0 };
+				e.n++;
+				byPair.set(k, e);
 			}
 			return {
 				species: sp,
@@ -67,11 +66,11 @@ export const load: PageServerLoad = () =>
 					return [
 						{
 							id: `${sp}-${e.a}-${e.b}`,
-							label: `${na} ↔ ${nb}`,
+							label: `${na} → ${nb}`,
 							from,
 							to,
-							value: e.ab + e.ba,
-							sub: `${na} → ${nb}: ${e.ab} · ${nb} → ${na}: ${e.ba} · ${round(dist(e.a, e.b), 1)} km`
+							value: e.n,
+							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(dist(e.a, e.b), 1)} km`
 						}
 					];
 				})

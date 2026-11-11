@@ -27,6 +27,7 @@
 	import outline from '#lib/moorea-outline.json';
 	import Tip, { type TipState } from './charts/Tip.svelte';
 	import { registerCsv } from './charts/csv';
+	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		points,
@@ -115,7 +116,28 @@
 	});
 
 	const lineMax = $derived(Math.max(1e-9, ...lines.map((l) => l.value ?? 1)));
-	const lineW = (v: number | undefined) => 1.5 + 6 * Math.sqrt((v ?? 1) / lineMax);
+	// Direction arrows (#182): one marker per line colour, in the middle of each line.
+	const uid = $props.id();
+	const colours = $derived([...new Set(lines.map((l) => l.color ?? 'var(--series-1)'))]);
+	const drawn = $derived.by(() => {
+		const back = reversed(lines);
+		return lines.map((l, i) => {
+			const w = lineWidth(l.value, lineMax);
+			const pts = directedPoints(
+				px(l.from.lon),
+				py(l.from.lat),
+				px(l.to.lon),
+				py(l.to.lat),
+				back[i] ? shiftFor(w) : 0
+			);
+			return {
+				line: l,
+				w,
+				points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+				arrow: colours.indexOf(l.color ?? 'var(--series-1)')
+			};
+		});
+	});
 
 	let tip = $state<TipState | null>(null);
 	function showLine(e: PointerEvent, l: MapLine) {
@@ -156,18 +178,35 @@
 	>
 		<rect {width} height={h} fill="var(--accent-wash)" rx="10" />
 		<path d={path} fill="var(--surface)" stroke="var(--axis)" stroke-width="1" />
-		{#each lines as l (l.id)}
-			<line
-				x1={px(l.from.lon)}
-				y1={py(l.from.lat)}
-				x2={px(l.to.lon)}
-				y2={py(l.to.lat)}
-				stroke={l.color ?? 'var(--series-1)'}
-				stroke-width={lineW(l.value)}
+		{#if lines.length}
+			<defs>
+				{#each colours as c, i (c)}
+					<marker
+						id={`${uid}-arrow-${i}`}
+						viewBox="0 0 10 10"
+						refX="5"
+						refY="5"
+						markerWidth="16"
+						markerHeight="16"
+						markerUnits="userSpaceOnUse"
+						orient="auto"
+					>
+						<path d="M0,0 L10,5 L0,10 z" fill={c} stroke="var(--surface)" stroke-width="1" />
+					</marker>
+				{/each}
+			</defs>
+		{/if}
+		{#each drawn as d (d.line.id)}
+			<polyline
+				points={d.points}
+				fill="none"
+				stroke={d.line.color ?? 'var(--series-1)'}
+				stroke-width={d.w}
 				stroke-linecap="round"
-				stroke-opacity="0.7"
+				stroke-opacity="0.75"
+				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
 				role="presentation"
-				onpointermove={(e) => showLine(e, l)}
+				onpointermove={(e) => showLine(e, d.line)}
 			/>
 		{/each}
 		{#each sorted as p (p.id)}
