@@ -108,6 +108,12 @@
 	let el = $state<HTMLDivElement>();
 	let ready = $state(false);
 
+	function tooltip(label: string) {
+		const span = document.createElement('span');
+		span.textContent = label;
+		return span;
+	}
+
 	function popup(p: MapPoint | MapLine, unit = valueLabel) {
 		const href = 'href' in p ? p.href : undefined;
 		const box = document.createElement('div');
@@ -225,7 +231,7 @@
 						lineCap: 'round'
 					}
 				)
-					.bindTooltip(l.label)
+					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
 			const key = `line:${i}`;
@@ -249,7 +255,7 @@
 					radius: r,
 					className: `ps-layer ps-layer-${i}${empty ? ' ps-empty' : ''}`
 				})
-					.bindTooltip(p.label)
+					.bindTooltip(tooltip(p.label))
 					.bindPopup(() => popup(p))
 					.addTo(group);
 			}
