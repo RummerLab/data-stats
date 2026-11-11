@@ -18,7 +18,7 @@ test('map tooltips display workbook labels as text', async ({ page }) => {
 	let found = false;
 	for (const point of await points.all()) {
 		await point.dispatchEvent('mouseover');
-		const tip = page.locator('.leaflet-tooltip');
+		const tip = page.locator('.leaflet-tooltip').last();
 		if ((await tip.textContent())?.includes('Haapiti')) {
 			await expect(tip).toHaveText(label);
 			await expect(tip.locator('[data-tooltip-markup]')).toHaveCount(0);
