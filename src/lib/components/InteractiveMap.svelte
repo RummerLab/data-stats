@@ -202,7 +202,7 @@
 						lineCap: 'round'
 					}
 				)
-					.bindTooltip(l.label)
+					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
 			const key = `line:${i}`;
