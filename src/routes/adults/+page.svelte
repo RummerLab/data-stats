@@ -48,7 +48,7 @@
 			/>
 		</div>
 
-		{#if data.where.points.length}
+		{#if data.n}
 			{@const w = data.where}
 			<section class="section">
 				<ChartCard
@@ -66,19 +66,23 @@
 						.filter(Boolean)
 						.join(' ')}
 				>
-					<InteractiveMap
-						label="Map of adult blacktip capture density"
-						height={460}
-						density={w.density ? { name: 'Capture density', cells: w.density.cells } : undefined}
-						layers={[
-							{
-								name: 'Adult captures',
-								color: 'var(--series-4)',
-								radius: 4,
-								points: w.points
-							}
-						]}
-					/>
+					{#if w.points.length}
+						<InteractiveMap
+							label="Map of adult blacktip capture density"
+							height={460}
+							density={w.density ? { name: 'Capture density', cells: w.density.cells } : undefined}
+							layers={[
+								{
+									name: 'Adult captures',
+									color: 'var(--series-4)',
+									radius: 4,
+									points: w.points
+								}
+							]}
+						/>
+					{:else}
+						<p>No usable GPS points are available for this map.</p>
+					{/if}
 				</ChartCard>
 			</section>
 		{/if}
