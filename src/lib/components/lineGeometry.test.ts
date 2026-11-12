@@ -99,9 +99,7 @@ describe('polylineArrow', () => {
 		expect(arrow[2][0]).toBeCloseTo(10, 4);
 		expect(arrow[2][1]).toBeGreaterThan(arrow[0][1]);
 		// Flanking vertices stay distinct after integer pixel rounding (Leaflet layer points).
-		expect(
-			new Set(arrow.map(([x, y]) => `${Math.round(x)},${Math.round(y)}`)).size
-		).toBe(3);
+		expect(new Set(arrow.map(([x, y]) => `${Math.round(x)},${Math.round(y)}`)).size).toBe(3);
 	});
 });
 
