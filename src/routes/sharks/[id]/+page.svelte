@@ -143,7 +143,8 @@
 									to: current,
 									path: currentMove?.path,
 									km: currentMove?.km,
-									color
+									color,
+									lineId: currentMove?.id
 								}
 							: undefined}
 					/>

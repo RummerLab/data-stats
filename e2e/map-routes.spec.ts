@@ -68,3 +68,47 @@ test('shark detail page plays moves along the water route with distance (#183)',
 		await expect(traveller).toBeVisible();
 	}
 });
+
+test('shark detail page animates move line and traveller dot along water route (#183)', async ({
+	page
+}) => {
+	await page.goto('/recaptures');
+
+	const sharkLink = page.locator('table a[href^="/sharks/"]').first();
+	await expect(sharkLink).toBeVisible();
+	await sharkLink.click();
+
+	await expect(page.locator('h1')).toBeVisible();
+
+	const playBtn = page.locator('button.play');
+	const slider = page.locator('#capture-slider');
+	if ((await slider.count()) > 0) {
+		// Start playback
+		await playBtn.click();
+		// While stepping from capture 1 to capture 2, the line animates along the water route
+		await expect(async () => {
+			const animating = await page.evaluate(() => {
+				const line = document.querySelector('.ps-line');
+				return (
+					line instanceof SVGElement &&
+					line.style.strokeDasharray !== '' &&
+					parseFloat(line.style.strokeDashoffset || '0') > 0
+				);
+			});
+			expect(animating).toBe(true);
+		}).toPass({ timeout: 4000 });
+
+		// Traveller dot exists and glides along the water route
+		const traveller = page.locator('.ps-traveller');
+		await expect(traveller).toBeVisible();
+
+		// Eventually animation finishes and stroke properties reset to normal
+		await expect(async () => {
+			const finished = await page.evaluate(() => {
+				const line = document.querySelector('.ps-line');
+				return line instanceof SVGElement && line.style.strokeDasharray === '';
+			});
+			expect(finished).toBe(true);
+		}).toPass({ timeout: 5000 });
+	}
+});

@@ -54,6 +54,7 @@
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
 	import {
+		ARROW_AT,
 		lineWidth,
 		moveDuration,
 		offsetPolyline,
@@ -93,6 +94,7 @@
 			path?: [number, number][];
 			km?: number | null;
 			color: string;
+			lineId?: string;
 		};
 		/** Accessible name of the map region. */
 		label: string;
@@ -298,6 +300,11 @@
 		// Direction (#182): an arrow mid-line; a move drawn both ways splits into two parallel lines.
 		const back = reversed(currentLines.flatMap((g) => g.lines));
 		let n = 0;
+		const lineEntries: {
+			l: MapLine;
+			line: import('leaflet').Polyline;
+			arrow: import('leaflet').Polyline;
+		}[] = [];
 		const lineGroups = currentLines.map((g, i) => {
 			const group = L.layerGroup();
 			for (const l of g.lines) {
@@ -343,12 +350,14 @@
 					arrow.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
 				);
 				arrow.addTo(group);
+				lineEntries.push({ l, line, arrow });
 			}
 			const key = `line:${i}`;
 			if (!hidden.has(key)) group.addTo(m);
 			overlays[`<span class="ps-key ps-line-key ps-line-${i}"></span>${g.name}`] = group;
 			return { key, group };
 		});
+		currentLineEntries = lineEntries;
 		const groups = current.map((layer, i) => {
 			const max = layer.max ?? Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
 			const group = L.layerGroup();
@@ -387,8 +396,13 @@
 		drawn = [{ groups: [...densityGroups, ...lineGroups, ...groups], control }];
 	});
 
-	// Glide a dot along the traveller's line; reduced motion (#32) just places it at the end.
+	// Glide a dot and animate the move line along the water route; reduced motion (#32) just places it at the end.
 	let dot: import('leaflet').CircleMarker | undefined;
+	let currentLineEntries: {
+		l: MapLine;
+		line: import('leaflet').Polyline;
+		arrow: import('leaflet').Polyline;
+	}[] = [];
 	$effect(() => {
 		const m = map;
 		const L = leaflet;
@@ -406,6 +420,20 @@
 						[t.to.lat, t.to.lon]
 					];
 		const at = (f: number): [number, number] => pointAlongPath(path, f);
+
+		// Locate the move line matching this traveller step to progressively draw its stroke.
+		const target = currentLineEntries.find(
+			(e) =>
+				(t.lineId && (e.l as { id?: string }).id === t.lineId) ||
+				(Math.abs(e.l.from.lat - t.from.lat) < 1e-4 &&
+					Math.abs(e.l.from.lon - t.from.lon) < 1e-4 &&
+					Math.abs(e.l.to.lat - t.to.lat) < 1e-4 &&
+					Math.abs(e.l.to.lon - t.to.lon) < 1e-4)
+		);
+		let lineEl = target?.line.getElement() as SVGPathElement | undefined;
+		let arrowEl = target?.arrow.getElement() as SVGPathElement | undefined;
+		let totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
+
 		const marker = L.circleMarker(at(still ? 1 : 0), {
 			radius: 7,
 			className: 'ps-traveller',
@@ -414,17 +442,65 @@
 		(marker.getElement() as SVGElement | undefined)?.style.setProperty('fill', t.color);
 		dot = marker;
 		if (still) return;
+
+		// Progressive stroke animation along the water route polyline.
+		if (lineEl && totalLen > 0) {
+			lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+			lineEl.style.strokeDashoffset = `${totalLen}`;
+			if (arrowEl) arrowEl.style.opacity = '0';
+		}
+
 		const start = performance.now();
 		let frame = 0;
 		const duration = moveDuration(t.km);
 		const step = (now: number) => {
 			const f = Math.min(1, (now - start) / duration);
 			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-			marker.setLatLng(at(eased));
-			if (f < 1) frame = requestAnimationFrame(step);
+
+			// Re-anchor if zoom redraw replaced elements during animation.
+			if (target && (!lineEl || !lineEl.isConnected)) {
+				lineEl = target.line.getElement() as SVGPathElement | undefined;
+				arrowEl = target.arrow.getElement() as SVGPathElement | undefined;
+				totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
+				if (lineEl && totalLen > 0) {
+					lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+				}
+			}
+
+			if (lineEl && totalLen > 0) {
+				lineEl.style.strokeDashoffset = `${totalLen * (1 - eased)}`;
+				if (arrowEl) arrowEl.style.opacity = f >= ARROW_AT ? '1' : '0';
+				if (lineEl.getPointAtLength) {
+					const pt = lineEl.getPointAtLength(totalLen * eased);
+					marker.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
+				} else {
+					marker.setLatLng(at(eased));
+				}
+			} else {
+				marker.setLatLng(at(eased));
+			}
+
+			if (f < 1) {
+				frame = requestAnimationFrame(step);
+			} else {
+				if (lineEl) {
+					lineEl.style.strokeDasharray = '';
+					lineEl.style.strokeDashoffset = '';
+				}
+				if (arrowEl) arrowEl.style.opacity = '';
+			}
 		};
 		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+			if (lineEl) {
+				lineEl.style.strokeDasharray = '';
+				lineEl.style.strokeDashoffset = '';
+			}
+			if (arrowEl) {
+				arrowEl.style.opacity = '';
+			}
+		};
 	});
 
 	const style = $derived(
