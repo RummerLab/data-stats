@@ -354,7 +354,7 @@
 				const latLngs = shiftedPts.map(([x, y]) => m.layerPointToLatLng([x, y]));
 				L.polyline(latLngs, {
 					weight: Math.max(1.5, weight - 1),
-					className: 'ps-line-track',
+					className: `ps-line-track ps-line-track-${i}`,
 					smoothFactor: 0,
 					interactive: false
 				}).addTo(group);
@@ -725,10 +725,16 @@
 		stroke-opacity: 0.75;
 	}
 	.map :global(.ps-line-track) {
-		stroke: var(--ink);
-		stroke-opacity: 0.22;
+		stroke: var(--ps-line-0, #2563eb);
+		stroke-opacity: 0.6;
 		stroke-dasharray: 4 4;
 		pointer-events: none;
+	}
+	.map :global(.ps-line-track-0) {
+		stroke: var(--ps-line-0, #2563eb);
+	}
+	.map :global(.ps-line-track-1) {
+		stroke: var(--ps-line-1, #ea580c);
 	}
 	.map :global(.ps-line:focus-visible) {
 		outline: 2px solid var(--ink);
