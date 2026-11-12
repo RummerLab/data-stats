@@ -14,9 +14,9 @@
 	const ind = $derived(data.ind);
 	const growth = $derived(data.captures.filter((c) => c.date && c.tl != null));
 
-	// Play this shark's captures in order (#173): lines appear as it moves, a dot glides along.
+	// Play this shark's captures in order (#173, #183): lines appear as it moves, a shark swims along.
 	const stops = $derived(data.track.length);
-	let step = $state(Number.MAX_SAFE_INTEGER);
+	let step = $state(0);
 	const at = $derived(Math.min(step, stops));
 	const current = $derived(at < stops ? data.track[at] : null);
 	// An unlocated capture breaks the path: do not animate across that unknown stop.
@@ -34,7 +34,16 @@
 	}
 	function play() {
 		if (playing) return stop();
-		if (at >= stops - 1) step = 0;
+		if (at >= stops - 1) {
+			step = 0;
+			playing = true;
+			return;
+		}
+		if (at === 0) {
+			step = 1;
+			playing = true;
+			return;
+		}
 		playing = true;
 	}
 	$effect(() => {
@@ -96,7 +105,7 @@
 				{#if data.moves.length}
 					<div class="player">
 						<button type="button" class="play" onclick={play} aria-pressed={playing}>
-							{playing ? 'Pause' : 'Play'}
+							{playing ? 'Pause' : at >= stops - 1 ? 'Replay' : 'Play'}
 						</button>
 						<label for="capture-slider">Capture</label>
 						<input
@@ -131,20 +140,32 @@
 						label={`Map of where shark ${ind.id} was caught`}
 						valueLabel="Captures"
 						height={340}
+						bounds={data.moves.flatMap((m) =>
+							m.path && m.path.length > 0
+								? m.path
+								: [
+										[m.from.lat, m.from.lon],
+										[m.to.lat, m.to.lon]
+									]
+						)}
 						layers={[
 							{ name: 'Capture sites', color, sized: true, maxRadius: 12, points: data.map }
 						]}
 						lineLayers={[{ name: 'Moves', color, lines: shownMoves }]}
 						lineMax={4}
-						traveller={current
+						traveller={data.track.length
 							? {
 									key: at,
-									from: previous ?? current,
-									to: current,
-									path: currentMove?.path,
+									from: previous ?? current ?? data.track[0],
+									to: current ?? data.track[stops - 1],
+									path:
+										currentMove?.path ??
+										(at >= stops ? data.moves[data.moves.length - 1]?.path : undefined),
 									km: currentMove?.km,
 									color,
-									lineId: currentMove?.id
+									species: ind.species,
+									lineId: currentMove?.id,
+									still: !currentMove
 								}
 							: undefined}
 					/>

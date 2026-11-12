@@ -98,9 +98,10 @@ test('shark detail page animates move line and traveller dot along water route (
 			expect(animating).toBe(true);
 		}).toPass({ timeout: 4000 });
 
-		// Traveller dot exists and glides along the water route
+		// Traveller shark icon exists and glides along the water route
 		const traveller = page.locator('.ps-traveller');
 		await expect(traveller).toBeVisible();
+		await expect(page.locator('.ps-traveller .ps-shark-svg')).toBeVisible();
 
 		// Eventually animation finishes and stroke properties reset to normal
 		await expect(async () => {

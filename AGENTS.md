@@ -156,7 +156,7 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 
 - `src/lib/server/oceanRoutes.ts`: computes shortest water routes around Moorea between all pairs of nurseries using grid A* routing around the island's coastline (`src/lib/moorea-outline.json`, OpenStreetMap, ODbL 1.0). The 35 m grid rasters Moorea island with a 2 km buffer, calculates chamfer distance-to-land, snaps nursery points to nearby water, searches with an A* penalty near land to avoid hugging rocks, and smooths with raycast string-pulling.
 - Precomputed routes are stored in SQLite `nursery_routes` (`cache/` disposable database), bumping `IMPORTER_VERSION` to `'13'`. Never commit nursery coordinates or precomputed routes to git.
-- Move lines on `/recaptures` and `/sharks/[id]` render multi-point polylines along the water route, offset rightwards if reversed, and display water distance (`≥ X km by water`, with direct straight-line distance alongside). On shark pages, the move line draws progressively along the water route while the traveller dot glides at its tip, scaled with distance (jumping under `prefers-reduced-motion`).
+- Move lines on `/recaptures` and `/sharks/[id]` render multi-point polylines along the water route, offset rightwards if reversed, and display water distance (`≥ X km by water`, with direct straight-line distance alongside). On shark pages, the move line draws progressively along the water route while an animated bird's-eye view shark swims at its tip (rotating along the route with tail waggle, jumping under `prefers-reduced-motion`).
 - Standalone CLI `node scripts/ocean-routes.mjs` (or `pnpm routes`, with optional `--geojson`) verifies that 0 routes cross land.
 
 ### Adding a new season

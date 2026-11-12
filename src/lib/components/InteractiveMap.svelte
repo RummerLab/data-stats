@@ -76,6 +76,7 @@
 		format = (v: number) => String(Math.round(v)),
 		focus,
 		height = 440,
+		bounds,
 		fallback
 	}: {
 		layers: MapLayer[];
@@ -86,7 +87,7 @@
 		density?: MapDensity;
 		/** Value that gets the widest line; fix it so widths don't jump as lines are added. */
 		lineMax?: number;
-		/** A dot that glides from `from` to `to` along the water route whenever `key` changes (a Play button). */
+		/** A bird's-eye view shark that glides from `from` to `to` along the water route whenever `key` changes (a Play button). */
 		traveller?: {
 			key: string | number;
 			from: { lat: number; lon: number };
@@ -94,7 +95,9 @@
 			path?: [number, number][];
 			km?: number | null;
 			color: string;
+			species?: string;
 			lineId?: string;
+			still?: boolean;
 		};
 		/** Accessible name of the map region. */
 		label: string;
@@ -103,6 +106,8 @@
 		/** Open zoomed on this point instead of fitting all points. */
 		focus?: { lat: number; lon: number; zoom?: number };
 		height?: number;
+		/** Extra coordinates to include in initial fitBounds (e.g. future moves on a stepped shark map). */
+		bounds?: [number, number][];
 		/** Points for the server-rendered SVG map shown before Leaflet loads (default: first layer). */
 		fallback?: MapPoint[];
 	} = $props();
@@ -254,7 +259,8 @@
 									[l.to.lat, l.to.lon]
 								] as [number, number][])
 					)
-				)
+				),
+				...(bounds ?? [])
 			];
 			if (focus) m.setView([focus.lat, focus.lon], focus.zoom ?? 14);
 			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [36, 36], maxZoom: 14 });
@@ -408,8 +414,8 @@
 		drawn = [{ groups: [...densityGroups, ...lineGroups, ...groups], control }];
 	});
 
-	// Glide a dot and animate the move line along the water route; reduced motion (#32) just places it at the end.
-	let dot: import('leaflet').CircleMarker | undefined;
+	// Glide a bird's-eye view shark and animate the move line along the water route (#183).
+	let dot: import('leaflet').Marker | undefined;
 	let currentLineEntries: {
 		l: MapLine;
 		line: import('leaflet').Polyline;
@@ -423,7 +429,8 @@
 		dot?.remove();
 		dot = undefined;
 		if (!t) return;
-		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const still = reducedMotion || Boolean(t.still);
 		const path: [number, number][] =
 			t.path && t.path.length >= 2
 				? t.path
@@ -432,6 +439,63 @@
 						[t.to.lat, t.to.lon]
 					];
 		const at = (f: number): [number, number] => pointAlongPath(path, f);
+
+		// Compute initial heading angle (degrees clockwise from North).
+		let initialHeading = 0;
+		if (path.length >= 2) {
+			const refIdx = still ? path.length - 1 : 0;
+			const p1 = m.latLngToLayerPoint(still ? path[Math.max(0, refIdx - 1)] : path[0]);
+			const p2 = m.latLngToLayerPoint(still ? path[refIdx] : path[Math.min(path.length - 1, 1)]);
+			const dx = p2.x - p1.x;
+			const dy = p2.y - p1.y;
+			if (dx !== 0 || dy !== 0) {
+				initialHeading = Math.atan2(dx, -dy) * (180 / Math.PI);
+			}
+		}
+
+		const isBlacktip = t.species !== 'Na';
+		const tipColor = isBlacktip ? '#0f172a' : '#92400e';
+		const sharkHtml = `
+			<div class="ps-shark-wrap" style="transform: rotate(${initialHeading}deg)">
+				<svg class="ps-shark-svg" viewBox="0 0 32 46" width="32" height="46" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<g class="ps-shark-body">
+						<path d="M16 2 C13 5 10 10 10 15 C6 17 1 20 2 23 C3 25 7 24 11 23 C11 26 12 28 13 30 C10 31 8 33 9 35 C11 35 13 34 14 33 C14 36 15 38 15 42 L17 42 C17 38 18 36 18 33 C19 34 21 35 23 35 C24 33 22 31 19 30 C20 28 21 26 21 23 C25 24 29 25 30 23 C31 20 26 17 22 15 C22 10 19 5 16 2 Z"
+							fill="${t.color}" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/>
+						${
+							isBlacktip
+								? `
+							<path d="M2 23 C1 20 4 18 5 19 C3 21 3 23 2 23 Z" fill="${tipColor}"/>
+							<path d="M30 23 C31 20 28 18 27 19 C29 21 29 23 30 23 Z" fill="${tipColor}"/>
+						`
+								: ''
+						}
+						<path d="M16 13 L16 27" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+						<path d="M16 14 L16 26" stroke="${tipColor}" stroke-width="1.2" stroke-linecap="round"/>
+						<circle cx="12" cy="7" r="1.1" fill="#ffffff"/>
+						<circle cx="12" cy="7" r="0.7" fill="#0f172a"/>
+						<circle cx="20" cy="7" r="1.1" fill="#ffffff"/>
+						<circle cx="20" cy="7" r="0.7" fill="#0f172a"/>
+					</g>
+					<g class="ps-shark-tail" style="transform-origin: 16px 33px;">
+						<path d="M16 33 C15.2 36 14.8 39 14 41 C13.5 43 14.5 45 16 45 C17.5 45 18.5 43 18 41 C17.2 39 16.8 36 16 33 Z"
+							fill="${t.color}" stroke="#ffffff" stroke-width="1.2"/>
+						${isBlacktip ? `<path d="M14 43 C15 45 17 45 18 43 L16 45 Z" fill="${tipColor}"/>` : ''}
+					</g>
+				</svg>
+			</div>
+		`;
+
+		const marker = L.marker(at(still ? 1 : 0), {
+			icon: L.divIcon({
+				className: 'ps-traveller ps-shark-marker',
+				html: sharkHtml,
+				iconSize: [32, 46],
+				iconAnchor: [16, 23]
+			}),
+			interactive: false
+		}).addTo(m);
+		dot = marker;
+		if (still) return;
 
 		// Locate the move line matching this traveller step to progressively draw its stroke.
 		const target = currentLineEntries.find(
@@ -445,15 +509,6 @@
 		let lineEl = target?.line.getElement() as SVGPathElement | undefined;
 		let arrowEl = target?.arrow.getElement() as SVGPathElement | undefined;
 		let totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
-
-		const marker = L.circleMarker(at(still ? 1 : 0), {
-			radius: 7,
-			className: 'ps-traveller',
-			interactive: false
-		}).addTo(m);
-		(marker.getElement() as SVGElement | undefined)?.style.setProperty('fill', t.color);
-		dot = marker;
-		if (still) return;
 
 		// Progressive stroke animation along the water route polyline.
 		if (lineEl && totalLen > 0) {
@@ -479,17 +534,42 @@
 				}
 			}
 
+			let heading = initialHeading;
 			if (lineEl && totalLen > 0) {
 				lineEl.style.strokeDashoffset = `${totalLen * (1 - eased)}`;
 				if (arrowEl) arrowEl.style.opacity = f >= ARROW_AT ? '1' : '0';
 				if (lineEl.getPointAtLength) {
-					const pt = lineEl.getPointAtLength(totalLen * eased);
+					const curLen = totalLen * eased;
+					const pt = lineEl.getPointAtLength(curLen);
 					marker.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
+
+					const ahead = lineEl.getPointAtLength(Math.min(totalLen, curLen + 3));
+					const behind = lineEl.getPointAtLength(Math.max(0, curLen - 3));
+					const dx = ahead.x - behind.x;
+					const dy = ahead.y - behind.y;
+					if (dx !== 0 || dy !== 0) {
+						heading = Math.atan2(dx, -dy) * (180 / Math.PI);
+					}
 				} else {
 					marker.setLatLng(at(eased));
 				}
 			} else {
 				marker.setLatLng(at(eased));
+			}
+
+			const wrapEl = (marker.getElement() as HTMLElement | undefined)?.querySelector(
+				'.ps-shark-wrap'
+			) as HTMLElement | null;
+			const tailEl = (marker.getElement() as HTMLElement | undefined)?.querySelector(
+				'.ps-shark-tail'
+			) as HTMLElement | null;
+			if (wrapEl) {
+				const bodyWiggle = f < 1 ? Math.sin((now - start) * 0.018) * 4 : 0;
+				wrapEl.style.transform = `rotate(${heading + bodyWiggle}deg)`;
+			}
+			if (tailEl) {
+				const tailWiggle = f < 1 ? Math.sin((now - start) * 0.018 - 1.2) * 12 : 0;
+				tailEl.style.transform = `rotate(${tailWiggle}deg)`;
 			}
 
 			if (f < 1) {
@@ -649,6 +729,22 @@
 		stroke: #fff;
 		stroke-width: 2px;
 		fill-opacity: 1;
+	}
+	.map :global(.ps-shark-marker) {
+		background: transparent !important;
+		border: none !important;
+	}
+	.map :global(.ps-shark-wrap) {
+		width: 32px;
+		height: 46px;
+		transform-origin: 16px 23px;
+		filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
+		pointer-events: none;
+		will-change: transform;
+	}
+	.map :global(.ps-shark-tail) {
+		transform-origin: 16px 33px;
+		will-change: transform;
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
