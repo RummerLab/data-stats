@@ -53,7 +53,15 @@
 	import { onMount, tick } from 'svelte';
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
-	import { lineWidth, offsetPolyline, pointAlongPath, reversed, shiftFor } from './lineGeometry';
+	import {
+		lineWidth,
+		moveDuration,
+		offsetPolyline,
+		pointAlongPath,
+		polylineArrow,
+		reversed,
+		shiftFor
+	} from './lineGeometry';
 
 	let {
 		layers,
@@ -150,13 +158,7 @@
 		layer.on('popupopen', (e) => {
 			const popupEl = (e as unknown as { popup?: import('leaflet').Popup })?.popup?.getElement();
 			if (!popupEl) return;
-			const contentEl = popupEl.querySelector<HTMLElement>('.leaflet-popup-content');
-			const focusable = contentEl?.querySelector<HTMLElement>('a[href], button');
-			if (focusable) focusable.focus();
-			else if (contentEl) {
-				contentEl.setAttribute('tabindex', '-1');
-				contentEl.focus();
-			}
+			popupEl.querySelector<HTMLElement>('a[href], button')?.focus();
 			const dismiss = (ev: Event) => {
 				ev.preventDefault();
 				ev.stopPropagation();
@@ -323,13 +325,24 @@
 					lineCap: 'round',
 					smoothFactor: 0
 				});
-				line.on('add', () =>
-					line.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
-				);
 				keyboardInteractive(line, l.label)
 					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
+				const arrowLatLngs = polylineArrow(shiftedPts).map(([x, y]) =>
+					m.layerPointToLatLng([x, y])
+				);
+				const arrow = L.polyline(arrowLatLngs, {
+					stroke: false,
+					interactive: false,
+					className: `ps-arrow ps-arrow-${i}`,
+					smoothFactor: 0,
+					noClip: true
+				});
+				arrow.on('add', () =>
+					arrow.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
+				);
+				arrow.addTo(group);
 			}
 			const key = `line:${i}`;
 			if (!hidden.has(key)) group.addTo(m);
@@ -403,7 +416,7 @@
 		if (still) return;
 		const start = performance.now();
 		let frame = 0;
-		const duration = t.km != null ? Math.min(2500, Math.max(800, 500 + t.km * 60)) : 800;
+		const duration = moveDuration(t.km);
 		const step = (now: number) => {
 			const f = Math.min(1, (now - start) / duration);
 			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;

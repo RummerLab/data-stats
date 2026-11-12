@@ -3,6 +3,7 @@
 	import DataTable from '#lib/components/DataTable.svelte';
 	import InteractiveMap from '#lib/components/InteractiveMap.svelte';
 	import MooreaMap from '#lib/components/MooreaMap.svelte';
+	import { moveDuration } from '#lib/components/lineGeometry';
 	import LineChart from '#lib/components/charts/LineChart.svelte';
 	import { toDay } from '#lib/components/charts/scale';
 	import { clock, date, num } from '#lib/format';
@@ -27,22 +28,24 @@
 		current ? data.moves.filter((m) => m.at + 1 <= current.n) : data.moves
 	);
 	const currentMove = $derived(current ? data.moves.find((m) => m.at + 1 === current.n) : null);
-	let timer: ReturnType<typeof setInterval> | undefined;
 	let playing = $state(false);
 	function stop() {
-		clearInterval(timer);
 		playing = false;
 	}
 	function play() {
 		if (playing) return stop();
 		if (at >= stops - 1) step = 0;
 		playing = true;
-		timer = setInterval(() => {
-			if (step >= stops - 1) stop();
-			else step = Math.min(step, stops) + 1;
-		}, 1400);
 	}
-	$effect(() => stop);
+	$effect(() => {
+		if (!playing) return;
+		const delay = moveDuration(currentMove?.km) + 350;
+		const timer = setTimeout(() => {
+			if (step >= stops - 1) playing = false;
+			else step = Math.min(step, stops) + 1;
+		}, delay);
+		return () => clearTimeout(timer);
+	});
 </script>
 
 <div class="container">
@@ -117,7 +120,7 @@
 								· {date(current.date)} · {current.site}{current.tl != null
 									? ` · ${num(current.tl)} mm`
 									: ''}{previous && previous.site !== current.site
-									? ` (moved from ${previous.site}${currentMove?.km ? ` · ≥ ${num(currentMove.km)} km by water` : ''})`
+									? ` (moved from ${previous.site}${currentMove?.km ? ` · ≥ ${num(currentMove.km, 1)} km by water` : ''})`
 									: ''}
 							{:else}
 								<strong>All captures</strong>

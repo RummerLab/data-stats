@@ -30,7 +30,7 @@
 	import Tip, { type TipState } from './charts/Tip.svelte';
 	import { registerCsv } from './charts/csv';
 	import { KEYS_HINT, markAt, markKeys, pointerIn } from './charts/marks';
-	import { lineWidth, offsetPolyline, reversed, shiftFor } from './lineGeometry';
+	import { lineWidth, offsetPolyline, polylineArrow, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		points,
@@ -133,10 +133,12 @@
 						[px(l.to.lon), py(l.to.lat)]
 					];
 			const shiftedPts = offsetPolyline(rawPts, back[i] ? shiftFor(w) : 0);
+			const arrowPts = polylineArrow(shiftedPts);
 			return {
 				line: l,
 				w,
 				points: shiftedPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+				arrowPoints: arrowPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
 				arrow: colours.indexOf(l.color ?? 'var(--series-1)')
 			};
 		});
@@ -215,10 +217,17 @@
 				stroke-width={d.w}
 				stroke-linecap="round"
 				stroke-opacity="0.75"
-				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
 				role="presentation"
 				data-mark={i}
 				onpointermove={(e) => showLine(pointerIn(e), d.line)}
+			/>
+			<polyline
+				points={d.arrowPoints}
+				fill="none"
+				stroke="none"
+				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
+				role="presentation"
+				pointer-events="none"
 			/>
 		{/each}
 		{#each sorted as p, i (p.id)}

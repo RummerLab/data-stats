@@ -64,6 +64,12 @@ describe('oceanRoutes', () => {
 		expect(route.straightKm).toBeLessThan(15);
 		expect(route.km).toBeGreaterThan(20);
 		expect(crossesLand(grid, route.coordinates)).toBe(false);
+		expect(
+			crossesLand(grid, [
+				[apaura.lat!, apaura.lon!],
+				[maharepa.lat!, maharepa.lon!]
+			])
+		).toBe(true);
 	});
 
 	it('computes all nursery routes without crossing land', () => {

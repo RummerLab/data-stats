@@ -57,16 +57,33 @@ test('directed move markers and keyboard controls survive a zoom redraw', async 
 	const line = map.locator('.ps-line-0[role="button"]').first();
 	await expect(line).toBeVisible();
 	const before = await line.getAttribute('d');
-	// marker-mid needs an interior vertex, not just the two endpoints.
 	expect(before!.match(/[ML]/g)!.length).toBeGreaterThanOrEqual(3);
 	await map.getByRole('button', { name: 'Zoom in', exact: true }).click();
 	await expect.poll(() => line.getAttribute('d')).not.toBe(before);
-	for (const path of await map.locator('.ps-line').all()) {
-		const ref = await path.getAttribute('marker-mid');
+	const lines = await map.locator('.ps-line').all();
+	const arrows = await map.locator('.ps-arrow').all();
+	expect(arrows.length).toBe(lines.length);
+	for (const path of lines) {
+		expect(await path.getAttribute('marker-mid')).toBeNull();
+	}
+	let inView = 0;
+	for (const arrow of arrows) {
+		// Each arrow carrier is a 3-point segment so marker-mid renders a single arrowhead at 60%.
+		// Polylines clipped out of the current viewport by Leaflet collapse to M0 0.
+		const d = await arrow.getAttribute('d');
+		const points = d!.match(/[ML]/g)!.length;
+		if (d !== 'M0 0') {
+			expect(points).toBe(3);
+			inView++;
+		} else {
+			expect(points).toBe(1);
+		}
+		const ref = await arrow.getAttribute('marker-mid');
 		expect(ref).toMatch(/^url\(#.+\)$/);
 		const id = ref!.slice(5, -1);
 		expect(await page.evaluate((id) => document.getElementById(id)?.tagName, id)).toBe('marker');
 	}
+	expect(inView).toBeGreaterThan(0);
 	await line.focus();
 	await line.press('Enter');
 	await expect(map.locator('.leaflet-popup-content')).toContainText(
@@ -184,16 +201,15 @@ test('adult capture circles are keyboard reachable and survive zoom and overlay 
 	await circle.press('Enter');
 	const popupContent = map.locator('.leaflet-popup-content');
 	await expect(popupContent).toContainText('Adult blacktip “Synthetic”');
-	await expect(popupContent).toBeFocused();
 	await page.keyboard.press('Escape');
 	await expect(popupContent).toHaveCount(0);
 	await expect(circle).toBeFocused();
-	// Close button also restores focus to the circle marker
+	// Close button also restores focus to the circle marker when activated
 	await circle.press('Enter');
 	await expect(popupContent).toBeVisible();
 	const closeBtn = map.locator('.leaflet-popup-close-button');
 	await closeBtn.focus();
-	await closeBtn.press('Space');
+	await closeBtn.press('Enter');
 	await expect(popupContent).toHaveCount(0);
 	await expect(circle).toBeFocused();
 	// Controls survive zoom redraws

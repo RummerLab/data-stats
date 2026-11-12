@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	directedPoints,
+	moveDuration,
 	offsetPolyline,
 	pointAlongPath,
 	polylineArrow,
@@ -97,6 +98,10 @@ describe('polylineArrow', () => {
 		expect(arrow[0][0]).toBeCloseTo(10, 4);
 		expect(arrow[2][0]).toBeCloseTo(10, 4);
 		expect(arrow[2][1]).toBeGreaterThan(arrow[0][1]);
+		// Flanking vertices stay distinct after integer pixel rounding (Leaflet layer points).
+		expect(
+			new Set(arrow.map(([x, y]) => `${Math.round(x)},${Math.round(y)}`)).size
+		).toBe(3);
 	});
 });
 
@@ -113,5 +118,14 @@ describe('pointAlongPath', () => {
 		expect(pointAlongPath(path, 0.5)).toEqual([10, 0]);
 		expect(pointAlongPath(path, 0.75)).toEqual([10, 5]);
 		expect(pointAlongPath(path, 1)).toEqual([10, 10]);
+	});
+});
+
+describe('moveDuration', () => {
+	it('scales with distance within [800, 2500] ms bounds', () => {
+		expect(moveDuration(null)).toBe(800);
+		expect(moveDuration(0.5)).toBe(800);
+		expect(moveDuration(15)).toBe(1400);
+		expect(moveDuration(50)).toBe(2500);
 	});
 });

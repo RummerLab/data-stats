@@ -74,7 +74,7 @@ export const load: PageServerLoad = () =>
 							to,
 							path: route?.coordinates,
 							value: e.n,
-							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(km, 1)} km by water${straightKm != null && km != null && Math.abs(km - straightKm) > 0.5 ? ` (${round(straightKm, 1)} km straight line)` : ''}`
+							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(km, 1)} km by water${straightKm != null ? ` (${round(straightKm, 1)} km straight line)` : ''}`
 						}
 					];
 				})

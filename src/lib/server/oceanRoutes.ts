@@ -243,18 +243,28 @@ export function buildMooreaWaterGrid({
 			for (let x = from; x <= to; x++) water[row * width + x] = 0; // land
 		}
 	}
+	// Mark every cell touched by the coastline boundary itself as land so chords never clip headlands.
+	for (let i = 1; i < pts.length; i++) {
+		const [x0, y0] = pts[i - 1];
+		const [x1, y1] = pts[i];
+		traverse(x0, y0, x1, y1, (x, y) => {
+			if (x >= 0 && y >= 0 && x < width && y < height) water[y * width + x] = 0;
+		});
+	}
 
 	const distance = distanceToLand(water, width, height, cell);
 	return { width, height, cell, bbox, kx, ky, water, distance };
 }
 
-/** Lon/lat of a cell centre. */
+const roundCoord = (v: number) => Math.round(v * 1e5) / 1e5;
+
+/** Lon/lat of a cell centre (~1.1 m precision). */
 export function cellCentre(grid: WaterGrid, index: number): [lon: number, lat: number] {
 	const x = index % grid.width;
 	const y = Math.floor(index / grid.width);
 	return [
-		grid.bbox.minLon + ((x + 0.5) * grid.cell) / grid.kx,
-		grid.bbox.minLat + ((y + 0.5) * grid.cell) / grid.ky
+		roundCoord(grid.bbox.minLon + ((x + 0.5) * grid.cell) / grid.kx),
+		roundCoord(grid.bbox.minLat + ((y + 0.5) * grid.cell) / grid.ky)
 	];
 }
 
@@ -429,17 +439,41 @@ export function routeWater(
 	};
 }
 
+const ccw = (ax: number, ay: number, bx: number, by: number, cx: number, cy: number) =>
+	(cy - ay) * (bx - ax) > (by - ay) * (cx - ax);
+
+const segmentsIntersect = (
+	ax: number,
+	ay: number,
+	bx: number,
+	by: number,
+	cx: number,
+	cy: number,
+	dx: number,
+	dy: number
+) =>
+	ccw(ax, ay, cx, cy, dx, dy) !== ccw(bx, by, cx, cy, dx, dy) &&
+	ccw(ax, ay, bx, by, cx, cy) !== ccw(ax, ay, bx, by, dx, dy);
+
 /**
- * Check whether any segment of coordinates (excluding the short landing legs) crosses land.
+ * Check whether any water segment of coordinates crosses land cells or the coastline polygon.
+ * Short shore-landing steps (<= 150 m at the first/last segment of a multi-segment route) are allowed
+ * because beach GPS pins can sit slightly inside the simplified coastline ring.
  */
 export function crossesLand(grid: WaterGrid, coordinates: [number, number][]): boolean {
+	if (coordinates.length < 2) return false;
+	const ring = outline.ring as [number, number][];
 	const toCell = ([lat, lon]: [number, number]): [number, number] => [
 		((lon - grid.bbox.minLon) * grid.kx) / grid.cell,
 		((lat - grid.bbox.minLat) * grid.ky) / grid.cell
 	];
-	// Only test intermediate water segments (skip indices 0->1 and (N-2)->(N-1) which are shore landings).
-	if (coordinates.length <= 3) return false;
-	for (let i = 2; i < coordinates.length - 1; i++) {
+	for (let i = 1; i < coordinates.length; i++) {
+		const [lat0, lon0] = coordinates[i - 1];
+		const [lat1, lon1] = coordinates[i];
+		const segM = Math.hypot((lon1 - lon0) * grid.kx, (lat1 - lat0) * grid.ky);
+		const isShoreLanding =
+			coordinates.length > 2 && (i === 1 || i === coordinates.length - 1) && segM <= 150;
+		if (isShoreLanding) continue;
 		const [x0, y0] = toCell(coordinates[i - 1]);
 		const [x1, y1] = toCell(coordinates[i]);
 		const ok = traverse(x0, y0, x1, y1, (x, y) => {
@@ -447,6 +481,11 @@ export function crossesLand(grid: WaterGrid, coordinates: [number, number][]): b
 			return grid.water[y * grid.width + x] === 1;
 		});
 		if (!ok) return true;
+		for (let j = 1; j < ring.length; j++) {
+			const [rlon0, rlat0] = ring[j - 1];
+			const [rlon1, rlat1] = ring[j];
+			if (segmentsIntersect(lon0, lat0, lon1, lat1, rlon0, rlat0, rlon1, rlat1)) return true;
+		}
 	}
 	return false;
 }

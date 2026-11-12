@@ -46,40 +46,60 @@ export const lineWidth = (value: number | undefined, max: number) =>
 /** Sideways shift for a line of this width when its reverse is drawn too. */
 export const shiftFor = (width: number) => width / 2 + 4;
 
+/** Animation duration in ms for a move of `km` water distance, clamped to [800, 2500]. */
+export const moveDuration = (km: number | null | undefined) =>
+	km != null && km > 0 ? Math.min(2500, Math.max(800, Math.round(500 + km * 60))) : 800;
+
 /**
  * Shift a multi-point polyline in screen coordinates to the right of travel by `shift` px.
  * For 2-point lines, delegates to directedPoints so the line includes its 60% arrow point.
  */
 export function offsetPolyline(pts: [number, number][], shift: number): [number, number][] {
 	if (pts.length < 2) return pts.map(([x, y]) => [x, y]);
-	const n = pts.length;
-	if (n === 2) {
+	if (pts.length === 2) {
 		return directedPoints(pts[0][0], pts[0][1], pts[1][0], pts[1][1], shift);
 	}
 	if (!shift) return pts.map(([x, y]) => [x, y]);
+	// Drop sub-2px interior stubs (such as shore-snapping steps) so endpoint normals follow the coast.
+	const last = pts[pts.length - 1];
+	const clean: [number, number][] = [pts[0]];
+	for (let i = 1; i < pts.length - 1; i++) {
+		const prev = clean[clean.length - 1];
+		if (
+			Math.hypot(pts[i][0] - prev[0], pts[i][1] - prev[1]) >= 2 &&
+			Math.hypot(last[0] - pts[i][0], last[1] - pts[i][1]) >= 2
+		) {
+			clean.push(pts[i]);
+		}
+	}
+	clean.push(last);
+	const n = clean.length;
+	if (n === 2) {
+		return directedPoints(clean[0][0], clean[0][1], clean[1][0], clean[1][1], shift);
+	}
 	const normals: [number, number][] = [];
 	for (let i = 0; i < n - 1; i++) {
-		const dx = pts[i + 1][0] - pts[i][0];
-		const dy = pts[i + 1][1] - pts[i][1];
+		const dx = clean[i + 1][0] - clean[i][0];
+		const dy = clean[i + 1][1] - clean[i][1];
 		const len = Math.hypot(dx, dy) || 1;
 		normals.push([(-dy / len) * shift, (dx / len) * shift]);
 	}
 	const out: [number, number][] = [];
-	out.push([pts[0][0] + normals[0][0], pts[0][1] + normals[0][1]]);
+	out.push([clean[0][0] + normals[0][0], clean[0][1] + normals[0][1]]);
 	for (let i = 1; i < n - 1; i++) {
 		const mx = (normals[i - 1][0] + normals[i][0]) / 2;
 		const my = (normals[i - 1][1] + normals[i][1]) / 2;
 		const mLen = Math.hypot(mx, my);
 		if (mLen > 1e-6) {
 			out.push([
-				pts[i][0] + (mx / mLen) * Math.abs(shift),
-				pts[i][1] + (my / mLen) * Math.abs(shift)
+				clean[i][0] + (mx / mLen) * Math.abs(shift),
+				clean[i][1] + (my / mLen) * Math.abs(shift)
 			]);
 		} else {
-			out.push([pts[i][0] + normals[i][0], pts[i][1] + normals[i][1]]);
+			out.push([clean[i][0] + normals[i][0], clean[i][1] + normals[i][1]]);
 		}
 	}
-	out.push([pts[n - 1][0] + normals[n - 2][0], pts[n - 1][1] + normals[n - 2][1]]);
+	out.push([clean[n - 1][0] + normals[n - 2][0], clean[n - 1][1] + normals[n - 2][1]]);
 	return out;
 }
 
@@ -113,9 +133,9 @@ export function polylineArrow(pts: [number, number][], arrowAt = ARROW_AT): [num
 			const ux = (x1 - x0) / segLen;
 			const uy = (y1 - y0) / segLen;
 			return [
-				[ax - ux * 0.1, ay - uy * 0.1],
+				[ax - ux * 2, ay - uy * 2],
 				[ax, ay],
-				[ax + ux * 0.1, ay + uy * 0.1]
+				[ax + ux * 2, ay + uy * 2]
 			];
 		}
 		acc += lens[i];
