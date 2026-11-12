@@ -4,7 +4,7 @@
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
 	import Scatter from '#lib/components/charts/Scatter.svelte';
-	import { num } from '#lib/format';
+	import { date, num, season } from '#lib/format';
 	import { SPECIES } from '#lib/species';
 	import type { PageProps } from './$types';
 
@@ -169,6 +169,49 @@
 			/>
 		</ChartCard>
 	</section>
+
+	{#if data.covid}
+		{@const c = data.covid}
+		<section class="section">
+			<h2>A season with few visitors</h2>
+			<p>
+				Hotel room sales on Moorea fell by more than half in 2020 (ISPF), a proxy for fewer visitors
+				rather than a count of people on the water. The {season(c.season)} comparison uses timed sets
+				from {date(c.first)} to {date(c.last)}, after borders first reopened in July 2020, while
+				visitor numbers were still far below normal. Its catch rate was {num(c.groups[0].mean, 2)} sharks
+				per net-hour against {num(c.groups[1].mean, 2)} in the other seasons{c.ratio != null
+					? ` (${num(c.ratio, 2)} times)`
+					: ''}.
+			</p>
+			<ChartCard
+				title={`Catch rate in ${season(c.season)} and the other seasons`}
+				subtitle="Mean sharks per net-hour per set, sets in brackets. Whiskers: 95% confidence intervals"
+				stats={data.stats.covid}
+				note="One season stands in for low tourism, so anything else that was different that year (weather, which nurseries were sampled, crew, the pups born) is mixed into the comparison. Read it as a description, not as the effect of tourism."
+			>
+				<BarChart
+					categories={c.groups.map(
+						(g) => `${g.label === 'low' ? season(c.season) : 'Other seasons'} (${g.n})`
+					)}
+					series={[
+						{
+							name: 'Sharks / net-hour',
+							color: 'var(--series-1)',
+							values: c.groups.map((g) => g.mean)
+						}
+					]}
+					errors={c.groups.map((g) => (g.lo != null && g.hi != null ? [g.lo, g.hi] : null))}
+					valueFormat={(v) => num(v, 2)}
+				/>
+			</ChartCard>
+			<p class="muted small">
+				Tourism figure: Institut de la statistique de la Polynésie française,
+				<a href="https://www.ispf.pf/publication/le-bilan-du-tourisme-de-l-annee-2020"
+					>Bilan du tourisme 2020</a
+				>. An island-level tourism time series is not yet included on this site.
+			</p>
+		</section>
+	{/if}
 
 	<section class="section">
 		<h2>Busy days</h2>

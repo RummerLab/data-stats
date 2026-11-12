@@ -14,6 +14,9 @@ import { mean, median, pairs, se, spearman, welch } from '#lib/stats';
 import { rankText, rateTest, rateText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
+/** Season sampled while tourism on Moorea was far below normal (ISPF). */
+const LOW_TOURISM_SEASON = '2020-2021';
+
 export const load: PageServerLoad = () =>
 	memo('pressure', (d) => {
 		const eff = effortSets(d);
@@ -133,6 +136,25 @@ export const load: PageServerLoad = () =>
 			breakDays.map((s) => s.cpue),
 			quiet.map((s) => s.cpue)
 		);
+		// The first COVID-19 season (#175). Report its actual eligible dates: sampling does not
+		// always start in October. One season is confounded with everything else about that year.
+		const lowTourism = dated.filter((s) => s.season === LOW_TOURISM_SEASON);
+		const otherSeasons = dated.filter((s) => s.season !== LOW_TOURISM_SEASON);
+		const lowDates = lowTourism.map((s) => s.date!).sort();
+		const covid = lowTourism.length
+			? {
+					season: LOW_TOURISM_SEASON,
+					first: lowDates[0],
+					last: lowDates.at(-1)!,
+					groups: [group(lowTourism, 'low'), group(otherSeasons, 'other')],
+					test: rateTest(
+						dated,
+						{ groupOf: (s) => (s.season === LOW_TOURISM_SEASON ? 'low' : 'other') },
+						'cpue',
+						['season']
+					)
+				}
+			: null;
 		const holidaySets = new Map<string, number>();
 		const breakSets = new Map<string, number>();
 		for (const s of dated) {
@@ -153,7 +175,8 @@ export const load: PageServerLoad = () =>
 			human: scatter('human', 'growth'),
 			composite: scatter('composite', 'cpueCm'),
 			dayType: rateText(rateTest(dated, { groupOf: (s) => type(s) }), 'types of day'),
-			weekday: rateText(rateTest(dated, { groupOf: (s) => s.weekday }), 'days of the week')
+			weekday: rateText(rateTest(dated, { groupOf: (s) => s.weekday }), 'days of the week'),
+			covid: covid ? rateText(covid.test, 'the 2020–21 season and the others') : null
 		};
 		return {
 			stats,
@@ -161,6 +184,18 @@ export const load: PageServerLoad = () =>
 			metrics,
 			outcomes: outcomes.map((o) => o[1]),
 			corr,
+			covid: covid
+				? {
+						season: covid.season,
+						first: covid.first,
+						last: covid.last,
+						groups: covid.groups,
+						ratio:
+							covid.groups[0].mean != null && covid.groups[1].mean
+								? round(covid.groups[0].mean / covid.groups[1].mean, 2)
+								: null
+					}
+				: null,
 			busyDays: {
 				byType,
 				byWeekday,
