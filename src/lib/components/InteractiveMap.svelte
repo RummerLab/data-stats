@@ -115,6 +115,37 @@
 		return span;
 	}
 
+	// Leaflet paths have pointer handlers but are not keyboard controls by default.
+	function keyboardLine(line: import('leaflet').Polyline, label: string) {
+		line.on('add', () => {
+			const path = line.getElement() as SVGElement | undefined;
+			if (!path) return;
+			path.setAttribute('tabindex', '0');
+			path.setAttribute('role', 'button');
+			path.setAttribute('aria-label', label);
+			path.onfocus = () => line.openTooltip();
+			path.onblur = () => line.closeTooltip();
+			path.onkeydown = (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					if (e.key === 'Enter') line.openPopup();
+				} else if (e.key === 'Escape') {
+					line.closePopup();
+					line.closeTooltip();
+				}
+			};
+			path.onkeyup = (e) => {
+				if (e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					line.openPopup();
+				}
+			};
+		});
+		return line;
+	}
+
 	function popup(p: MapPoint | MapLine, unit = valueLabel) {
 		const href = 'href' in p ? p.href : undefined;
 		const box = document.createElement('div');
@@ -246,7 +277,7 @@
 				line.on('add', () =>
 					line.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
 				);
-				line
+				keyboardLine(line, l.label)
 					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
@@ -465,6 +496,10 @@
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line:focus-visible) {
+		outline: 2px solid var(--ink);
+		outline-offset: 4px;
 	}
 	.map :global(.ps-line-key) {
 		border-radius: 2px;

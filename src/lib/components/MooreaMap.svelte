@@ -27,6 +27,7 @@
 	import outline from '#lib/moorea-outline.json';
 	import Tip, { type TipState } from './charts/Tip.svelte';
 	import { registerCsv } from './charts/csv';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './charts/marks';
 	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
 
 	let {
@@ -140,11 +141,9 @@
 	});
 
 	let tip = $state<TipState | null>(null);
-	function showLine(e: PointerEvent, l: MapLine) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function showLine(at: { x: number; y: number }, l: MapLine) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: l.label,
 			lines: [
 				...(l.value != null && lineLabel ? [{ label: lineLabel, value: format(l.value) }] : []),
@@ -152,11 +151,9 @@
 			]
 		};
 	}
-	function show(e: PointerEvent, p: MapPoint) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function show(at: { x: number; y: number }, p: MapPoint) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
 			title: p.label,
 			lines: [
 				...(p.value != null ? [{ label: valueLabel, value: format(p.value) }] : []),
@@ -164,16 +161,28 @@
 			]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => lines.length + sorted.length,
+		show: (i) =>
+			markAt(svg, i, (at) => {
+				if (i < lines.length) showLine(at, lines[i]);
+				else show(at, sorted[i - lines.length]);
+			}),
+		hide: () => (tip = null),
+		href: (i) => sorted[i - lines.length]?.href
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role={points.some((p) => p.href) ? 'group' : 'img'}
-		aria-label={`Map of Moorea${valueLabel ? ` showing ${valueLabel}` : ''}`}
+		{...keys}
+		aria-label={`Map of Moorea${valueLabel ? ` showing ${valueLabel}` : ''}. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		<rect {width} height={h} fill="var(--accent-wash)" rx="10" />
@@ -196,7 +205,7 @@
 				{/each}
 			</defs>
 		{/if}
-		{#each drawn as d (d.line.id)}
+		{#each drawn as d, i (d.line.id)}
 			<polyline
 				points={d.points}
 				fill="none"
@@ -206,10 +215,11 @@
 				stroke-opacity="0.75"
 				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
 				role="presentation"
-				onpointermove={(e) => showLine(e, d.line)}
+				data-mark={i}
+				onpointermove={(e) => showLine(pointerIn(e), d.line)}
 			/>
 		{/each}
-		{#each sorted as p (p.id)}
+		{#each sorted as p, i (p.id)}
 			{@const x = px(p.lon)}
 			{@const y = py(p.lat)}
 			<svelte:element
@@ -227,7 +237,8 @@
 					stroke="var(--surface)"
 					stroke-width="2"
 					role="presentation"
-					onpointermove={(e) => show(e, p)}
+					data-mark={lines.length + i}
+					onpointermove={(e) => show(pointerIn(e), p)}
 				/>
 			</svelte:element>
 		{/each}
