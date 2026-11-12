@@ -53,7 +53,7 @@
 	import { onMount, tick } from 'svelte';
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
-	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
+	import { lineWidth, offsetPolyline, pointAlongPath, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		layers,
@@ -77,11 +77,13 @@
 		density?: MapDensity;
 		/** Value that gets the widest line; fix it so widths don't jump as lines are added. */
 		lineMax?: number;
-		/** A dot that glides from `from` to `to` whenever `key` changes (a Play button). */
+		/** A dot that glides from `from` to `to` along the water route whenever `key` changes (a Play button). */
 		traveller?: {
 			key: string | number;
 			from: { lat: number; lon: number };
 			to: { lat: number; lon: number };
+			path?: [number, number][];
+			km?: number | null;
 			color: string;
 		};
 		/** Accessible name of the map region. */
@@ -290,16 +292,27 @@
 			const group = L.layerGroup();
 			for (const l of g.lines) {
 				const weight = lineWidth(l.value, lineMax);
-				const a = m.latLngToLayerPoint([l.from.lat, l.from.lon]);
-				const b = m.latLngToLayerPoint([l.to.lat, l.to.lon]);
-				const pts = directedPoints(a.x, a.y, b.x, b.y, back[n++] ? shiftFor(weight) : 0).map(
-					([x, y]) => m.layerPointToLatLng([x, y])
-				);
-				const line = L.polyline(pts, {
+				const rawPts: [number, number][] = l.path
+					? l.path.map(([lat, lon]) => {
+							const pt = m.latLngToLayerPoint([lat, lon]);
+							return [pt.x, pt.y];
+						})
+					: [
+							(() => {
+								const pt = m.latLngToLayerPoint([l.from.lat, l.from.lon]);
+								return [pt.x, pt.y];
+							})(),
+							(() => {
+								const pt = m.latLngToLayerPoint([l.to.lat, l.to.lon]);
+								return [pt.x, pt.y];
+							})()
+						];
+				const shiftedPts = offsetPolyline(rawPts, back[n++] ? shiftFor(weight) : 0);
+				const latLngs = shiftedPts.map(([x, y]) => m.layerPointToLatLng([x, y]));
+				const line = L.polyline(latLngs, {
 					weight,
 					className: `ps-line ps-line-${i}`,
 					lineCap: 'round',
-					// Keep the midpoint the arrow marker hangs on (Leaflet would simplify it away).
 					smoothFactor: 0
 				});
 				line.on('add', () =>
@@ -364,10 +377,14 @@
 		dot = undefined;
 		if (!t) return;
 		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const at = (f: number): [number, number] => [
-			t.from.lat + (t.to.lat - t.from.lat) * f,
-			t.from.lon + (t.to.lon - t.from.lon) * f
-		];
+		const path: [number, number][] =
+			t.path && t.path.length >= 2
+				? t.path
+				: [
+						[t.from.lat, t.from.lon],
+						[t.to.lat, t.to.lon]
+					];
+		const at = (f: number): [number, number] => pointAlongPath(path, f);
 		const marker = L.circleMarker(at(still ? 1 : 0), {
 			radius: 7,
 			className: 'ps-traveller',
@@ -378,8 +395,9 @@
 		if (still) return;
 		const start = performance.now();
 		let frame = 0;
+		const duration = t.km != null ? Math.min(2500, Math.max(800, 500 + t.km * 60)) : 800;
 		const step = (now: number) => {
-			const f = Math.min(1, (now - start) / 800);
+			const f = Math.min(1, (now - start) / duration);
 			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
 			marker.setLatLng(at(eased));
 			if (f < 1) frame = requestAnimationFrame(step);

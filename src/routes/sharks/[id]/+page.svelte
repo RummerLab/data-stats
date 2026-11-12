@@ -26,6 +26,7 @@
 	const shownMoves = $derived(
 		current ? data.moves.filter((m) => m.at + 1 <= current.n) : data.moves
 	);
+	const currentMove = $derived(current ? data.moves.find((m) => m.at + 1 === current.n) : null);
 	let timer: ReturnType<typeof setInterval> | undefined;
 	let playing = $state(false);
 	function stop() {
@@ -86,7 +87,7 @@
 			<ChartCard
 				title="Where it was caught"
 				subtitle={data.moves.length
-					? 'Circle size = number of captures. Arrows join consecutive captures at different nurseries (not the route swum). Play steps through the captures in order.'
+					? 'Circle size = number of captures. Arrows join consecutive captures at different nurseries along the shortest water route (an estimate, not the actual path swum). Play steps through the captures in order.'
 					: 'Circle size = number of captures'}
 			>
 				{#if data.moves.length}
@@ -116,7 +117,7 @@
 								· {date(current.date)} · {current.site}{current.tl != null
 									? ` · ${num(current.tl)} mm`
 									: ''}{previous && previous.site !== current.site
-									? ` (moved from ${previous.site})`
+									? ` (moved from ${previous.site}${currentMove?.km ? ` · ≥ ${num(currentMove.km)} km by water` : ''})`
 									: ''}
 							{:else}
 								<strong>All captures</strong>
@@ -137,6 +138,8 @@
 									key: at,
 									from: previous ?? current,
 									to: current,
+									path: currentMove?.path,
+									km: currentMove?.km,
 									color
 								}
 							: undefined}

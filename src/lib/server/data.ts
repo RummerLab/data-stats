@@ -16,12 +16,14 @@ export type WeatherDay = typeof schema.weatherDaily.$inferSelect;
 export type OceanDay = typeof schema.oceanDaily.$inferSelect;
 export type DataIssue = typeof schema.dataIssues.$inferSelect;
 export type LoggerDay = typeof schema.loggerDaily.$inferSelect;
+export type NurseryRoute = typeof schema.nurseryRoutes.$inferSelect;
 
 export interface Dataset {
 	version: number;
 	meta: Record<string, string>;
 	sites: Site[];
 	siteById: Map<string, Site>;
+	nurseryRoutes: NurseryRoute[];
 	sets: SetRow[];
 	setById: Map<number, SetRow>;
 	crew: { setId: number; person: string }[];
@@ -76,6 +78,7 @@ export function dataset(): Dataset {
 		),
 		sites,
 		siteById: new Map(sites.map((s) => [s.id, s])),
+		nurseryRoutes: db.select().from(schema.nurseryRoutes).all(),
 		sets,
 		setById: new Map(sets.map((s) => [s.id, s])),
 		crew: db.select().from(schema.setCrew).all(),
@@ -151,3 +154,23 @@ export function weatherHourlyAll() {
 /** Field (nursery gillnet) captures only: excludes hook-and-line adults and lab releases. */
 export const isNursery = (c: Capture) => c.kind === 'field';
 export const isGillnet = (s: SetRow) => s.gear === 'Gillnet';
+
+/**
+ * Retrieve the shortest water route between two nurseries, in the direction from `fromId` to `toId`.
+ */
+export function nurseryRoute(
+	d: Dataset,
+	fromId: string,
+	toId: string
+): { km: number; straightKm: number; coordinates: [number, number][] } | null {
+	if (!fromId || !toId || fromId === toId) return null;
+	const [a, b] = fromId < toId ? [fromId, toId] : [toId, fromId];
+	const r = d.nurseryRoutes.find((r) => r.fromId === a && r.toId === b);
+	if (!r) return null;
+	const coords = JSON.parse(r.coordinates) as [number, number][];
+	return {
+		km: r.km,
+		straightKm: r.straightKm,
+		coordinates: fromId < toId ? coords : [...coords].reverse()
+	};
+}
