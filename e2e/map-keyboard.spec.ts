@@ -73,3 +73,152 @@ test('directed move markers and keyboard controls survive a zoom redraw', async 
 		(await line.getAttribute('aria-label'))!
 	);
 });
+
+test('nursery circles are keyboard reachable, support popup links and survive season redraws (#185)', async ({
+	page
+}) => {
+	await page.route(/server\.arcgisonline\.com|tile\.openstreetmap\.org/, (route) => route.abort());
+	await page.goto('/nurseries');
+	const map = page.getByRole('region', {
+		name: "Map of Mo'orea's shark nurseries"
+	});
+	const circle = map.locator('.ps-layer[role="button"]').first();
+	await expect(circle).toBeVisible();
+	const label = await circle.getAttribute('aria-label');
+	expect(label).toBeTruthy();
+	// Focus visibly identifies the selected circle and opens the tooltip
+	await circle.focus();
+	await expect(map.locator('.leaflet-tooltip').last()).toBeVisible();
+	// Press Enter to open details popup; focus moves to the reachable link
+	await circle.press('Enter');
+	const popup = map.locator('.leaflet-popup-content');
+	await expect(popup).toBeVisible();
+	const link = popup.locator('a');
+	await expect(link).toBeVisible();
+	await expect(link).toBeFocused();
+	// Escape dismisses details without trapping focus and restores focus to circle
+	await page.keyboard.press('Escape');
+	await expect(popup).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Space key also activates
+	await circle.press('Space');
+	await expect(popup).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(popup).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Controls survive season redraws
+	const slider = page.getByRole('slider', { name: /season/i });
+	await expect(slider).toBeVisible();
+	await slider.fill('0');
+	const seasonCircle = map.locator('.ps-layer[role="button"]').first();
+	await expect(seasonCircle).toBeVisible();
+	await seasonCircle.focus();
+	await seasonCircle.press('Enter');
+	await expect(map.locator('.leaflet-popup-content')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
+	await expect(seasonCircle).toBeFocused();
+});
+
+test('adult capture circles are keyboard reachable and survive zoom and overlay toggles (#185)', async ({
+	page
+}) => {
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await page.route(/server\.arcgisonline\.com|tile\.openstreetmap\.org/, (route) => route.abort());
+	// Inject synthetic adult points so the density map renders with circle markers
+	await page.route('**/adults/__data.json*', async (route) => {
+		const response = await route.fetch();
+		const body = await response.json();
+		const node = body.nodes.find(
+			(n: { data?: unknown[] } | null) => n?.data?.[0] && 'where' in (n.data[0] as object)
+		);
+		if (!node) {
+			await route.fulfill({ response, json: body });
+			return;
+		}
+		const data: unknown[] = node.data;
+		const root = data[0] as Record<string, number>;
+		const where = data[root.where] as Record<string, number>;
+		const add = (v: unknown) => data.push(v) - 1;
+		root.n = add(1);
+		const point = add({
+			id: add('adult-0'),
+			label: add('Adult blacktip “Synthetic”'),
+			lat: add(-17.5),
+			lon: add(-149.85),
+			sub: add('2022-01-01 · Haapiti')
+		});
+		where.points = add([point]);
+		const cell = add({
+			south: add(-17.51),
+			west: add(-149.86),
+			north: add(-17.5),
+			east: add(-149.85),
+			bin: add(1)
+		});
+		where.density = add({
+			n: add(20),
+			bandwidthKm: add(0.3),
+			cells: add([cell])
+		});
+		where.missing = add(0);
+		where.setAside = add([]);
+		await route.fulfill({ response, json: body });
+	});
+	await page.goto('/');
+	await page
+		.locator('a[href="/adults"]')
+		.first()
+		.evaluate((a: HTMLAnchorElement) => a.click());
+	const map = page.getByRole('region', {
+		name: 'Map of adult blacktip capture density'
+	});
+	await expect(map).toBeVisible();
+	const circle = map.locator('.ps-layer[role="button"]').first();
+	await expect(circle).toBeVisible();
+	const label = await circle.getAttribute('aria-label');
+	expect(label).toContain('Adult blacktip');
+	await circle.focus();
+	await expect(map.locator('.leaflet-tooltip').last()).toBeVisible();
+	await circle.press('Enter');
+	const popupContent = map.locator('.leaflet-popup-content');
+	await expect(popupContent).toContainText('Adult blacktip “Synthetic”');
+	// Adult popups have no link: focus still enters the details so they are read out
+	await expect(popupContent).toBeFocused();
+	await page.keyboard.press('Escape');
+	await expect(popupContent).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Close button also restores focus to the circle marker when activated
+	await circle.press('Enter');
+	await expect(popupContent).toBeVisible();
+	const closeBtn = map.locator('.leaflet-popup-close-button');
+	await closeBtn.focus();
+	await closeBtn.press('Enter');
+	await expect(popupContent).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Controls survive zoom redraws. The single adult capture sits under the map centre, so the
+	// circle keeps its `d` on zoom; the basemap tile zoom is what shows the overlay was redrawn.
+	const tile = map.locator('img.leaflet-tile').first();
+	const tileZoom = await tile.getAttribute('src');
+	await map.getByRole('button', { name: 'Zoom in', exact: true }).click();
+	await expect.poll(() => tile.getAttribute('src')).not.toBe(tileZoom);
+	await circle.focus();
+	await circle.press('Space');
+	await expect(map.locator('.leaflet-popup-content')).toContainText('Adult blacktip “Synthetic”');
+	await page.keyboard.press('Escape');
+	await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Controls survive overlay toggles
+	const toggle = map.getByRole('checkbox', { name: /Adult captures/i });
+	await expect(toggle).toBeVisible();
+	await toggle.uncheck();
+	await expect(circle).not.toBeVisible();
+	await toggle.check();
+	await expect(circle).toBeVisible();
+	await circle.focus();
+	await circle.press('Enter');
+	await expect(map.locator('.leaflet-popup-content')).toContainText('Adult blacktip “Synthetic”');
+	await page.keyboard.press('Escape');
+	await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
+	await expect(circle).toBeFocused();
+});
