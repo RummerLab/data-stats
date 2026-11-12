@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChartCard from '#lib/components/ChartCard.svelte';
 	import DataTable from '#lib/components/DataTable.svelte';
+	import InteractiveMap from '#lib/components/InteractiveMap.svelte';
 	import StatTile from '#lib/components/StatTile.svelte';
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
@@ -91,6 +92,36 @@
 					{ name: 'Sharks', color: 'var(--series-1)', values: data.capCounts.map((c) => c.n) }
 				]}
 				labels
+			/>
+		</ChartCard>
+	</section>
+
+	<section class="section">
+		<ChartCard
+			title="Moves between nurseries on the map"
+			papers={['bouyoucos2020homerange']}
+			subtitle="Lines join the nurseries where a shark was caught one time and the next; arrows show the direction and thicker is more moves. Moves both ways between two nurseries are drawn side by side. Grey circles: recaptures at the same nursery. Each shark's own page can play its moves one by one."
+			note={`Lines join capture sites; they are not the route a shark swam. A shark can pass other nurseries, or move and come back, between two captures.${data.conflictsLeftOut ? ` ${num(data.conflictsLeftOut)} moves by sharks with conflicting records are left out.` : ''}`}
+		>
+			<InteractiveMap
+				label="Map of recaptured sharks' moves between nurseries"
+				valueLabel="Same-nursery recaptures"
+				lineLabel="Moves"
+				height={480}
+				layers={[
+					{
+						name: 'Same-nursery recaptures',
+						color: 'var(--muted)',
+						sized: true,
+						maxRadius: 10,
+						points: data.stayed
+					}
+				]}
+				lineLayers={data.moveLines.map((m) => ({
+					name: `${speciesName(m.species)} moves`,
+					color: SPECIES[m.species].color,
+					lines: m.lines
+				}))}
 			/>
 		</ChartCard>
 	</section>

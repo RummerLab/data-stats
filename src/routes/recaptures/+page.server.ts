@@ -40,6 +40,60 @@ export const load: PageServerLoad = () =>
 			const k = Math.cos((sa.lat * Math.PI) / 180);
 			return Math.hypot((sa.lat - sb.lat) * 110.574, (sa.lon - sb.lon) * 111.32 * k);
 		};
+		// Moves drawn on the map (#173). Sharks with identity conflicts are left out.
+		const conflicts = new Set(d.individuals.filter((i) => i.conflict).map((i) => i.id));
+		const place = (id: string | null) => {
+			const s = id ? d.siteById.get(id) : null;
+			return s?.lat != null && s.lon != null ? { lat: s.lat, lon: s.lon } : null;
+		};
+		const moveLines = (['Cm', 'Na'] as const).map((sp) => {
+			// One line per direction (#182): A → B and B → A are drawn side by side.
+			const byPair = new Map<string, { a: string; b: string; n: number }>();
+			for (const p of moved) {
+				if (p.species !== sp || conflicts.has(p.id)) continue;
+				const k = `${p.a.siteId}|${p.b.siteId}`;
+				const e = byPair.get(k) ?? { a: p.a.siteId!, b: p.b.siteId!, n: 0 };
+				e.n++;
+				byPair.set(k, e);
+			}
+			return {
+				species: sp,
+				lines: [...byPair.values()].flatMap((e) => {
+					const from = place(e.a);
+					const to = place(e.b);
+					if (!from || !to) return [];
+					const [na, nb] = [siteName(d, e.a), siteName(d, e.b)];
+					return [
+						{
+							id: `${sp}-${e.a}-${e.b}`,
+							label: `${na} → ${nb}`,
+							from,
+							to,
+							value: e.n,
+							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(dist(e.a, e.b), 1)} km`
+						}
+					];
+				})
+			};
+		});
+		const stayed = nurseries.flatMap((id) => {
+			const at = place(id);
+			if (!at) return [];
+			const n = pairs.filter(
+				(p) => p.a.siteId === id && p.b.siteId === id && !conflicts.has(p.id)
+			).length;
+			const out = moved.filter((p) => p.a.siteId === id && !conflicts.has(p.id)).length;
+			return [
+				{
+					id,
+					label: siteName(d, id),
+					...at,
+					value: n,
+					href: `/nurseries/${id}`,
+					sub: `${n} recaptured at the same nursery, ${out} next caught elsewhere`
+				}
+			];
+		});
 		const longest = moved
 			.map((p) => ({
 				id: p.id,
@@ -112,6 +166,9 @@ export const load: PageServerLoad = () =>
 			bySpecies: rateBy((c) => c.species, ['Cm', 'Na']),
 			nurseryNames: nurseries.map((id) => siteName(d, id)),
 			matrix,
+			moveLines,
+			stayed,
+			conflictsLeftOut: moved.filter((p) => conflicts.has(p.id)).length,
 			fidelity: pairs.length ? round(same / pairs.length, 3) : null,
 			pairs: pairs.length,
 			medianDays: median(pairs.map((p) => p.days)),

@@ -9,15 +9,31 @@
 		href?: string;
 		sub?: string;
 	}
+
+	/** A straight line between two places, e.g. a shark's move between nurseries. */
+	export interface MapLine {
+		id: string;
+		label: string;
+		from: { lat: number; lon: number };
+		to: { lat: number; lon: number };
+		/** Sets the line width (relative to the largest). */
+		value?: number;
+		color?: string;
+		sub?: string;
+	}
 </script>
 
 <script lang="ts">
 	import outline from '#lib/moorea-outline.json';
 	import Tip, { type TipState } from './charts/Tip.svelte';
 	import { registerCsv } from './charts/csv';
+	import { KEYS_HINT, markAt, markKeys, pointerIn } from './charts/marks';
+	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		points,
+		lines = [],
+		lineLabel = '',
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
 		showLabels = true,
@@ -25,6 +41,9 @@
 		csv = true
 	}: {
 		points: MapPoint[];
+		/** Drawn under the circles; width by value. */
+		lines?: MapLine[];
+		lineLabel?: string;
 		valueLabel?: string;
 		format?: (v: number) => string;
 		showLabels?: boolean;
@@ -36,6 +55,12 @@
 	registerCsv(() => ({
 		columns: ['name', 'lat', 'lon', valueLabel || 'value'],
 		rows: csv ? points.map((p) => [p.label, p.lat, p.lon, p.value]) : []
+	}));
+	registerCsv(() => ({
+		columns: ['line', 'from lat', 'from lon', 'to lat', 'to lon', lineLabel || 'value'],
+		rows: csv
+			? lines.map((l) => [l.label, l.from.lat, l.from.lon, l.to.lat, l.to.lon, l.value])
+			: []
 	}));
 
 	let width = $state(640);
@@ -91,12 +116,44 @@
 		});
 	});
 
+	const lineMax = $derived(Math.max(1e-9, ...lines.map((l) => l.value ?? 1)));
+	// Direction arrows (#182): one marker per line colour, in the middle of each line.
+	const uid = $props.id();
+	const colours = $derived([...new Set(lines.map((l) => l.color ?? 'var(--series-1)'))]);
+	const drawn = $derived.by(() => {
+		const back = reversed(lines);
+		return lines.map((l, i) => {
+			const w = lineWidth(l.value, lineMax);
+			const pts = directedPoints(
+				px(l.from.lon),
+				py(l.from.lat),
+				px(l.to.lon),
+				py(l.to.lat),
+				back[i] ? shiftFor(w) : 0
+			);
+			return {
+				line: l,
+				w,
+				points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+				arrow: colours.indexOf(l.color ?? 'var(--series-1)')
+			};
+		});
+	});
+
 	let tip = $state<TipState | null>(null);
-	function show(e: PointerEvent, p: MapPoint) {
-		const wrap = (e.currentTarget as Element).closest('.wrap')!.getBoundingClientRect();
+	function showLine(at: { x: number; y: number }, l: MapLine) {
 		tip = {
-			x: e.clientX - wrap.left,
-			y: e.clientY - wrap.top,
+			...at,
+			title: l.label,
+			lines: [
+				...(l.value != null && lineLabel ? [{ label: lineLabel, value: format(l.value) }] : []),
+				...(l.sub ? [{ value: l.sub }] : [])
+			]
+		};
+	}
+	function show(at: { x: number; y: number }, p: MapPoint) {
+		tip = {
+			...at,
 			title: p.label,
 			lines: [
 				...(p.value != null ? [{ label: valueLabel, value: format(p.value) }] : []),
@@ -104,21 +161,65 @@
 			]
 		};
 	}
+	let svg = $state<SVGSVGElement>();
+	const keys = markKeys({
+		count: () => lines.length + sorted.length,
+		show: (i) =>
+			markAt(svg, i, (at) => {
+				if (i < lines.length) showLine(at, lines[i]);
+				else show(at, sorted[i - lines.length]);
+			}),
+		hide: () => (tip = null),
+		href: (i) => sorted[i - lines.length]?.href
+	});
 </script>
 
 <div class="wrap" bind:clientWidth={width}>
 	<svg
+		bind:this={svg}
 		class="chart-svg"
 		viewBox={`0 0 ${width} ${h}`}
 		{width}
 		height={h}
-		role={points.some((p) => p.href) ? 'group' : 'img'}
-		aria-label={`Map of Moorea${valueLabel ? ` showing ${valueLabel}` : ''}`}
+		{...keys}
+		aria-label={`Map of Moorea${valueLabel ? ` showing ${valueLabel}` : ''}. ${KEYS_HINT}`}
 		onpointerleave={() => (tip = null)}
 	>
 		<rect {width} height={h} fill="var(--accent-wash)" rx="10" />
 		<path d={path} fill="var(--surface)" stroke="var(--axis)" stroke-width="1" />
-		{#each sorted as p (p.id)}
+		{#if lines.length}
+			<defs>
+				{#each colours as c, i (c)}
+					<marker
+						id={`${uid}-arrow-${i}`}
+						viewBox="0 0 10 10"
+						refX="5"
+						refY="5"
+						markerWidth="16"
+						markerHeight="16"
+						markerUnits="userSpaceOnUse"
+						orient="auto"
+					>
+						<path d="M0,0 L10,5 L0,10 z" fill={c} stroke="var(--surface)" stroke-width="1" />
+					</marker>
+				{/each}
+			</defs>
+		{/if}
+		{#each drawn as d, i (d.line.id)}
+			<polyline
+				points={d.points}
+				fill="none"
+				stroke={d.line.color ?? 'var(--series-1)'}
+				stroke-width={d.w}
+				stroke-linecap="round"
+				stroke-opacity="0.75"
+				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
+				role="presentation"
+				data-mark={i}
+				onpointermove={(e) => showLine(pointerIn(e), d.line)}
+			/>
+		{/each}
+		{#each sorted as p, i (p.id)}
 			{@const x = px(p.lon)}
 			{@const y = py(p.lat)}
 			<svelte:element
@@ -136,7 +237,8 @@
 					stroke="var(--surface)"
 					stroke-width="2"
 					role="presentation"
-					onpointermove={(e) => show(e, p)}
+					data-mark={lines.length + i}
+					onpointermove={(e) => show(pointerIn(e), p)}
 				/>
 			</svelte:element>
 		{/each}
