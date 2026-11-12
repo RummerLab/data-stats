@@ -43,6 +43,30 @@ export const load: PageServerLoad = ({ params }) => {
 			relMass: l.relMassKg,
 			notes: l.notes
 		})),
+		// Consecutive captures at different nurseries, in order (#173).
+		moves: caps.flatMap((c, i) => {
+			const prev = caps[i - 1];
+			if (!prev || !prev.siteId || !c.siteId || prev.siteId === c.siteId) return [];
+			const a = d.siteById.get(prev.siteId);
+			const b = d.siteById.get(c.siteId);
+			if (a?.lat == null || a.lon == null || b?.lat == null || b.lon == null) return [];
+			return [
+				{
+					id: `move-${i}`,
+					at: i,
+					label: `${a.name} → ${b.name}`,
+					from: { lat: a.lat, lon: a.lon },
+					to: { lat: b.lat, lon: b.lon },
+					sub: `Capture ${i} to ${i + 1}: ${prev.date ?? '?'} → ${c.date ?? '?'}`
+				}
+			];
+		}),
+		// Every capture with a place, in order, for the map's Play button.
+		track: caps.flatMap((c, i) => {
+			const s = c.siteId ? d.siteById.get(c.siteId) : null;
+			if (s?.lat == null || s.lon == null) return [];
+			return [{ n: i + 1, date: c.date, site: s.name, lat: s.lat, lon: s.lon, tl: c.tlMm }];
+		}),
 		map: sites
 			.map((s) => d.siteById.get(s)!)
 			.filter((s) => s?.lat != null)
@@ -52,7 +76,8 @@ export const load: PageServerLoad = ({ params }) => {
 				lat: s.lat!,
 				lon: s.lon!,
 				value: caps.filter((c) => c.siteId === s.id).length,
-				href: `/nurseries/${s.id}`
+				href: `/nurseries/${s.id}`,
+				sub: `Capture ${caps.flatMap((c, i) => (c.siteId === s.id ? [i + 1] : [])).join(', ')}`
 			}))
 	};
 };

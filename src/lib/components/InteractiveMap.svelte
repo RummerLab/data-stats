@@ -1,5 +1,12 @@
 <script lang="ts" module>
-	import type { MapPoint } from './MooreaMap.svelte';
+	import type { MapLine, MapPoint } from './MooreaMap.svelte';
+
+	export interface MapLineLayer {
+		name: string;
+		/** CSS colour, applied through CSS so it follows the theme. */
+		color: string;
+		lines: MapLine[];
+	}
 
 	export interface MapLayer {
 		name: string;
@@ -12,6 +19,8 @@
 		radius?: number;
 		/** Value that gets the largest circle; fix it to keep sizes comparable as points change. */
 		max?: number;
+		/** Radius in px of the largest sized circle (default 18). */
+		maxRadius?: number;
 	}
 
 	/** Base maps (#29). Hosts must match img-src in vite.config.ts. */
@@ -41,6 +50,10 @@
 
 	let {
 		layers,
+		lineLayers = [],
+		lineLabel = '',
+		lineMax: fixedLineMax,
+		traveller,
 		label,
 		valueLabel = '',
 		format = (v: number) => String(Math.round(v)),
@@ -49,6 +62,18 @@
 		fallback
 	}: {
 		layers: MapLayer[];
+		/** Lines drawn under the circles, width by value, one toggle per layer. */
+		lineLayers?: MapLineLayer[];
+		lineLabel?: string;
+		/** Value that gets the widest line; fix it so widths don't jump as lines are added. */
+		lineMax?: number;
+		/** A dot that glides from `from` to `to` whenever `key` changes (a Play button). */
+		traveller?: {
+			key: string | number;
+			from: { lat: number; lon: number };
+			to: { lat: number; lon: number };
+			color: string;
+		};
 		/** Accessible name of the map region. */
 		label: string;
 		valueLabel?: string;
@@ -64,6 +89,12 @@
 		columns: ['layer', 'name', 'lat', 'lon', valueLabel || 'value'],
 		rows: layers.flatMap((l) => l.points.map((p) => [l.name, p.label, p.lat, p.lon, p.value]))
 	}));
+	registerCsv(() => ({
+		columns: ['layer', 'line', 'from lat', 'from lon', 'to lat', 'to lon', lineLabel || 'value'],
+		rows: lineLayers.flatMap((g) =>
+			g.lines.map((l) => [g.name, l.label, l.from.lat, l.from.lon, l.to.lat, l.to.lon, l.value])
+		)
+	}));
 
 	let el = $state<HTMLDivElement>();
 	let ready = $state(false);
@@ -74,14 +105,46 @@
 		return span;
 	}
 
-	function popup(p: MapPoint) {
+	// Leaflet paths have pointer handlers but are not keyboard controls by default.
+	function keyboardLine(line: import('leaflet').Polyline, label: string) {
+		line.on('add', () => {
+			const path = line.getElement() as SVGElement | undefined;
+			if (!path) return;
+			path.setAttribute('tabindex', '0');
+			path.setAttribute('role', 'button');
+			path.setAttribute('aria-label', label);
+			path.onfocus = () => line.openTooltip();
+			path.onblur = () => line.closeTooltip();
+			path.onkeydown = (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					if (e.key === 'Enter') line.openPopup();
+				} else if (e.key === 'Escape') {
+					line.closePopup();
+					line.closeTooltip();
+				}
+			};
+			path.onkeyup = (e) => {
+				if (e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					line.openPopup();
+				}
+			};
+		});
+		return line;
+	}
+
+	function popup(p: MapPoint | MapLine, unit = valueLabel) {
+		const href = 'href' in p ? p.href : undefined;
 		const box = document.createElement('div');
-		const title = document.createElement(p.href ? 'a' : 'strong');
+		const title = document.createElement(href ? 'a' : 'strong');
 		title.textContent = p.label;
-		if (p.href) (title as HTMLAnchorElement).href = p.href;
+		if (href) (title as HTMLAnchorElement).href = href;
 		box.append(title);
 		for (const line of [
-			p.value != null && valueLabel ? `${valueLabel}: ${format(p.value)}` : null,
+			p.value != null && unit ? `${unit}: ${format(p.value)}` : null,
 			p.sub ?? null
 		]) {
 			if (!line) continue;
@@ -95,7 +158,7 @@
 	let map = $state.raw<import('leaflet').Map>();
 	let leaflet: typeof import('leaflet') | undefined;
 	let drawn: {
-		groups: import('leaflet').LayerGroup[];
+		groups: { key: string; group: import('leaflet').LayerGroup }[];
 		control: import('leaflet').Control.Layers;
 	}[] = [];
 	let bases: Record<string, import('leaflet').TileLayer> = {};
@@ -143,17 +206,44 @@
 		const m = map;
 		const L = leaflet;
 		const current = layers;
+		const currentLines = lineLayers;
 		if (!m || !L || !el) return;
 		const hidden = new Set(
-			drawn.length
-				? current.map((l, i) => (drawn[0].groups[i] && !m.hasLayer(drawn[0].groups[i]) ? i : -1))
-				: []
+			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
 		);
 		for (const d of drawn) {
-			d.groups.forEach((g) => g.remove());
+			d.groups.forEach((g) => g.group.remove());
 			d.control.remove();
 		}
 		const overlays: Record<string, import('leaflet').LayerGroup> = {};
+		const lineMax =
+			fixedLineMax ??
+			Math.max(1e-9, ...currentLines.flatMap((g) => g.lines.map((l) => l.value ?? 1)));
+		const lineGroups = currentLines.map((g, i) => {
+			const group = L.layerGroup();
+			for (const l of g.lines)
+				keyboardLine(
+					L.polyline(
+						[
+							[l.from.lat, l.from.lon],
+							[l.to.lat, l.to.lon]
+						],
+						{
+							weight: 1.5 + 6 * Math.sqrt((l.value ?? 1) / lineMax),
+							className: `ps-line ps-line-${i}`,
+							lineCap: 'round'
+						}
+					),
+					l.label
+				)
+					.bindTooltip(tooltip(l.label))
+					.bindPopup(() => popup(l, lineLabel))
+					.addTo(group);
+			const key = `line:${i}`;
+			if (!hidden.has(key)) group.addTo(m);
+			overlays[`<span class="ps-key ps-line-key ps-line-${i}"></span>${g.name}`] = group;
+			return { key, group };
+		});
 		const groups = current.map((layer, i) => {
 			const max = layer.max ?? Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
 			const group = L.layerGroup();
@@ -162,7 +252,9 @@
 				const r = empty
 					? 5
 					: layer.sized
-						? 5 + 13 * Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
+						? 5 +
+							((layer.maxRadius ?? 18) - 5) *
+								Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
 						: (layer.radius ?? 5);
 				L.circleMarker([p.lat, p.lon], {
 					radius: r,
@@ -172,17 +264,60 @@
 					.bindPopup(() => popup(p))
 					.addTo(group);
 			}
-			if (!hidden.has(i)) group.addTo(m);
+			const key = `layer:${i}`;
+			if (!hidden.has(key)) group.addTo(m);
 			overlays[`<span class="ps-key ps-layer-${i}"></span>${layer.name}`] = group;
-			return group;
+			return { key, group };
 		});
 		const control = L.control
-			.layers(bases, current.length > 1 ? overlays : {}, { collapsed: el.clientWidth < 560 })
+			.layers(bases, current.length + currentLines.length > 1 ? overlays : {}, {
+				collapsed: el.clientWidth < 560
+			})
 			.addTo(m);
-		drawn = [{ groups, control }];
+		drawn = [{ groups: [...lineGroups, ...groups], control }];
 	});
 
-	const style = $derived(layers.map((l, i) => `--ps-layer-${i}: ${l.color}`).join('; '));
+	// Glide a dot along the traveller's line; reduced motion (#32) just places it at the end.
+	let dot: import('leaflet').CircleMarker | undefined;
+	$effect(() => {
+		const m = map;
+		const L = leaflet;
+		const t = traveller;
+		if (!m || !L) return;
+		dot?.remove();
+		dot = undefined;
+		if (!t) return;
+		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const at = (f: number): [number, number] => [
+			t.from.lat + (t.to.lat - t.from.lat) * f,
+			t.from.lon + (t.to.lon - t.from.lon) * f
+		];
+		const marker = L.circleMarker(at(still ? 1 : 0), {
+			radius: 7,
+			className: 'ps-traveller',
+			interactive: false
+		}).addTo(m);
+		(marker.getElement() as SVGElement | undefined)?.style.setProperty('fill', t.color);
+		dot = marker;
+		if (still) return;
+		const start = performance.now();
+		let frame = 0;
+		const step = (now: number) => {
+			const f = Math.min(1, (now - start) / 800);
+			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
+			marker.setLatLng(at(eased));
+			if (f < 1) frame = requestAnimationFrame(step);
+		};
+		frame = requestAnimationFrame(step);
+		return () => cancelAnimationFrame(frame);
+	});
+
+	const style = $derived(
+		[
+			...layers.map((l, i) => `--ps-layer-${i}: ${l.color}`),
+			...lineLayers.map((l, i) => `--ps-line-${i}: ${l.color}`)
+		].join('; ')
+	);
 </script>
 
 {#if ready}
@@ -195,7 +330,14 @@
 	></div>
 	<p class="hint">Drag to pan, use + / − to zoom. Select a circle for details.</p>
 {:else}
-	<MooreaMap points={fallback ?? layers[0]?.points ?? []} {valueLabel} {format} csv={false} />
+	<MooreaMap
+		points={fallback ?? layers[0]?.points ?? []}
+		lines={lineLayers.flatMap((g) => g.lines.map((l) => ({ ...l, color: g.color })))}
+		{lineLabel}
+		{valueLabel}
+		{format}
+		csv={false}
+	/>
 {/if}
 
 <style>
@@ -251,6 +393,31 @@
 	.map :global(.leaflet-popup-content a) {
 		font-weight: 650;
 		color: #1d5fb8;
+	}
+	.map :global(.ps-traveller) {
+		stroke: #fff;
+		stroke-width: 2px;
+		fill-opacity: 1;
+	}
+	.map :global(.leaflet-interactive.ps-line) {
+		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line:focus-visible) {
+		outline: 2px solid var(--ink);
+		outline-offset: 4px;
+	}
+	.map :global(.ps-line-key) {
+		border-radius: 2px;
+		height: 4px;
+		vertical-align: 2px;
+	}
+	.map :global(.ps-line-0) {
+		stroke: var(--ps-line-0);
+		background: var(--ps-line-0);
+	}
+	.map :global(.ps-line-1) {
+		stroke: var(--ps-line-1);
+		background: var(--ps-line-1);
 	}
 	.map :global(.ps-layer-0) {
 		fill: var(--ps-layer-0);
