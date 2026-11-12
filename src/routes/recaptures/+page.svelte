@@ -100,7 +100,7 @@
 		<ChartCard
 			title="Moves between nurseries on the map"
 			papers={['bouyoucos2020homerange']}
-			subtitle="Lines follow the shortest water route around Moorea between the nurseries where a shark was caught one time and the next; arrows show the direction and thicker is more moves. Moves both ways between two nurseries are drawn side by side. Grey circles: recaptures at the same nursery. Each shark's own page can play its moves one by one."
+			subtitle="Arrows show direction and thicker lines mean more moves; opposite directions sit side by side. Grey circles: recaptures at the same nursery. Each shark's page can play its moves one by one."
 			note={`Lines show the shortest water route around Moorea between capture sites; they are an estimate and not the actual path a shark swam. A shark can pass other nurseries, or move and come back, between two captures. Water routes computed from OpenStreetMap coastline data (© OpenStreetMap contributors, ODbL 1.0).${data.conflictsLeftOut ? ` ${num(data.conflictsLeftOut)} moves by sharks with conflicting records are left out.` : ''}`}
 		>
 			<InteractiveMap

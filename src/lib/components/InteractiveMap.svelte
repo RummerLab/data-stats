@@ -243,9 +243,21 @@
 				])
 			);
 			bases[BASEMAPS[0].name].addTo(m);
-			const all = layers.flatMap((l) => l.points.map((p) => [p.lat, p.lon] as [number, number]));
+			const all: [number, number][] = [
+				...layers.flatMap((l) => l.points.map((p) => [p.lat, p.lon] as [number, number])),
+				...lineLayers.flatMap((g) =>
+					g.lines.flatMap((l) =>
+						l.path && l.path.length > 0
+							? l.path
+							: ([
+									[l.from.lat, l.from.lon],
+									[l.to.lat, l.to.lon]
+								] as [number, number][])
+					)
+				)
+			];
 			if (focus) m.setView([focus.lat, focus.lon], focus.zoom ?? 14);
-			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 });
+			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [36, 36], maxZoom: 14 });
 			else m.setView([-17.53, -149.83], 12);
 			// Line offsets are in screen pixels, so redraw them at each zoom (#182).
 			m.on('zoomend', () => (zoom = m.getZoom()));
