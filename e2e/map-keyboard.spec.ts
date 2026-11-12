@@ -108,17 +108,16 @@ test('nursery circles are keyboard reachable, support popup links and survive se
 	await expect(circle).toBeFocused();
 	// Controls survive season redraws
 	const slider = page.getByRole('slider', { name: /season/i });
-	if (await slider.isVisible()) {
-		await slider.fill('0');
-		const seasonCircle = map.locator('.ps-layer[role="button"]').first();
-		await expect(seasonCircle).toBeVisible();
-		await seasonCircle.focus();
-		await seasonCircle.press('Enter');
-		await expect(map.locator('.leaflet-popup-content')).toBeVisible();
-		await page.keyboard.press('Escape');
-		await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
-		await expect(seasonCircle).toBeFocused();
-	}
+	await expect(slider).toBeVisible();
+	await slider.fill('0');
+	const seasonCircle = map.locator('.ps-layer[role="button"]').first();
+	await expect(seasonCircle).toBeVisible();
+	await seasonCircle.focus();
+	await seasonCircle.press('Enter');
+	await expect(map.locator('.leaflet-popup-content')).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
+	await expect(seasonCircle).toBeFocused();
 });
 
 test('adult capture circles are keyboard reachable and survive zoom and overlay toggles (#185)', async ({
@@ -184,6 +183,8 @@ test('adult capture circles are keyboard reachable and survive zoom and overlay 
 	await circle.press('Enter');
 	const popupContent = map.locator('.leaflet-popup-content');
 	await expect(popupContent).toContainText('Adult blacktip “Synthetic”');
+	// Adult popups have no link: focus still enters the details so they are read out
+	await expect(popupContent).toBeFocused();
 	await page.keyboard.press('Escape');
 	await expect(popupContent).toHaveCount(0);
 	await expect(circle).toBeFocused();
@@ -195,9 +196,12 @@ test('adult capture circles are keyboard reachable and survive zoom and overlay 
 	await closeBtn.press('Enter');
 	await expect(popupContent).toHaveCount(0);
 	await expect(circle).toBeFocused();
-	// Controls survive zoom redraws
+	// Controls survive zoom redraws. The single adult capture sits under the map centre, so the
+	// circle keeps its `d` on zoom; the basemap tile zoom is what shows the overlay was redrawn.
+	const tile = map.locator('img.leaflet-tile').first();
+	const tileZoom = await tile.getAttribute('src');
 	await map.getByRole('button', { name: 'Zoom in', exact: true }).click();
-	await page.waitForTimeout(200);
+	await expect.poll(() => tile.getAttribute('src')).not.toBe(tileZoom);
 	await circle.focus();
 	await circle.press('Space');
 	await expect(map.locator('.leaflet-popup-content')).toContainText('Adult blacktip “Synthetic”');

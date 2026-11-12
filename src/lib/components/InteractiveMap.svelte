@@ -148,7 +148,15 @@
 		layer.on('popupopen', (e) => {
 			const popupEl = (e as unknown as { popup?: import('leaflet').Popup })?.popup?.getElement();
 			if (!popupEl) return;
-			popupEl.querySelector<HTMLElement>('a[href], button')?.focus();
+			// The close button is also an <a href>, so look inside the body only. Without a link or
+			// button there, focus the content so the details are still read out (adult captures).
+			const content = popupEl.querySelector<HTMLElement>('.leaflet-popup-content');
+			let target = content?.querySelector<HTMLElement>('a[href], button') ?? null;
+			if (!target && content) {
+				content.tabIndex = -1;
+				target = content;
+			}
+			if (target) focusSoon(target, document.activeElement);
 			const dismiss = (ev: Event) => {
 				ev.preventDefault();
 				ev.stopPropagation();
@@ -167,6 +175,21 @@
 			};
 		});
 		return layer;
+	}
+
+	// Leaflet hides the popup body while it lays the popup out, so focusing it straight from
+	// popupopen can land while it is still visibility: hidden and be ignored. Retry for a few
+	// frames, but stop as soon as focus has moved somewhere else (the user tabbed or clicked).
+	function focusSoon(target: HTMLElement, from: Element | null) {
+		const attempt = (tries: number) => {
+			if (!target.isConnected) return;
+			target.focus();
+			if (document.activeElement === target) return;
+			const active = document.activeElement;
+			if (active && active !== from && active !== document.body) return;
+			if (tries > 1) requestAnimationFrame(() => attempt(tries - 1));
+		};
+		attempt(30);
 	}
 
 	function pointLabel(p: MapPoint, unit = valueLabel) {

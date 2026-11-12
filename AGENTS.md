@@ -238,3 +238,4 @@ Questions for the lab go to Dr Jodie Rummer (`@JodieRummer`) on GitHub: label th
 - Seasonal comparisons must report dates from their eligible sets, not an assumed October–February window (2020–21 starts in September). ISPF's Moorea hotel-room sales are a visitor proxy, not a count of people on the water.
 - Leaflet treats string tooltips as HTML. Pass a DOM element populated with `textContent` for workbook-derived point and move labels, including when rebuilding overlays.
 - Leaflet polylines are pointer-only by default. Keep move paths keyboard-focusable, with focus tooltips and Enter/Space popup handlers; the SVG fallback uses the shared chart `markKeys` contract.
+- Leaflet hides a popup body (`visibility: hidden`) while it lays the popup out, so a `focus()` straight from `popupopen` is ignored; `InteractiveMap` retries for a few frames. A popup without a link still focuses its body (not the close button, which is also an `<a href>`).
