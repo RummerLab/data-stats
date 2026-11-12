@@ -150,19 +150,28 @@
 		layer.on('popupopen', (e) => {
 			const popupEl = (e as unknown as { popup?: import('leaflet').Popup })?.popup?.getElement();
 			if (!popupEl) return;
-			const focusable = popupEl.querySelector<HTMLElement>('a[href], button');
+			const contentEl = popupEl.querySelector<HTMLElement>('.leaflet-popup-content');
+			const focusable = contentEl?.querySelector<HTMLElement>('a[href], button');
 			if (focusable) focusable.focus();
-			else {
-				popupEl.setAttribute('tabindex', '-1');
-				popupEl.focus();
+			else if (contentEl) {
+				contentEl.setAttribute('tabindex', '-1');
+				contentEl.focus();
+			}
+			const dismiss = (ev: Event) => {
+				ev.preventDefault();
+				ev.stopPropagation();
+				layer.closePopup();
+				(layer.getElement() as HTMLElement | undefined)?.focus();
+			};
+			const closeBtn = popupEl.querySelector<HTMLElement>('.leaflet-popup-close-button');
+			if (closeBtn) {
+				closeBtn.onclick = dismiss;
+				closeBtn.onkeydown = (ev: KeyboardEvent) => {
+					if (ev.key === 'Enter' || ev.key === ' ') dismiss(ev);
+				};
 			}
 			popupEl.onkeydown = (ev: KeyboardEvent) => {
-				if (ev.key === 'Escape') {
-					ev.preventDefault();
-					ev.stopPropagation();
-					layer.closePopup();
-					(layer.getElement() as HTMLElement | undefined)?.focus();
-				}
+				if (ev.key === 'Escape') dismiss(ev);
 			};
 		});
 		return layer;
@@ -171,7 +180,6 @@
 	function pointLabel(p: MapPoint, unit = valueLabel) {
 		const parts = [p.label];
 		if (p.value != null && unit) parts.push(`${unit}: ${format(p.value)}`);
-		else if (p.value != null && !unit) parts.push(format(p.value));
 		if (p.sub) parts.push(p.sub);
 		return parts.join(' · ');
 	}
