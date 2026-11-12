@@ -14,7 +14,7 @@ import { mean, median, pairs, se, spearman, welch } from '#lib/stats';
 import { rankText, rateTest, rateText } from '#lib/server/analytics/tests';
 import type { PageServerLoad } from './$types';
 
-/** Sampled October 2020 – February 2021, when tourism on Moorea was far below normal (ISPF). */
+/** Season sampled while tourism on Moorea was far below normal (ISPF). */
 const LOW_TOURISM_SEASON = '2020-2021';
 
 export const load: PageServerLoad = () =>
@@ -136,14 +136,16 @@ export const load: PageServerLoad = () =>
 			breakDays.map((s) => s.cpue),
 			quiet.map((s) => s.cpue)
 		);
-		// The first COVID-19 season (#175): fieldwork runs October to February, so the 2020 border
-		// closure (March to July) missed it, but 2020-21 was sampled while tourism was far below
-		// normal. One season, so it is confounded with everything else about that year.
+		// The first COVID-19 season (#175). Report its actual eligible dates: sampling does not
+		// always start in October. One season is confounded with everything else about that year.
 		const lowTourism = dated.filter((s) => s.season === LOW_TOURISM_SEASON);
 		const otherSeasons = dated.filter((s) => s.season !== LOW_TOURISM_SEASON);
+		const lowDates = lowTourism.map((s) => s.date!).sort();
 		const covid = lowTourism.length
 			? {
 					season: LOW_TOURISM_SEASON,
+					first: lowDates[0],
+					last: lowDates.at(-1)!,
 					groups: [group(lowTourism, 'low'), group(otherSeasons, 'other')],
 					test: rateTest(
 						dated,
@@ -185,6 +187,8 @@ export const load: PageServerLoad = () =>
 			covid: covid
 				? {
 						season: covid.season,
+						first: covid.first,
+						last: covid.last,
 						groups: covid.groups,
 						ratio:
 							covid.groups[0].mean != null && covid.groups[1].mean

@@ -4,7 +4,7 @@
 	import BarChart from '#lib/components/charts/BarChart.svelte';
 	import Heatmap from '#lib/components/charts/Heatmap.svelte';
 	import Scatter from '#lib/components/charts/Scatter.svelte';
-	import { num, season } from '#lib/format';
+	import { date, num, season } from '#lib/format';
 	import { SPECIES } from '#lib/species';
 	import type { PageProps } from './$types';
 
@@ -175,14 +175,11 @@
 		<section class="section">
 			<h2>A season with few visitors</h2>
 			<p>
-				Tourism on Moorea fell by more than half in 2020 (ISPF), the closest thing this record has
-				to a season with fewer people on the water. Fieldwork runs from October to February, so the
-				border closure itself (March to July 2020) fell outside it, but the {season(c.season)} season
-				was sampled while visitor numbers were still far below normal. Its catch rate was {num(
-					c.groups[0].mean,
-					2
-				)} sharks per net-hour against {num(c.groups[1].mean, 2)} in the other seasons{c.ratio !=
-				null
+				Hotel room sales on Moorea fell by more than half in 2020 (ISPF), a proxy for fewer visitors
+				rather than a count of people on the water. The {season(c.season)} comparison uses timed sets
+				from {date(c.first)} to {date(c.last)}, after borders first reopened in July 2020, while
+				visitor numbers were still far below normal. Its catch rate was {num(c.groups[0].mean, 2)} sharks
+				per net-hour against {num(c.groups[1].mean, 2)} in the other seasons{c.ratio != null
 					? ` (${num(c.ratio, 2)} times)`
 					: ''}.
 			</p>
@@ -209,11 +206,9 @@
 			</ChartCard>
 			<p class="muted small">
 				Tourism figure: Institut de la statistique de la Polynésie française,
-				<a
-					href="https://data.ispf.pf/docs/default-source/publi-pf-bilans-et-etudes/1308-bilan-tourisme-2020.pdf"
+				<a href="https://www.ispf.pf/publication/le-bilan-du-tourisme-de-l-annee-2020"
 					>Bilan du tourisme 2020</a
-				>. ISPF's island-level series are published as PDF dashboards, not open tables, so the site
-				doesn't chart tourism over time yet.
+				>. An island-level tourism time series is not yet included on this site.
 			</p>
 		</section>
 	{/if}
