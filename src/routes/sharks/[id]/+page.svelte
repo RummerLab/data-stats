@@ -14,47 +14,91 @@
 	const ind = $derived(data.ind);
 	const growth = $derived(data.captures.filter((c) => c.date && c.tl != null));
 
-	// Play this shark's captures in order (#173, #183): lines appear as it moves, a shark swims along.
+	// Play this shark's captures in order (#173, #183): continuous slider scrubbing and animated water routes.
 	const stops = $derived(data.track.length);
-	let step = $state(0);
-	const at = $derived(Math.min(step, stops));
-	const current = $derived(at < stops ? data.track[at] : null);
-	// An unlocated capture breaks the path: do not animate across that unknown stop.
-	const previous = $derived(
-		current && at > 0 && data.track[at - 1].n === current.n - 1 ? data.track[at - 1] : null
-	);
-	const color = $derived(speciesColor(ind.species));
-	const shownMoves = $derived(
-		current ? data.moves.filter((m) => m.at + 1 <= current.n) : data.moves
-	);
-	const currentMove = $derived(current ? data.moves.find((m) => m.at + 1 === current.n) : null);
+	const totalMoves = $derived(Math.max(1, stops - 1));
+	let progress = $state(0);
 	let playing = $state(false);
+	let showAll = $state(false);
+
+	// Which leg of the track is active (0 to totalMoves - 1):
+	const activeLeg = $derived(Math.min(totalMoves - 1, Math.floor(progress)));
+	const legFraction = $derived(progress >= totalMoves ? 1 : Math.max(0, progress - activeLeg));
+	const fromStop = $derived(data.track[activeLeg] ?? data.track[0]);
+	const toStop = $derived(data.track[activeLeg + 1] ?? data.track[stops - 1]);
+	// The move between consecutive captures (m.at is the destination capture index in +page.server.ts):
+	const activeMove = $derived(data.moves.find((m) => m.at === activeLeg + 1));
+	const color = $derived(speciesColor(ind.species));
+
+	const shownMoves = $derived(
+		showAll ? data.moves : data.moves.filter((m) => m.at <= activeLeg + 1)
+	);
+
 	function stop() {
 		playing = false;
 	}
+
 	function play() {
 		if (playing) return stop();
-		if (at >= stops - 1) {
-			step = 0;
-			playing = true;
-			return;
-		}
-		if (at === 0) {
-			step = 1;
-			playing = true;
-			return;
+		showAll = false;
+		if (progress >= totalMoves - 0.001) {
+			progress = 0;
 		}
 		playing = true;
 	}
+
+	function jumpTo(idx: number) {
+		stop();
+		showAll = false;
+		progress = idx;
+	}
+
+	function toggleAll() {
+		stop();
+		showAll = true;
+		progress = totalMoves;
+	}
+
 	$effect(() => {
 		if (!playing) return;
-		const delay = moveDuration(currentMove?.km) + 350;
-		const timer = setTimeout(() => {
-			if (step >= stops - 1) playing = false;
-			else step = Math.min(step, stops) + 1;
-		}, delay);
-		return () => clearTimeout(timer);
+		let lastTime: number | null = null;
+		let raf: number;
+		const tick = (now: number) => {
+			if (!playing) return;
+			if (lastTime == null) {
+				lastTime = now;
+				raf = requestAnimationFrame(tick);
+				return;
+			}
+			const dt = now - lastTime;
+			lastTime = now;
+
+			const leg = Math.min(totalMoves - 1, Math.floor(progress));
+			const move = data.moves.find((m) => m.at === leg + 1);
+			const duration = moveDuration(move?.km);
+			const next = progress + dt / Math.max(800, duration);
+
+			if (next >= totalMoves) {
+				progress = totalMoves;
+				playing = false;
+				return;
+			}
+			progress = next;
+			raf = requestAnimationFrame(tick);
+		};
+		raf = requestAnimationFrame(tick);
+		return () => cancelAnimationFrame(raf);
 	});
+
+	const sliderAriaText = $derived(
+		showAll
+			? 'All captures'
+			: activeMove && legFraction > 0.01 && legFraction < 0.99
+				? `Swimming from ${fromStop.site} to ${toStop.site}, ${Math.round(legFraction * 100)}%`
+				: progress >= 0.99
+					? `Capture ${toStop.n}: ${toStop.site}, ${date(toStop.date)}`
+					: `Capture 1: ${data.track[0].site}, ${date(data.track[0].date)}`
+	);
 </script>
 
 <div class="container">
@@ -105,36 +149,69 @@
 				{#if data.moves.length}
 					<div class="player">
 						<button type="button" class="play" onclick={play} aria-pressed={playing}>
-							{playing ? 'Pause' : at >= stops - 1 ? 'Replay' : 'Play'}
+							{playing ? 'Pause' : progress >= totalMoves ? 'Replay' : 'Play'}
 						</button>
 						<label for="capture-slider">Capture</label>
 						<input
 							id="capture-slider"
 							type="range"
 							min="0"
-							max={stops}
-							step="1"
-							value={at}
+							max={totalMoves}
+							step="0.002"
+							value={progress}
 							oninput={(e) => {
 								stop();
-								step = Number(e.currentTarget.value);
+								showAll = false;
+								progress = Number(e.currentTarget.value);
 							}}
-							aria-valuetext={current
-								? `Capture ${current.n}: ${current.site}, ${date(current.date)}`
-								: 'All captures'}
+							aria-valuetext={sliderAriaText}
 						/>
 						<output for="capture-slider" aria-live="polite">
-							{#if current}
-								<strong>Capture {current.n} of {ind.nCaptures}</strong>
-								· {date(current.date)} · {current.site}{current.tl != null
-									? ` · ${num(current.tl)} mm`
-									: ''}{previous && previous.site !== current.site
-									? ` (moved from ${previous.site}${currentMove?.km ? ` · ≥ ${num(currentMove.km, 1)} km by water` : ''})`
-									: ''}
+							{#if showAll}
+								<strong>All captures</strong> ({data.track.length} captures, {data.moves.length} moves)
+							{:else if activeMove && legFraction > 0.01 && legFraction < 0.99}
+								<strong>Swimming:</strong>
+								{fromStop.site} → {toStop.site}
+								{#if activeMove.km != null}
+									· <strong
+										>{num(activeMove.km * legFraction, 1)} of {num(activeMove.km, 1)} km by water</strong
+									>
+									({Math.round(legFraction * 100)}%)
+								{/if}
+							{:else if progress >= 0.99}
+								{@const arrivedStop = toStop}
+								{@const prevStop = fromStop}
+								<strong>Capture {arrivedStop.n} of {ind.nCaptures}</strong>
+								· {date(arrivedStop.date)} · {arrivedStop.site}{arrivedStop.tl != null
+									? ` · ${num(arrivedStop.tl)} mm`
+									: ''}{prevStop && prevStop.site !== arrivedStop.site
+									? ` (moved from ${prevStop.site}${activeMove?.km ? ` · ≥ ${num(activeMove.km, 1)} km by water` : ''})`
+									: prevStop
+										? ` (recaptured at ${arrivedStop.site})`
+										: ''}
 							{:else}
-								<strong>All captures</strong>
+								{@const firstStop = data.track[0]}
+								<strong>Capture 1 of {ind.nCaptures}</strong>
+								· {date(firstStop.date)} · {firstStop.site}{firstStop.tl != null
+									? ` · ${num(firstStop.tl)} mm`
+									: ''} (starting nursery)
 							{/if}
 						</output>
+						<div class="stops-nav" role="group" aria-label="Jump to capture stop">
+							{#each data.track as t, i (t.n)}
+								<button
+									type="button"
+									class="stop-btn"
+									class:active={!showAll && Math.abs(progress - i) < 0.05}
+									onclick={() => jumpTo(i)}
+								>
+									Capture {t.n} · {t.site}
+								</button>
+							{/each}
+							<button type="button" class="stop-btn" class:active={showAll} onclick={toggleAll}>
+								All moves
+							</button>
+						</div>
 					</div>
 					<InteractiveMap
 						label={`Map of where shark ${ind.id} was caught`}
@@ -155,17 +232,17 @@
 						lineMax={4}
 						traveller={data.track.length
 							? {
-									key: at,
-									from: previous ?? current ?? data.track[0],
-									to: current ?? data.track[stops - 1],
-									path:
-										currentMove?.path ??
-										(at >= stops ? data.moves[data.moves.length - 1]?.path : undefined),
-									km: currentMove?.km,
+									key: activeLeg,
+									from: fromStop,
+									to: toStop,
+									path: activeMove?.path,
+									km: activeMove?.km,
 									color,
 									species: ind.species,
-									lineId: currentMove?.id,
-									still: !currentMove
+									lineId: activeMove?.id,
+									still: !activeMove,
+									fraction: showAll ? 1 : legFraction,
+									playing
 								}
 							: undefined}
 					/>
@@ -242,6 +319,37 @@
 		background: var(--surface-2);
 		color: var(--ink);
 		cursor: pointer;
+	}
+	.stops-nav {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 6px;
+		width: 100%;
+		margin-top: 2px;
+	}
+	.stop-btn {
+		font: inherit;
+		font-size: 0.78rem;
+		padding: 2px 9px;
+		border-radius: 999px;
+		border: 1px solid var(--hairline);
+		background: var(--surface-2);
+		color: var(--ink-2);
+		cursor: pointer;
+		transition:
+			background 0.15s,
+			color 0.15s,
+			border-color 0.15s;
+	}
+	.stop-btn:hover {
+		color: var(--ink);
+		border-color: var(--ink-2);
+	}
+	.stop-btn.active {
+		background: var(--series-1);
+		color: #ffffff;
+		border-color: var(--series-1);
+		font-weight: 600;
 	}
 	.id {
 		font-weight: 400;

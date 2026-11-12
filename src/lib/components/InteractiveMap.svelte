@@ -98,6 +98,8 @@
 			species?: string;
 			lineId?: string;
 			still?: boolean;
+			fraction?: number;
+			playing?: boolean;
 		};
 		/** Accessible name of the map region. */
 		label: string;
@@ -416,6 +418,9 @@
 
 	// Glide a bird's-eye view shark and animate the move line along the water route (#183).
 	let dot: import('leaflet').Marker | undefined;
+	let dotKey: string | undefined;
+	let lastLineEl: SVGPathElement | undefined;
+	let lastArrowEl: SVGPathElement | undefined;
 	let currentLineEntries: {
 		l: MapLine;
 		line: import('leaflet').Polyline;
@@ -426,9 +431,19 @@
 		const L = leaflet;
 		const t = traveller;
 		if (!m || !L) return;
-		dot?.remove();
-		dot = undefined;
-		if (!t) return;
+		if (!t) {
+			dot?.remove();
+			dot = undefined;
+			dotKey = undefined;
+			if (lastLineEl) {
+				lastLineEl.style.strokeDasharray = '';
+				lastLineEl.style.strokeDashoffset = '';
+			}
+			if (lastArrowEl) lastArrowEl.style.opacity = '';
+			lastLineEl = undefined;
+			lastArrowEl = undefined;
+			return;
+		}
 		const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 		const still = reducedMotion || Boolean(t.still);
 		const path: [number, number][] =
@@ -485,17 +500,20 @@
 			</div>
 		`;
 
-		const marker = L.marker(at(still ? 1 : 0), {
-			icon: L.divIcon({
-				className: 'ps-traveller ps-shark-marker',
-				html: sharkHtml,
-				iconSize: [32, 46],
-				iconAnchor: [16, 23]
-			}),
-			interactive: false
-		}).addTo(m);
-		dot = marker;
-		if (still) return;
+		const neededKey = `${t.species ?? ''}-${t.color}`;
+		if (!dot || dotKey !== neededKey) {
+			dot?.remove();
+			dot = L.marker(at(still ? 1 : 0), {
+				icon: L.divIcon({
+					className: 'ps-traveller ps-shark-marker',
+					html: sharkHtml,
+					iconSize: [32, 46],
+					iconAnchor: [16, 23]
+				}),
+				interactive: false
+			}).addTo(m);
+			dotKey = neededKey;
+		}
 
 		// Locate the move line matching this traveller step to progressively draw its stroke.
 		const target = currentLineEntries.find(
@@ -508,9 +526,79 @@
 		);
 		let lineEl = target?.line.getElement() as SVGPathElement | undefined;
 		let arrowEl = target?.arrow.getElement() as SVGPathElement | undefined;
+		if (lastLineEl && lastLineEl !== lineEl) {
+			lastLineEl.style.strokeDasharray = '';
+			lastLineEl.style.strokeDashoffset = '';
+		}
+		if (lastArrowEl && lastArrowEl !== arrowEl) {
+			lastArrowEl.style.opacity = '';
+		}
+		lastLineEl = lineEl;
+		lastArrowEl = arrowEl;
 		let totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
 
-		// Progressive stroke animation along the water route polyline.
+		// When fraction is explicitly passed (continuous scrubbing or smooth external RAF loop):
+		if (t.fraction != null) {
+			const f = still ? 1 : Math.max(0, Math.min(1, t.fraction));
+			if (lineEl && totalLen > 0) {
+				if (f >= 1) {
+					lineEl.style.strokeDasharray = '';
+					lineEl.style.strokeDashoffset = '';
+				} else {
+					lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+					lineEl.style.strokeDashoffset = `${totalLen * (1 - f)}`;
+				}
+				if (arrowEl) arrowEl.style.opacity = f >= ARROW_AT ? '1' : '0';
+			}
+
+			let heading = initialHeading;
+			if (lineEl && totalLen > 0 && lineEl.getPointAtLength) {
+				const curLen = totalLen * f;
+				const pt = lineEl.getPointAtLength(curLen);
+				dot.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
+
+				const ahead = lineEl.getPointAtLength(Math.min(totalLen, curLen + 3));
+				const behind = lineEl.getPointAtLength(Math.max(0, curLen - 3));
+				const dx = ahead.x - behind.x;
+				const dy = ahead.y - behind.y;
+				if (dx !== 0 || dy !== 0) {
+					heading = Math.atan2(dx, -dy) * (180 / Math.PI);
+				}
+			} else {
+				dot.setLatLng(at(f));
+				if (path.length >= 2) {
+					const fAhead = Math.min(1, f + 0.02);
+					const fBehind = Math.max(0, f - 0.02);
+					const pAhead = m.latLngToLayerPoint(at(fAhead));
+					const pBehind = m.latLngToLayerPoint(at(fBehind));
+					const dx = pAhead.x - pBehind.x;
+					const dy = pAhead.y - pBehind.y;
+					if (dx !== 0 || dy !== 0) {
+						heading = Math.atan2(dx, -dy) * (180 / Math.PI);
+					}
+				}
+			}
+
+			const wrapEl = (dot.getElement() as HTMLElement | undefined)?.querySelector(
+				'.ps-shark-wrap'
+			) as HTMLElement | null;
+			const tailEl = (dot.getElement() as HTMLElement | undefined)?.querySelector(
+				'.ps-shark-tail'
+			) as HTMLElement | null;
+			if (wrapEl) {
+				const bodyWiggle = t.playing && f < 1 ? Math.sin(performance.now() * 0.018) * 4 : 0;
+				wrapEl.style.transform = `rotate(${heading + bodyWiggle}deg)`;
+			}
+			if (tailEl) {
+				const tailWiggle = t.playing && f < 1 ? Math.sin(performance.now() * 0.018 - 1.2) * 12 : 0;
+				tailEl.style.transform = `rotate(${tailWiggle}deg)`;
+			}
+			return;
+		}
+
+		// Fallback self-driven RAF animation when fraction is omitted:
+		if (still) return;
+
 		if (lineEl && totalLen > 0) {
 			lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
 			lineEl.style.strokeDashoffset = `${totalLen}`;
@@ -520,6 +608,7 @@
 		const start = performance.now();
 		let frame = 0;
 		const duration = moveDuration(t.km);
+		const marker = dot;
 		const step = (now: number) => {
 			const f = Math.min(1, (now - start) / duration);
 			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
