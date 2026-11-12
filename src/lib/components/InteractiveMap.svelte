@@ -54,7 +54,6 @@
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
 	import {
-		ARROW_AT,
 		lineWidth,
 		moveDuration,
 		offsetPolyline,
@@ -449,7 +448,10 @@
 				lastLineEl.style.strokeDasharray = '';
 				lastLineEl.style.strokeDashoffset = '';
 			}
-			if (lastArrowEl) lastArrowEl.style.opacity = '';
+			for (const entry of currentLineEntries) {
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) aEl.style.opacity = '';
+			}
 			lastLineEl = undefined;
 			lastArrowEl = undefined;
 			return;
@@ -492,7 +494,7 @@
 			lastLineEl.style.strokeDashoffset = '';
 		}
 		if (lastArrowEl && lastArrowEl !== arrowEl) {
-			lastArrowEl.style.opacity = '';
+			lastArrowEl.style.opacity = '0';
 		}
 		lastLineEl = lineEl;
 		lastArrowEl = arrowEl;
@@ -509,12 +511,19 @@
 					lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
 					lineEl.style.strokeDashoffset = `${totalLen * (1 - f)}`;
 				}
-				if (arrowEl) arrowEl.style.opacity = f >= ARROW_AT ? '1' : '0';
+			}
+
+			// Keep arrow visible on dotted line before playback/scrubbing starts; hide once playing or moving (#183).
+			const showArrow = !t.playing && f < 0.01;
+			for (const entry of currentLineEntries) {
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) {
+					aEl.style.opacity = showArrow && entry === target ? '1' : '0';
+				}
 			}
 
 			if (lineEl && totalLen > 0 && lineEl.getPointAtLength) {
-				const curLen = totalLen * f;
-				const pt = lineEl.getPointAtLength(curLen);
+				const pt = lineEl.getPointAtLength(totalLen * f);
 				dot.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
 			} else {
 				dot.setLatLng(at(f));
@@ -525,10 +534,14 @@
 		// Fallback self-driven RAF animation when fraction is omitted:
 		if (still) return;
 
+		for (const entry of currentLineEntries) {
+			const aEl = entry.arrow.getElement() as SVGPathElement | null;
+			if (aEl) aEl.style.opacity = '0';
+		}
+
 		if (lineEl && totalLen > 0) {
 			lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
 			lineEl.style.strokeDashoffset = `${totalLen}`;
-			if (arrowEl) arrowEl.style.opacity = '0';
 		}
 
 		const start = performance.now();
@@ -551,7 +564,6 @@
 
 			if (lineEl && totalLen > 0) {
 				lineEl.style.strokeDashoffset = `${totalLen * (1 - eased)}`;
-				if (arrowEl) arrowEl.style.opacity = f >= ARROW_AT ? '1' : '0';
 				if (lineEl.getPointAtLength) {
 					const pt = lineEl.getPointAtLength(totalLen * eased);
 					marker.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
@@ -569,7 +581,7 @@
 					lineEl.style.strokeDasharray = '';
 					lineEl.style.strokeDashoffset = '';
 				}
-				if (arrowEl) arrowEl.style.opacity = '';
+				if (arrowEl) arrowEl.style.opacity = '0';
 			}
 		};
 		frame = requestAnimationFrame(step);
@@ -580,7 +592,7 @@
 				lineEl.style.strokeDashoffset = '';
 			}
 			if (arrowEl) {
-				arrowEl.style.opacity = '';
+				arrowEl.style.opacity = '0';
 			}
 		};
 	});

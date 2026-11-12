@@ -83,8 +83,23 @@ test('shark detail page animates move line and traveller dot along water route (
 	const playBtn = page.locator('button.play');
 	const slider = page.locator('#capture-slider');
 	if ((await slider.count()) > 0) {
+		// Arrow is visible on dotted line before playback starts (#183)
+		const arrow = page.locator('.ps-arrow').first();
+		if ((await arrow.count()) > 0) {
+			const initialOpacity = await arrow.evaluate((el) => (el as SVGElement).style.opacity);
+			expect(initialOpacity).not.toBe('0');
+		}
+
 		// Start playback
 		await playBtn.click();
+
+		// Arrow is removed when playback starts (#183)
+		if ((await arrow.count()) > 0) {
+			await expect
+				.poll(async () => arrow.evaluate((el) => (el as SVGElement).style.opacity))
+				.toBe('0');
+		}
+
 		// While stepping from capture 1 to capture 2, the line animates along the water route
 		await expect(async () => {
 			const animating = await page.evaluate(() => {
@@ -102,7 +117,7 @@ test('shark detail page animates move line and traveller dot along water route (
 		const traveller = page.locator('.ps-traveller');
 		await expect(traveller).toBeVisible();
 
-		// Eventually animation finishes and stroke properties reset to normal
+		// Eventually animation finishes, stroke properties reset to normal, and arrow remains removed
 		await expect(async () => {
 			const finished = await page.evaluate(() => {
 				const line = document.querySelector('.ps-line');
@@ -110,5 +125,10 @@ test('shark detail page animates move line and traveller dot along water route (
 			});
 			expect(finished).toBe(true);
 		}).toPass({ timeout: 5000 });
+
+		if ((await arrow.count()) > 0) {
+			const finishedOpacity = await arrow.evaluate((el) => (el as SVGElement).style.opacity);
+			expect(finishedOpacity).toBe('0');
+		}
 	}
 });
