@@ -86,7 +86,7 @@
 			<ChartCard
 				title="Where it was caught"
 				subtitle={data.moves.length
-					? 'Circle size = number of captures. Lines join consecutive captures at different nurseries (not the route swum). Play steps through the captures in order.'
+					? 'Circle size = number of captures. Arrows join consecutive captures at different nurseries (not the route swum). Play steps through the captures in order.'
 					: 'Circle size = number of captures'}
 			>
 				{#if data.moves.length}
