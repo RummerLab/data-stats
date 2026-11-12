@@ -114,6 +114,37 @@
 		return span;
 	}
 
+	// Leaflet paths have pointer handlers but are not keyboard controls by default.
+	function keyboardLine(line: import('leaflet').Polyline, label: string) {
+		line.on('add', () => {
+			const path = line.getElement() as SVGElement | undefined;
+			if (!path) return;
+			path.setAttribute('tabindex', '0');
+			path.setAttribute('role', 'button');
+			path.setAttribute('aria-label', label);
+			path.onfocus = () => line.openTooltip();
+			path.onblur = () => line.closeTooltip();
+			path.onkeydown = (e) => {
+				if (e.key === 'Enter' || e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					if (e.key === 'Enter') line.openPopup();
+				} else if (e.key === 'Escape') {
+					line.closePopup();
+					line.closeTooltip();
+				}
+			};
+			path.onkeyup = (e) => {
+				if (e.key === ' ') {
+					e.preventDefault();
+					e.stopPropagation();
+					line.openPopup();
+				}
+			};
+		});
+		return line;
+	}
+
 	function popup(p: MapPoint | MapLine, unit = valueLabel) {
 		const href = 'href' in p ? p.href : undefined;
 		const box = document.createElement('div');
@@ -220,16 +251,19 @@
 		const lineGroups = currentLines.map((g, i) => {
 			const group = L.layerGroup();
 			for (const l of g.lines)
-				L.polyline(
-					[
-						[l.from.lat, l.from.lon],
-						[l.to.lat, l.to.lon]
-					],
-					{
-						weight: 1.5 + 6 * Math.sqrt((l.value ?? 1) / lineMax),
-						className: `ps-line ps-line-${i}`,
-						lineCap: 'round'
-					}
+				keyboardLine(
+					L.polyline(
+						[
+							[l.from.lat, l.from.lon],
+							[l.to.lat, l.to.lon]
+						],
+						{
+							weight: 1.5 + 6 * Math.sqrt((l.value ?? 1) / lineMax),
+							className: `ps-line ps-line-${i}`,
+							lineCap: 'round'
+						}
+					),
+					l.label
 				)
 					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
@@ -422,6 +456,10 @@
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line:focus-visible) {
+		outline: 2px solid var(--ink);
+		outline-offset: 4px;
 	}
 	.map :global(.ps-line-key) {
 		border-radius: 2px;
