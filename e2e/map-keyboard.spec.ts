@@ -182,9 +182,18 @@ test('adult capture circles are keyboard reachable and survive zoom and overlay 
 	await circle.focus();
 	await expect(map.locator('.leaflet-tooltip').last()).toBeVisible();
 	await circle.press('Enter');
-	await expect(map.locator('.leaflet-popup-content')).toContainText('Adult blacktip “Synthetic”');
+	const popupContent = map.locator('.leaflet-popup-content');
+	await expect(popupContent).toContainText('Adult blacktip “Synthetic”');
 	await page.keyboard.press('Escape');
-	await expect(map.locator('.leaflet-popup-content')).toHaveCount(0);
+	await expect(popupContent).toHaveCount(0);
+	await expect(circle).toBeFocused();
+	// Close button also restores focus to the circle marker when activated
+	await circle.press('Enter');
+	await expect(popupContent).toBeVisible();
+	const closeBtn = map.locator('.leaflet-popup-close-button');
+	await closeBtn.focus();
+	await closeBtn.press('Enter');
+	await expect(popupContent).toHaveCount(0);
 	await expect(circle).toBeFocused();
 	// Controls survive zoom redraws
 	await map.getByRole('button', { name: 'Zoom in', exact: true }).click();
