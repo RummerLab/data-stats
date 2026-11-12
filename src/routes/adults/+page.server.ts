@@ -1,5 +1,6 @@
 import { memo } from '#lib/server/data';
 import { round } from '#lib/server/analytics/common';
+import { BINS, MIN_POINTS, kde, kmFromCoast, onLand } from '#lib/server/analytics/density';
 import { countBy, histogram, linearFit, mean, pairedT, pairs } from '#lib/stats';
 import { twoGroupText } from '#lib/server/analytics/tests';
 import { num, pValue } from '#lib/format';
@@ -8,6 +9,40 @@ import type { PageServerLoad } from './$types';
 export const load: PageServerLoad = () =>
 	memo('adults', (d) => {
 		const a = d.adults;
+		// Where adults were caught (#174): density of GPS points, with implausible ones set aside.
+		const located = a
+			.filter((x) => x.lat != null && x.lon != null)
+			.map((x, i) => ({
+				id: `adult-${i}`,
+				label: x.name ? `Adult blacktip “${x.name}”` : 'Adult blacktip',
+				lat: x.lat!,
+				lon: x.lon!,
+				sub: [x.date, x.site].filter(Boolean).join(' · ')
+			}));
+		const why = (p: { lat: number; lon: number }) =>
+			p.lon >= 0
+				? 'longitude has no minus sign'
+				: onLand(p)
+					? 'on land'
+					: kmFromCoast(p) > 5
+						? 'more than 5 km offshore'
+						: null;
+		const setAside = located.flatMap((p) => {
+			const w = why(p);
+			return w ? [{ label: p.label, reason: w }] : [];
+		});
+		const usable = located.filter((p) => !why(p));
+		const density = kde(usable);
+		const where = {
+			points: usable,
+			setAside,
+			missing: a.length - located.length,
+			density: density
+				? { n: density.n, bandwidthKm: round(density.bandwidthKm, 2), cells: density.cells }
+				: null,
+			minPoints: MIN_POINTS,
+			bins: BINS
+		};
 		const lactFit = linearFit(
 			pairs(
 				a,
@@ -64,6 +99,7 @@ export const load: PageServerLoad = () =>
 				: null
 		};
 		return {
+			where,
 			stats,
 			n: a.length,
 			sex: Object.fromEntries(countBy(a, (x) => x.sex)),
