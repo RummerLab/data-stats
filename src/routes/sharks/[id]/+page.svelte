@@ -33,6 +33,7 @@
 	const shownMoves = $derived(
 		showAll ? data.moves : data.moves.filter((m) => m.at <= activeLeg + 1)
 	);
+	const moveLayers = $derived([{ name: 'Moves', color, lines: shownMoves }]);
 
 	function stop() {
 		playing = false;
@@ -158,11 +159,10 @@
 							min="0"
 							max={totalMoves}
 							step="0.002"
-							value={progress}
-							oninput={(e) => {
+							bind:value={progress}
+							oninput={() => {
 								stop();
 								showAll = false;
-								progress = Number(e.currentTarget.value);
 							}}
 							aria-valuetext={sliderAriaText}
 						/>
@@ -228,7 +228,7 @@
 						layers={[
 							{ name: 'Capture sites', color, sized: true, maxRadius: 12, points: data.map }
 						]}
-						lineLayers={[{ name: 'Moves', color, lines: shownMoves }]}
+						lineLayers={moveLayers}
 						lineMax={4}
 						traveller={data.track.length
 							? {

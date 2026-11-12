@@ -279,6 +279,7 @@
 	});
 
 	// Redraw the overlays whenever the layers change (e.g. a season slider), keeping the view.
+	let lastLayerKey = '';
 	$effect(() => {
 		const m = map;
 		const L = leaflet;
@@ -287,6 +288,11 @@
 		const currentDensity = density;
 		void zoom;
 		if (!m || !L || !el) return;
+
+		const layerKey = `${current.map((l) => `${l.name}:${l.points.length}`).join('|')}_${currentLines.map((g) => `${g.name}:${g.lines.map((l) => (l as { id?: string }).id ?? l.label).join(',')}`).join('|')}_${currentDensity?.name ?? ''}_${zoom}`;
+		if (drawn.length && layerKey === lastLayerKey) return;
+		lastLayerKey = layerKey;
+
 		const hidden = new Set(
 			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
 		);
@@ -346,6 +352,12 @@
 						];
 				const shiftedPts = offsetPolyline(rawPts, back[n++] ? shiftFor(weight) : 0);
 				const latLngs = shiftedPts.map(([x, y]) => m.layerPointToLatLng([x, y]));
+				L.polyline(latLngs, {
+					weight: Math.max(1.5, weight - 1),
+					className: 'ps-line-track',
+					smoothFactor: 0,
+					interactive: false
+				}).addTo(group);
 				const line = L.polyline(latLngs, {
 					weight,
 					className: `ps-line ps-line-${i}`,
@@ -445,7 +457,7 @@
 			return;
 		}
 		const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const still = reducedMotion || Boolean(t.still);
+		const still = Boolean(t.still);
 		const path: [number, number][] =
 			t.path && t.path.length >= 2
 				? t.path
@@ -524,8 +536,11 @@
 					Math.abs(e.l.to.lat - t.to.lat) < 1e-4 &&
 					Math.abs(e.l.to.lon - t.to.lon) < 1e-4)
 		);
-		let lineEl = target?.line.getElement() as SVGPathElement | undefined;
-		let arrowEl = target?.arrow.getElement() as SVGPathElement | undefined;
+		let lineEl = (target?.line.getElement() ??
+			(el?.querySelector('.ps-line') as SVGPathElement | null)) as SVGPathElement | undefined;
+		let arrowEl = (target?.arrow.getElement() ??
+			(el?.querySelector('path[marker-mid]') as SVGPathElement | null)) as
+			SVGPathElement | undefined;
 		if (lastLineEl && lastLineEl !== lineEl) {
 			lastLineEl.style.strokeDasharray = '';
 			lastLineEl.style.strokeDashoffset = '';
@@ -586,11 +601,13 @@
 				'.ps-shark-tail'
 			) as HTMLElement | null;
 			if (wrapEl) {
-				const bodyWiggle = t.playing && f < 1 ? Math.sin(performance.now() * 0.018) * 4 : 0;
+				const bodyWiggle =
+					!reducedMotion && t.playing && f < 1 ? Math.sin(performance.now() * 0.018) * 4 : 0;
 				wrapEl.style.transform = `rotate(${heading + bodyWiggle}deg)`;
 			}
 			if (tailEl) {
-				const tailWiggle = t.playing && f < 1 ? Math.sin(performance.now() * 0.018 - 1.2) * 12 : 0;
+				const tailWiggle =
+					!reducedMotion && t.playing && f < 1 ? Math.sin(performance.now() * 0.018 - 1.2) * 12 : 0;
 				tailEl.style.transform = `rotate(${tailWiggle}deg)`;
 			}
 			return;
@@ -837,6 +854,12 @@
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line-track) {
+		stroke: var(--ink);
+		stroke-opacity: 0.22;
+		stroke-dasharray: 4 4;
+		pointer-events: none;
 	}
 	.map :global(.ps-line:focus-visible) {
 		outline: 2px solid var(--ink);
