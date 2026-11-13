@@ -1,4 +1,4 @@
-import { memo } from '#lib/server/data';
+import { memo, nurseryRoute } from '#lib/server/data';
 import {
 	activeNurseries,
 	fieldCaptures,
@@ -63,14 +63,18 @@ export const load: PageServerLoad = () =>
 					const to = place(e.b);
 					if (!from || !to) return [];
 					const [na, nb] = [siteName(d, e.a), siteName(d, e.b)];
+					const route = nurseryRoute(d, e.a, e.b);
+					const km = route?.km ?? dist(e.a, e.b);
+					const straightKm = route?.straightKm ?? dist(e.a, e.b);
 					return [
 						{
 							id: `${sp}-${e.a}-${e.b}`,
 							label: `${na} → ${nb}`,
 							from,
 							to,
+							path: route?.coordinates,
 							value: e.n,
-							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(dist(e.a, e.b), 1)} km`
+							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(km, 1)} km by water${straightKm != null ? ` (${round(straightKm, 1)} km straight line)` : ''}`
 						}
 					];
 				})
@@ -95,15 +99,21 @@ export const load: PageServerLoad = () =>
 			];
 		});
 		const longest = moved
-			.map((p) => ({
-				id: p.id,
-				species: p.species,
-				from: siteName(d, p.a.siteId),
-				to: siteName(d, p.b.siteId),
-				km: round(dist(p.a.siteId, p.b.siteId), 1),
-				days: p.days,
-				date: p.b.date
-			}))
+			.map((p) => {
+				const route = p.a.siteId && p.b.siteId ? nurseryRoute(d, p.a.siteId, p.b.siteId) : null;
+				const km = route?.km ?? dist(p.a.siteId, p.b.siteId);
+				const straightKm = route?.straightKm ?? dist(p.a.siteId, p.b.siteId);
+				return {
+					id: p.id,
+					species: p.species,
+					from: siteName(d, p.a.siteId),
+					to: siteName(d, p.b.siteId),
+					km: round(km, 1),
+					straightKm: round(straightKm, 1),
+					days: p.days,
+					date: p.b.date
+				};
+			})
 			.sort((a, b) => (b.km ?? 0) - (a.km ?? 0))
 			.slice(0, 15);
 

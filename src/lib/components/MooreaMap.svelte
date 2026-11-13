@@ -10,12 +10,14 @@
 		sub?: string;
 	}
 
-	/** A straight line between two places, e.g. a shark's move between nurseries. */
+	/** A straight or routed water line between two places, e.g. a shark's move between nurseries. */
 	export interface MapLine {
 		id: string;
 		label: string;
 		from: { lat: number; lon: number };
 		to: { lat: number; lon: number };
+		/** Optional multi-point routed water path [lat, lon][]. */
+		path?: [number, number][];
 		/** Sets the line width (relative to the largest). */
 		value?: number;
 		color?: string;
@@ -28,7 +30,7 @@
 	import Tip, { type TipState } from './charts/Tip.svelte';
 	import { registerCsv } from './charts/csv';
 	import { KEYS_HINT, markAt, markKeys, pointerIn } from './charts/marks';
-	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
+	import { lineWidth, offsetPolyline, polylineArrow, reversed, shiftFor } from './lineGeometry';
 
 	let {
 		points,
@@ -124,17 +126,19 @@
 		const back = reversed(lines);
 		return lines.map((l, i) => {
 			const w = lineWidth(l.value, lineMax);
-			const pts = directedPoints(
-				px(l.from.lon),
-				py(l.from.lat),
-				px(l.to.lon),
-				py(l.to.lat),
-				back[i] ? shiftFor(w) : 0
-			);
+			const rawPts: [number, number][] = l.path
+				? l.path.map(([lat, lon]) => [px(lon), py(lat)])
+				: [
+						[px(l.from.lon), py(l.from.lat)],
+						[px(l.to.lon), py(l.to.lat)]
+					];
+			const shiftedPts = offsetPolyline(rawPts, back[i] ? shiftFor(w) : 0);
+			const arrowPts = polylineArrow(shiftedPts);
 			return {
 				line: l,
 				w,
-				points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+				points: shiftedPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
+				arrowPoints: arrowPts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '),
 				arrow: colours.indexOf(l.color ?? 'var(--series-1)')
 			};
 		});
@@ -213,10 +217,17 @@
 				stroke-width={d.w}
 				stroke-linecap="round"
 				stroke-opacity="0.75"
-				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
 				role="presentation"
 				data-mark={i}
 				onpointermove={(e) => showLine(pointerIn(e), d.line)}
+			/>
+			<polyline
+				points={d.arrowPoints}
+				fill="none"
+				stroke="none"
+				marker-mid={`url(#${uid}-arrow-${d.arrow})`}
+				role="presentation"
+				pointer-events="none"
 			/>
 		{/each}
 		{#each sorted as p, i (p.id)}

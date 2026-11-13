@@ -73,10 +73,11 @@ import {
 import { buildLoggerTables } from './insitu';
 import { checkRecaptures } from './recaptures';
 import { SITE_DEFS } from './sites';
+import { computeAllNurseryRoutes } from '../oceanRoutes';
 import { readWorkbook } from './xlsx';
 
 /** Bump when import logic changes so existing caches rebuild on the next start. */
-export const IMPORTER_VERSION = '11';
+export const IMPORTER_VERSION = '13';
 
 const MIGRATIONS = import.meta.glob('/drizzle/*.sql', {
 	query: '?raw',
@@ -828,6 +829,20 @@ export function runImport(
 		};
 	});
 
+	// --- nursery water routes (#183) ------------------------------------------------------------
+	const mooreaNurseries = siteRows
+		.filter((s) => s.island === 'Moorea' && s.kind === 'nursery' && s.lat != null && s.lon != null)
+		.map((s) => ({ id: s.id, lat: s.lat!, lon: s.lon! }));
+	const routes = computeAllNurseryRoutes(mooreaNurseries);
+	const routeRows: (typeof schema.nurseryRoutes.$inferInsert)[] = routes.map((r, i) => ({
+		id: i + 1,
+		fromId: r.fromId,
+		toId: r.toId,
+		km: r.km,
+		straightKm: r.straightKm,
+		coordinates: JSON.stringify(r.coordinates)
+	}));
+
 	// --- lab sharks: link to individuals -------------------------------------------------------
 	const labRows: (typeof schema.labSharks.$inferInsert)[] = p.labSharks.map((l, i) => ({
 		id: i + 1,
@@ -962,11 +977,13 @@ export function runImport(
 		labSharks: labRows.length,
 		adultCaptures: p.adults.length,
 		loggerFiles: insitu.files.length,
-		loggerDays: insitu.daily.length
+		loggerDays: insitu.daily.length,
+		nurseryRoutes: routeRows.length
 	};
 
 	sqlite.transaction(() => {
 		insert(schema.sites, siteRows);
+		insert(schema.nurseryRoutes, routeRows);
 		insert(schema.sets, setRows);
 		insert(
 			schema.setCrew,

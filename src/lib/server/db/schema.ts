@@ -534,3 +534,17 @@ export const dataIssues = sqliteTable('data_issues', {
 	column: text('column'),
 	value: text('value')
 });
+
+/** Shortest water routes between Moorea nurseries (#183). Coordinates are JSON [lat, lon][]. */
+export const nurseryRoutes = sqliteTable(
+	'nursery_routes',
+	{
+		id: integer('id').primaryKey(),
+		fromId: text('from_site_id').notNull(),
+		toId: text('to_site_id').notNull(),
+		km: real('km').notNull(),
+		straightKm: real('straight_km').notNull(),
+		coordinates: text('coordinates').notNull()
+	},
+	(t) => [index('nursery_routes_pair').on(t.fromId, t.toId)]
+);
