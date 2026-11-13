@@ -99,6 +99,7 @@
 			still?: boolean;
 			fraction?: number;
 			playing?: boolean;
+			showAll?: boolean;
 		};
 		/** Accessible name of the map region. */
 		label: string;
@@ -451,6 +452,35 @@
 			for (const entry of currentLineEntries) {
 				const aEl = entry.arrow.getElement() as SVGPathElement | null;
 				if (aEl) aEl.style.opacity = '';
+			}
+			lastLineEl = undefined;
+			lastArrowEl = undefined;
+			return;
+		}
+
+		// When showing all moves overview, display all lines solid with their arrows, without a traveller dot (#183).
+		if (t.showAll) {
+			dot?.remove();
+			dot = undefined;
+			if (el) {
+				const lines = el.querySelectorAll<SVGPathElement>('.ps-line');
+				lines.forEach((l) => {
+					l.style.strokeDasharray = '';
+					l.style.strokeDashoffset = '';
+				});
+				const arrows = el.querySelectorAll<SVGPathElement>('.ps-arrow');
+				arrows.forEach((a) => {
+					a.style.opacity = '1';
+				});
+			}
+			for (const entry of currentLineEntries) {
+				const lEl = entry.line.getElement() as SVGPathElement | null;
+				if (lEl) {
+					lEl.style.strokeDasharray = '';
+					lEl.style.strokeDashoffset = '';
+				}
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) aEl.style.opacity = '1';
 			}
 			lastLineEl = undefined;
 			lastArrowEl = undefined;

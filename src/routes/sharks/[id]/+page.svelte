@@ -19,7 +19,7 @@
 	const totalMoves = $derived(Math.max(1, stops - 1));
 	let progress = $state(0);
 	let playing = $state(false);
-	let showAll = $state(false);
+	let showAll = $state(true);
 
 	// Which leg of the track is active (0 to totalMoves - 1):
 	const activeLeg = $derived(Math.min(totalMoves - 1, Math.floor(progress)));
@@ -41,10 +41,10 @@
 
 	function play() {
 		if (playing) return stop();
-		showAll = false;
-		if (progress >= totalMoves - 0.001) {
+		if (showAll || progress >= totalMoves - 0.001) {
 			progress = 0;
 		}
+		showAll = false;
 		playing = true;
 	}
 
@@ -59,6 +59,14 @@
 		showAll = true;
 		progress = totalMoves;
 	}
+
+	$effect(() => {
+		// Default to All moves overview when opening or switching sharks (#183).
+		const _id = data.ind.id;
+		stop();
+		showAll = Boolean(data.moves.length);
+		progress = data.moves.length ? totalMoves : 0;
+	});
 
 	$effect(() => {
 		if (!playing) return;
@@ -150,7 +158,7 @@
 				{#if data.moves.length}
 					<div class="player">
 						<button type="button" class="play" onclick={play} aria-pressed={playing}>
-							{playing ? 'Pause' : progress >= totalMoves ? 'Replay' : 'Play'}
+							{playing ? 'Pause' : !showAll && progress >= totalMoves ? 'Replay' : 'Play'}
 						</button>
 						<label for="capture-slider">Capture</label>
 						<input
@@ -242,7 +250,8 @@
 									lineId: activeMove?.id,
 									still: !activeMove,
 									fraction: showAll ? 1 : legFraction,
-									playing
+									playing,
+									showAll
 								}
 							: undefined}
 					/>
