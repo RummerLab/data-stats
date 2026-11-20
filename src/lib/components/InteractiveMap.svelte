@@ -116,34 +116,87 @@
 	}
 
 	// Leaflet paths have pointer handlers but are not keyboard controls by default.
-	function keyboardLine(line: import('leaflet').Polyline, label: string) {
-		line.on('add', () => {
-			const path = line.getElement() as SVGElement | undefined;
-			if (!path) return;
-			path.setAttribute('tabindex', '0');
-			path.setAttribute('role', 'button');
-			path.setAttribute('aria-label', label);
-			path.onfocus = () => line.openTooltip();
-			path.onblur = () => line.closeTooltip();
-			path.onkeydown = (e) => {
+	function keyboardInteractive<T extends import('leaflet').Path>(layer: T, label: string): T {
+		const init = () => {
+			const el = layer.getElement() as SVGElement | undefined;
+			if (!el) return;
+			el.setAttribute('tabindex', '0');
+			el.setAttribute('role', 'button');
+			el.setAttribute('aria-label', label);
+			el.onfocus = () => layer.openTooltip();
+			el.onblur = () => layer.closeTooltip();
+			el.onkeydown = (e) => {
 				if (e.key === 'Enter' || e.key === ' ') {
 					e.preventDefault();
 					e.stopPropagation();
-					if (e.key === 'Enter') line.openPopup();
+					if (e.key === 'Enter') layer.openPopup();
 				} else if (e.key === 'Escape') {
-					line.closePopup();
-					line.closeTooltip();
+					layer.closePopup();
+					layer.closeTooltip();
 				}
 			};
-			path.onkeyup = (e) => {
+			el.onkeyup = (e) => {
 				if (e.key === ' ') {
 					e.preventDefault();
 					e.stopPropagation();
-					line.openPopup();
+					layer.openPopup();
 				}
 			};
+		};
+		layer.on('add', init);
+		if (layer.getElement()) init();
+		layer.on('popupopen', (e) => {
+			const popupEl = (e as unknown as { popup?: import('leaflet').Popup })?.popup?.getElement();
+			if (!popupEl) return;
+			// The close button is also an <a href>, so look inside the body only. Without a link or
+			// button there, focus the content so the details are still read out (adult captures).
+			const content = popupEl.querySelector<HTMLElement>('.leaflet-popup-content');
+			let target = content?.querySelector<HTMLElement>('a[href], button') ?? null;
+			if (!target && content) {
+				content.tabIndex = -1;
+				target = content;
+			}
+			if (target) focusSoon(target, document.activeElement);
+			const dismiss = (ev: Event) => {
+				ev.preventDefault();
+				ev.stopPropagation();
+				layer.closePopup();
+				(layer.getElement() as HTMLElement | undefined)?.focus();
+			};
+			const closeBtn = popupEl.querySelector<HTMLElement>('.leaflet-popup-close-button');
+			if (closeBtn) {
+				closeBtn.onclick = dismiss;
+				closeBtn.onkeydown = (ev: KeyboardEvent) => {
+					if (ev.key === 'Enter' || ev.key === ' ') dismiss(ev);
+				};
+			}
+			popupEl.onkeydown = (ev: KeyboardEvent) => {
+				if (ev.key === 'Escape') dismiss(ev);
+			};
 		});
-		return line;
+		return layer;
+	}
+
+	// Leaflet hides the popup body while it lays the popup out, so focusing it straight from
+	// popupopen can land while it is still visibility: hidden and be ignored. Retry for a few
+	// frames, but stop as soon as focus has moved somewhere else (the user tabbed or clicked).
+	function focusSoon(target: HTMLElement, from: Element | null) {
+		const attempt = (tries: number) => {
+			if (!target.isConnected) return;
+			target.focus();
+			if (document.activeElement === target) return;
+			const active = document.activeElement;
+			if (active && active !== from && active !== document.body) return;
+			if (tries > 1) requestAnimationFrame(() => attempt(tries - 1));
+		};
+		attempt(30);
+	}
+
+	function pointLabel(p: MapPoint, unit = valueLabel) {
+		const parts = [p.label];
+		if (p.value != null && unit) parts.push(`${unit}: ${format(p.value)}`);
+		if (p.sub) parts.push(p.sub);
+		return parts.join(' · ');
 	}
 
 	function popup(p: MapPoint | MapLine, unit = valueLabel) {
@@ -277,7 +330,7 @@
 				line.on('add', () =>
 					line.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
 				);
-				keyboardLine(line, l.label)
+				keyboardInteractive(line, l.label)
 					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
@@ -299,10 +352,11 @@
 							((layer.maxRadius ?? 18) - 5) *
 								Math.sqrt(Math.min(1, Math.max(0, p.value ?? 0) / max))
 						: (layer.radius ?? 5);
-				L.circleMarker([p.lat, p.lon], {
+				const marker = L.circleMarker([p.lat, p.lon], {
 					radius: r,
 					className: `ps-layer ps-layer-${i}${empty ? ' ps-empty' : ''}`
-				})
+				});
+				keyboardInteractive(marker, pointLabel(p))
 					.bindTooltip(tooltip(p.label))
 					.bindPopup(() => popup(p))
 					.addTo(group);
@@ -500,6 +554,10 @@
 	.map :global(.ps-line:focus-visible) {
 		outline: 2px solid var(--ink);
 		outline-offset: 4px;
+	}
+	.map :global(.ps-layer:focus-visible) {
+		outline: 2px solid var(--ink);
+		outline-offset: 3px;
 	}
 	.map :global(.ps-line-key) {
 		border-radius: 2px;
