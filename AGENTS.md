@@ -39,6 +39,7 @@ src/lib/server/import/   xlsx.ts (reader) · normalize.ts (cell parsers) · colu
                          loggers.ts (HOBO/EnvLogger CSVs, register) · insitu.ts (site, hourly/daily/diel)
                          index.ts (orchestrator: link sets, individuals, env joins, write DB)
 src/lib/server/db/       schema.ts (Drizzle) · index.ts (fingerprint, rebuild, atomic swap)
+src/lib/server/oceanRoutes.ts Moorea water raster grid, A* shortest water routes, GeoJSON (#183)
 src/lib/server/data.ts   loads the whole dataset into memory per import; memo() caches analyses
 src/lib/server/analytics common.ts (CPUE, Fulton's K, recapture pairs…) · env.ts (per-set variables)
                          findings.ts (live findings) · insitu.ts (logger temperature summaries)
@@ -151,6 +152,13 @@ samples/fixture/         synthetic workbooks for tests/CI (committed)
 - `node scripts/fetch-external.mjs --only=oisst` rewrites just the OISST column of the existing snapshot. `pnpm test` also runs `scripts/erddap.test.mjs` with `node --test`.
 - Analyses use OISST, else Coral Reef Watch (`oisst ?? crwSst`). Credit it with `SST_SOURCE` from `src/lib/sst.ts`. A snapshot change already rebuilds caches, so no `IMPORTER_VERSION` bump.
 
+### Nursery water routes (#183)
+
+- `src/lib/server/oceanRoutes.ts`: computes shortest water routes around Moorea between all pairs of nurseries using grid A* routing around the island's coastline (`src/lib/moorea-outline.json`, OpenStreetMap, ODbL 1.0). The 35 m grid rasters Moorea island with a 2 km buffer, calculates chamfer distance-to-land, snaps nursery points to nearby water, searches with an A* penalty near land to avoid hugging rocks, and smooths with raycast string-pulling.
+- Precomputed routes are stored in SQLite `nursery_routes` (`cache/` disposable database), bumping `IMPORTER_VERSION` to `'13'`. Never commit nursery coordinates or precomputed routes to git.
+- Move lines on `/recaptures` and `/sharks/[id]` render multi-point polylines along the water route, offset rightwards if reversed, and display water distance (`≥ X km by water`, with direct straight-line distance alongside). On shark pages, the map defaults to an "All moves" overview on load with directional arrows on all paths; clicking Play steps through the captures in order with continuous slider scrubbing (`step="0.002"`), progressive line drawing, real-time distance and capture stop pills, gliding a traveller dot along the water route with directional arrows hidden during playback to keep the animated line clean (jumping under `prefers-reduced-motion`).
+- Standalone CLI `node scripts/ocean-routes.mjs` (or `pnpm routes`, with optional `--geojson`) verifies that 0 routes cross land.
+
 ### Adding a new season
 
 Drop the workbook in `data/` named like `Physioshark_Shark Log 2026-2027.xlsx` (the `YYYY-YYYY` in the file name sets the season). Check the Data quality page for unknown sites, unmatched headers ("Sheet not imported") and unit warnings, and extend aliases if needed. Never rename columns in the workbook to make the importer happy.
@@ -191,6 +199,7 @@ pnpm build && pnpm test:e2e  # Playwright + axe against the production build
 pnpm db:generate             # after editing schema.ts
 pnpm external                # refresh environmental snapshots
 pnpm fixture                 # regenerate synthetic workbooks
+pnpm routes                  # compute and verify nursery water routes (scripts/ocean-routes.mjs)
 pnpm social-preview          # re-render static/og-image.png + docs/social-preview.png (Playwright)
 REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # opt-in real-data summary
 ```
@@ -233,6 +242,7 @@ Questions for the lab go to Dr Jodie Rummer (`@JodieRummer`) on GitHub: label th
 | 2026-11 | v0.2.6: offshore chlorophyll-a (#23); apparent survival with a Cormack–Jolly–Seber model (#42); nursery month × hour temperature calendars (#127); scar transitions (#126); measurement coverage and the catch model's sample selection (#123); catch-model fit diagnostics (#125); conditions on fieldwork nights vs their months (#124); scrollable tables keyboard-reachable (#150); sitemap, llms.txt, humans.txt (#140, #141, #143); GA4 on production hosts (#145); fixture fits the catch model in CI (#153). IMPORTER_VERSION 9: caches rebuild. |
 | 2026-11 | v0.2.7: SST is NOAA OISST again, with Coral Reef Watch only where OISST is missing (#154: the old endpoint had left the column empty); ERDDAP failures stop a snapshot instead of blanking it; patched esbuild and minimatch, and map tooltips rendered as text (#144).                                                                                                                                                                                                                                                                                  |
 | 2026-11 | v0.2.10: pressure scores from the Bouyoucos et al. (2024) dataset (#131); year-off recaptures take their set's date (#133); lab statistics conventions (#132) and sex-ratio wording (#130); capture numbers that disagree with the tags go on the Data quality page (#168).                                                                                                                                                                                                                                                                              |
+| 2026-11 | v0.2.13: shortest water routes between Moorea nurseries precomputed via grid A* routing around the island coastline (#183); move lines follow water paths, offset rightwards when reversed, with water distance; shark player animation glides along the water route; IMPORTER_VERSION 13.                                                                                                                                                                                                                                                               |
 
 - Security scans (#144): use Snyk CLI >=1.1308.3 with `test --all-projects --dev` for the pnpm 12 multi-document lockfile. Remaining upstream advisories and mitigations are tracked in docs/dev/SNYK-144.md.
 - Seasonal comparisons must report dates from their eligible sets, not an assumed October–February window (2020–21 starts in September). ISPF's Moorea hotel-room sales are a visitor proxy, not a count of people on the water.

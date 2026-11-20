@@ -25,6 +25,7 @@
 		"social-preview": "node scripts/make-social-preview.mjs",
 		"external": "node scripts/fetch-external.mjs",
 		"import": "node scripts/import.mjs",
+		"routes": "node scripts/ocean-routes.mjs",
 		"start": "node scripts/server.mjs"
 	},
 	"devDependencies": {

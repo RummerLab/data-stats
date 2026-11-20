@@ -53,7 +53,15 @@
 	import { onMount, tick } from 'svelte';
 	import MooreaMap from './MooreaMap.svelte';
 	import { registerCsv } from './charts/csv';
-	import { directedPoints, lineWidth, reversed, shiftFor } from './lineGeometry';
+	import {
+		lineWidth,
+		moveDuration,
+		offsetPolyline,
+		pointAlongPath,
+		polylineArrow,
+		reversed,
+		shiftFor
+	} from './lineGeometry';
 
 	let {
 		layers,
@@ -67,6 +75,7 @@
 		format = (v: number) => String(Math.round(v)),
 		focus,
 		height = 440,
+		bounds,
 		fallback
 	}: {
 		layers: MapLayer[];
@@ -77,12 +86,20 @@
 		density?: MapDensity;
 		/** Value that gets the widest line; fix it so widths don't jump as lines are added. */
 		lineMax?: number;
-		/** A dot that glides from `from` to `to` whenever `key` changes (a Play button). */
+		/** A dot that glides from `from` to `to` along the water route whenever `key` changes (a Play button). */
 		traveller?: {
 			key: string | number;
 			from: { lat: number; lon: number };
 			to: { lat: number; lon: number };
+			path?: [number, number][];
+			km?: number | null;
 			color: string;
+			species?: string;
+			lineId?: string;
+			still?: boolean;
+			fraction?: number;
+			playing?: boolean;
+			showAll?: boolean;
 		};
 		/** Accessible name of the map region. */
 		label: string;
@@ -91,6 +108,8 @@
 		/** Open zoomed on this point instead of fitting all points. */
 		focus?: { lat: number; lon: number; zoom?: number };
 		height?: number;
+		/** Extra coordinates to include in initial fitBounds (e.g. future moves on a stepped shark map). */
+		bounds?: [number, number][];
 		/** Points for the server-rendered SVG map shown before Leaflet loads (default: first layer). */
 		fallback?: MapPoint[];
 	} = $props();
@@ -254,9 +273,22 @@
 				])
 			);
 			bases[BASEMAPS[0].name].addTo(m);
-			const all = layers.flatMap((l) => l.points.map((p) => [p.lat, p.lon] as [number, number]));
+			const all: [number, number][] = [
+				...layers.flatMap((l) => l.points.map((p) => [p.lat, p.lon] as [number, number])),
+				...lineLayers.flatMap((g) =>
+					g.lines.flatMap((l) =>
+						l.path && l.path.length > 0
+							? l.path
+							: ([
+									[l.from.lat, l.from.lon],
+									[l.to.lat, l.to.lon]
+								] as [number, number][])
+					)
+				),
+				...(bounds ?? [])
+			];
 			if (focus) m.setView([focus.lat, focus.lon], focus.zoom ?? 14);
-			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [24, 24], maxZoom: 14 });
+			else if (all.length) m.fitBounds(L.latLngBounds(all), { padding: [36, 36], maxZoom: 14 });
 			else m.setView([-17.53, -149.83], 12);
 			// Line offsets are in screen pixels, so redraw them at each zoom (#182).
 			m.on('zoomend', () => (zoom = m.getZoom()));
@@ -270,6 +302,7 @@
 	});
 
 	// Redraw the overlays whenever the layers change (e.g. a season slider), keeping the view.
+	let lastLayerKey = '';
 	$effect(() => {
 		const m = map;
 		const L = leaflet;
@@ -278,6 +311,11 @@
 		const currentDensity = density;
 		void zoom;
 		if (!m || !L || !el) return;
+
+		const layerKey = `${current.map((l) => `${l.name}:${l.points.length}`).join('|')}_${currentLines.map((g) => `${g.name}:${g.lines.map((l) => (l as { id?: string }).id ?? l.label).join(',')}`).join('|')}_${currentDensity?.name ?? ''}_${zoom}`;
+		if (drawn.length && layerKey === lastLayerKey) return;
+		lastLayerKey = layerKey;
+
 		const hidden = new Set(
 			drawn.flatMap((d) => d.groups.filter((g) => !m.hasLayer(g.group)).map((g) => g.key))
 		);
@@ -311,35 +349,70 @@
 		// Direction (#182): an arrow mid-line; a move drawn both ways splits into two parallel lines.
 		const back = reversed(currentLines.flatMap((g) => g.lines));
 		let n = 0;
+		const lineEntries: {
+			l: MapLine;
+			line: import('leaflet').Polyline;
+			arrow: import('leaflet').Polyline;
+		}[] = [];
 		const lineGroups = currentLines.map((g, i) => {
 			const group = L.layerGroup();
 			for (const l of g.lines) {
 				const weight = lineWidth(l.value, lineMax);
-				const a = m.latLngToLayerPoint([l.from.lat, l.from.lon]);
-				const b = m.latLngToLayerPoint([l.to.lat, l.to.lon]);
-				const pts = directedPoints(a.x, a.y, b.x, b.y, back[n++] ? shiftFor(weight) : 0).map(
-					([x, y]) => m.layerPointToLatLng([x, y])
-				);
-				const line = L.polyline(pts, {
+				const rawPts: [number, number][] = l.path
+					? l.path.map(([lat, lon]) => {
+							const pt = m.latLngToLayerPoint([lat, lon]);
+							return [pt.x, pt.y];
+						})
+					: [
+							(() => {
+								const pt = m.latLngToLayerPoint([l.from.lat, l.from.lon]);
+								return [pt.x, pt.y];
+							})(),
+							(() => {
+								const pt = m.latLngToLayerPoint([l.to.lat, l.to.lon]);
+								return [pt.x, pt.y];
+							})()
+						];
+				const shiftedPts = offsetPolyline(rawPts, back[n++] ? shiftFor(weight) : 0);
+				const latLngs = shiftedPts.map(([x, y]) => m.layerPointToLatLng([x, y]));
+				L.polyline(latLngs, {
+					weight: Math.max(1.5, weight - 1),
+					className: `ps-line-track ps-line-track-${i}`,
+					smoothFactor: 0,
+					interactive: false
+				}).addTo(group);
+				const line = L.polyline(latLngs, {
 					weight,
 					className: `ps-line ps-line-${i}`,
 					lineCap: 'round',
-					// Keep the midpoint the arrow marker hangs on (Leaflet would simplify it away).
 					smoothFactor: 0
 				});
-				line.on('add', () =>
-					line.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
-				);
 				keyboardInteractive(line, l.label)
 					.bindTooltip(tooltip(l.label))
 					.bindPopup(() => popup(l, lineLabel))
 					.addTo(group);
+				const arrowLatLngs = polylineArrow(shiftedPts).map(([x, y]) =>
+					m.layerPointToLatLng([x, y])
+				);
+				const arrow = L.polyline(arrowLatLngs, {
+					stroke: false,
+					interactive: false,
+					className: `ps-arrow ps-arrow-${i}`,
+					smoothFactor: 0,
+					noClip: true
+				});
+				arrow.on('add', () =>
+					arrow.getElement()?.setAttribute('marker-mid', `url(#${uid}-arrow-${i})`)
+				);
+				arrow.addTo(group);
+				lineEntries.push({ l, line, arrow });
 			}
 			const key = `line:${i}`;
 			if (!hidden.has(key)) group.addTo(m);
 			overlays[`<span class="ps-key ps-line-key ps-line-${i}"></span>${g.name}`] = group;
 			return { key, group };
 		});
+		currentLineEntries = lineEntries;
 		const groups = current.map((layer, i) => {
 			const max = layer.max ?? Math.max(1e-9, ...layer.points.map((p) => p.value ?? 0));
 			const group = L.layerGroup();
@@ -378,39 +451,203 @@
 		drawn = [{ groups: [...densityGroups, ...lineGroups, ...groups], control }];
 	});
 
-	// Glide a dot along the traveller's line; reduced motion (#32) just places it at the end.
+	// Glide a dot and animate the move line along the water route (#183).
 	let dot: import('leaflet').CircleMarker | undefined;
+	let lastLineEl: SVGPathElement | undefined;
+	let lastArrowEl: SVGPathElement | undefined;
+	let currentLineEntries: {
+		l: MapLine;
+		line: import('leaflet').Polyline;
+		arrow: import('leaflet').Polyline;
+	}[] = [];
 	$effect(() => {
 		const m = map;
 		const L = leaflet;
 		const t = traveller;
 		if (!m || !L) return;
-		dot?.remove();
-		dot = undefined;
-		if (!t) return;
-		const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-		const at = (f: number): [number, number] => [
-			t.from.lat + (t.to.lat - t.from.lat) * f,
-			t.from.lon + (t.to.lon - t.from.lon) * f
-		];
-		const marker = L.circleMarker(at(still ? 1 : 0), {
-			radius: 7,
-			className: 'ps-traveller',
-			interactive: false
-		}).addTo(m);
-		(marker.getElement() as SVGElement | undefined)?.style.setProperty('fill', t.color);
-		dot = marker;
+		if (!t) {
+			dot?.remove();
+			dot = undefined;
+			if (lastLineEl) {
+				lastLineEl.style.strokeDasharray = '';
+				lastLineEl.style.strokeDashoffset = '';
+			}
+			for (const entry of currentLineEntries) {
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) aEl.style.opacity = '';
+			}
+			lastLineEl = undefined;
+			lastArrowEl = undefined;
+			return;
+		}
+
+		// When showing all moves overview, display all lines solid with their arrows, without a traveller dot (#183).
+		if (t.showAll) {
+			dot?.remove();
+			dot = undefined;
+			if (el) {
+				const lines = el.querySelectorAll<SVGPathElement>('.ps-line');
+				lines.forEach((l) => {
+					l.style.strokeDasharray = '';
+					l.style.strokeDashoffset = '';
+				});
+				const arrows = el.querySelectorAll<SVGPathElement>('.ps-arrow');
+				arrows.forEach((a) => {
+					a.style.opacity = '1';
+				});
+			}
+			for (const entry of currentLineEntries) {
+				const lEl = entry.line.getElement() as SVGPathElement | null;
+				if (lEl) {
+					lEl.style.strokeDasharray = '';
+					lEl.style.strokeDashoffset = '';
+				}
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) aEl.style.opacity = '1';
+			}
+			lastLineEl = undefined;
+			lastArrowEl = undefined;
+			return;
+		}
+		const still = Boolean(t.still);
+		const path: [number, number][] =
+			t.path && t.path.length >= 2
+				? t.path
+				: [
+						[t.from.lat, t.from.lon],
+						[t.to.lat, t.to.lon]
+					];
+		const at = (f: number): [number, number] => pointAlongPath(path, f);
+
+		if (!dot) {
+			dot = L.circleMarker(at(still ? 1 : 0), {
+				radius: 7,
+				className: 'ps-traveller',
+				interactive: false
+			}).addTo(m);
+		}
+		dot.setStyle({ fillColor: t.color, color: '#ffffff' });
+
+		// Locate the move line matching this traveller step to progressively draw its stroke.
+		const target = currentLineEntries.find(
+			(e) =>
+				(t.lineId && (e.l as { id?: string }).id === t.lineId) ||
+				(Math.abs(e.l.from.lat - t.from.lat) < 1e-4 &&
+					Math.abs(e.l.from.lon - t.from.lon) < 1e-4 &&
+					Math.abs(e.l.to.lat - t.to.lat) < 1e-4 &&
+					Math.abs(e.l.to.lon - t.to.lon) < 1e-4)
+		);
+		let lineEl = (target?.line.getElement() ??
+			(el?.querySelector('.ps-line') as SVGPathElement | null)) as SVGPathElement | undefined;
+		let arrowEl = (target?.arrow.getElement() ??
+			(el?.querySelector('path[marker-mid]') as SVGPathElement | null)) as
+			SVGPathElement | undefined;
+		if (lastLineEl && lastLineEl !== lineEl) {
+			lastLineEl.style.strokeDasharray = '';
+			lastLineEl.style.strokeDashoffset = '';
+		}
+		if (lastArrowEl && lastArrowEl !== arrowEl) {
+			lastArrowEl.style.opacity = '0';
+		}
+		lastLineEl = lineEl;
+		lastArrowEl = arrowEl;
+		let totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
+
+		// When fraction is explicitly passed (continuous scrubbing or smooth external RAF loop):
+		if (t.fraction != null) {
+			const f = still ? 1 : Math.max(0, Math.min(1, t.fraction));
+			if (lineEl && totalLen > 0) {
+				if (f >= 1) {
+					lineEl.style.strokeDasharray = '';
+					lineEl.style.strokeDashoffset = '';
+				} else {
+					lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+					lineEl.style.strokeDashoffset = `${totalLen * (1 - f)}`;
+				}
+			}
+
+			// Keep arrow visible on dotted line before playback/scrubbing starts; hide once playing or moving (#183).
+			const showArrow = !t.playing && f < 0.01;
+			for (const entry of currentLineEntries) {
+				const aEl = entry.arrow.getElement() as SVGPathElement | null;
+				if (aEl) {
+					aEl.style.opacity = showArrow && entry === target ? '1' : '0';
+				}
+			}
+
+			if (lineEl && totalLen > 0 && lineEl.getPointAtLength) {
+				const pt = lineEl.getPointAtLength(totalLen * f);
+				dot.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
+			} else {
+				dot.setLatLng(at(f));
+			}
+			return;
+		}
+
+		// Fallback self-driven RAF animation when fraction is omitted:
 		if (still) return;
+
+		for (const entry of currentLineEntries) {
+			const aEl = entry.arrow.getElement() as SVGPathElement | null;
+			if (aEl) aEl.style.opacity = '0';
+		}
+
+		if (lineEl && totalLen > 0) {
+			lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+			lineEl.style.strokeDashoffset = `${totalLen}`;
+		}
+
 		const start = performance.now();
 		let frame = 0;
+		const duration = moveDuration(t.km);
+		const marker = dot;
 		const step = (now: number) => {
-			const f = Math.min(1, (now - start) / 800);
+			const f = Math.min(1, (now - start) / duration);
 			const eased = f < 0.5 ? 2 * f * f : 1 - (-2 * f + 2) ** 2 / 2;
-			marker.setLatLng(at(eased));
-			if (f < 1) frame = requestAnimationFrame(step);
+
+			// Re-anchor if zoom redraw replaced elements during animation.
+			if (target && (!lineEl || !lineEl.isConnected)) {
+				lineEl = target.line.getElement() as SVGPathElement | undefined;
+				arrowEl = target.arrow.getElement() as SVGPathElement | undefined;
+				totalLen = lineEl?.getTotalLength ? lineEl.getTotalLength() : 0;
+				if (lineEl && totalLen > 0) {
+					lineEl.style.strokeDasharray = `${totalLen} ${totalLen}`;
+				}
+			}
+
+			if (lineEl && totalLen > 0) {
+				lineEl.style.strokeDashoffset = `${totalLen * (1 - eased)}`;
+				if (lineEl.getPointAtLength) {
+					const pt = lineEl.getPointAtLength(totalLen * eased);
+					marker.setLatLng(m.layerPointToLatLng([pt.x, pt.y]));
+				} else {
+					marker.setLatLng(at(eased));
+				}
+			} else {
+				marker.setLatLng(at(eased));
+			}
+
+			if (f < 1) {
+				frame = requestAnimationFrame(step);
+			} else {
+				if (lineEl) {
+					lineEl.style.strokeDasharray = '';
+					lineEl.style.strokeDashoffset = '';
+				}
+				if (arrowEl) arrowEl.style.opacity = '0';
+			}
 		};
 		frame = requestAnimationFrame(step);
-		return () => cancelAnimationFrame(frame);
+		return () => {
+			cancelAnimationFrame(frame);
+			if (lineEl) {
+				lineEl.style.strokeDasharray = '';
+				lineEl.style.strokeDashoffset = '';
+			}
+			if (arrowEl) {
+				arrowEl.style.opacity = '0';
+			}
+		};
 	});
 
 	const style = $derived(
@@ -544,12 +781,25 @@
 		background: linear-gradient(90deg, var(--seq-2), var(--seq-6));
 	}
 	.map :global(.ps-traveller) {
-		stroke: #fff;
-		stroke-width: 2px;
+		stroke: #ffffff;
+		stroke-width: 2.5px;
 		fill-opacity: 1;
+		filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.45));
 	}
 	.map :global(.leaflet-interactive.ps-line) {
 		stroke-opacity: 0.75;
+	}
+	.map :global(.ps-line-track) {
+		stroke: var(--ps-line-0, #2563eb);
+		stroke-opacity: 0.6;
+		stroke-dasharray: 4 4;
+		pointer-events: none;
+	}
+	.map :global(.ps-line-track-0) {
+		stroke: var(--ps-line-0, #2563eb);
+	}
+	.map :global(.ps-line-track-1) {
+		stroke: var(--ps-line-1, #ea580c);
 	}
 	.map :global(.ps-line:focus-visible) {
 		outline: 2px solid var(--ink);
