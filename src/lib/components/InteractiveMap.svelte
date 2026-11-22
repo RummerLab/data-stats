@@ -312,7 +312,10 @@
 		void zoom;
 		if (!m || !L || !el) return;
 
-		const layerKey = `${current.map((l) => `${l.name}:${l.points.length}`).join('|')}_${currentLines.map((g) => `${g.name}:${g.lines.map((l) => (l as { id?: string }).id ?? l.label).join(',')}`).join('|')}_${currentDensity?.name ?? ''}_${zoom}`;
+		// Skip the redraw only when nothing drawn has changed: the shark player recreates its line
+		// layers every animation frame, and a redraw would restart the line it is drawing. Compare the
+		// content, not a summary, so changed values, labels or paths are never left stale.
+		const layerKey = JSON.stringify([current, currentLines, currentDensity, zoom]);
 		if (drawn.length && layerKey === lastLayerKey) return;
 		lastLayerKey = layerKey;
 

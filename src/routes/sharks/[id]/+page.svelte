@@ -26,12 +26,20 @@
 	const legFraction = $derived(progress >= totalMoves ? 1 : Math.max(0, progress - activeLeg));
 	const fromStop = $derived(data.track[activeLeg] ?? data.track[0]);
 	const toStop = $derived(data.track[activeLeg + 1] ?? data.track[stops - 1]);
-	// The move between consecutive captures (m.at is the destination capture index in +page.server.ts):
-	const activeMove = $derived(data.moves.find((m) => m.at === activeLeg + 1));
+	// The move into a track stop. `m.at` indexes all captures (the destination is capture m.at + 1),
+	// while the track skips captures with no location, so match on capture numbers. A leg across an
+	// unlocated capture has no move: the dot jumps instead of gliding across an unknown stop.
+	function moveFor(leg: number) {
+		const a = data.track[leg];
+		const b = data.track[leg + 1];
+		if (!a || !b || b.n !== a.n + 1) return undefined;
+		return data.moves.find((m) => m.at + 1 === b.n);
+	}
+	const activeMove = $derived(moveFor(activeLeg));
 	const color = $derived(speciesColor(ind.species));
 
 	const shownMoves = $derived(
-		showAll ? data.moves : data.moves.filter((m) => m.at <= activeLeg + 1)
+		showAll ? data.moves : data.moves.filter((m) => m.at + 1 <= toStop.n)
 	);
 	const moveLayers = $derived([{ name: 'Moves', color, lines: shownMoves }]);
 
@@ -68,8 +76,28 @@
 		progress = data.moves.length ? totalMoves : 0;
 	});
 
+	// Reduced motion (#32): step from capture to capture instead of gliding.
+	let reduced = $state(false);
 	$effect(() => {
-		if (!playing) return;
+		const mq = matchMedia('(prefers-reduced-motion: reduce)');
+		reduced = mq.matches;
+		const on = () => (reduced = mq.matches);
+		mq.addEventListener('change', on);
+		return () => mq.removeEventListener('change', on);
+	});
+
+	$effect(() => {
+		if (!playing || !reduced) return;
+		const timer = setInterval(() => {
+			const next = Math.floor(progress + 1e-6) + 1;
+			progress = Math.min(totalMoves, next);
+			if (next >= totalMoves) playing = false;
+		}, 1400);
+		return () => clearInterval(timer);
+	});
+
+	$effect(() => {
+		if (!playing || reduced) return;
 		let lastTime: number | null = null;
 		let raf: number;
 		const tick = (now: number) => {
@@ -83,7 +111,7 @@
 			lastTime = now;
 
 			const leg = Math.min(totalMoves - 1, Math.floor(progress));
-			const move = data.moves.find((m) => m.at === leg + 1);
+			const move = moveFor(leg);
 			const duration = moveDuration(move?.km);
 			const next = progress + dt / Math.max(800, duration);
 
@@ -188,7 +216,7 @@
 								{/if}
 							{:else if progress >= 0.99}
 								{@const arrivedStop = toStop}
-								{@const prevStop = fromStop}
+								{@const prevStop = fromStop.n === arrivedStop.n - 1 ? fromStop : null}
 								<strong>Capture {arrivedStop.n} of {ind.nCaptures}</strong>
 								· {date(arrivedStop.date)} · {arrivedStop.site}{arrivedStop.tl != null
 									? ` · ${num(arrivedStop.tl)} mm`
@@ -248,7 +276,7 @@
 									color,
 									species: ind.species,
 									lineId: activeMove?.id,
-									still: !activeMove,
+									still: !activeMove || reduced,
 									fraction: showAll ? 1 : legFraction,
 									playing,
 									showAll

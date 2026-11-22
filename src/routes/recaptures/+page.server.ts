@@ -64,7 +64,6 @@ export const load: PageServerLoad = () =>
 					if (!from || !to) return [];
 					const [na, nb] = [siteName(d, e.a), siteName(d, e.b)];
 					const route = nurseryRoute(d, e.a, e.b);
-					const km = route?.km ?? dist(e.a, e.b);
 					const straightKm = route?.straightKm ?? dist(e.a, e.b);
 					return [
 						{
@@ -74,7 +73,7 @@ export const load: PageServerLoad = () =>
 							to,
 							path: route?.coordinates,
 							value: e.n,
-							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${round(km, 1)} km by water${straightKm != null ? ` (${round(straightKm, 1)} km straight line)` : ''}`
+							sub: `${e.n} move${e.n === 1 ? '' : 's'} · ${route ? `${round(route.km, 1)} km by water (${round(straightKm, 1)} km straight line)` : `${round(straightKm, 1)} km straight line`}`
 						}
 					];
 				})
@@ -101,20 +100,21 @@ export const load: PageServerLoad = () =>
 		const longest = moved
 			.map((p) => {
 				const route = p.a.siteId && p.b.siteId ? nurseryRoute(d, p.a.siteId, p.b.siteId) : null;
-				const km = route?.km ?? dist(p.a.siteId, p.b.siteId);
+				// No water route (a site off the grid): leave the water column empty, not straight-line km.
+				const km = route?.km ?? null;
 				const straightKm = route?.straightKm ?? dist(p.a.siteId, p.b.siteId);
 				return {
 					id: p.id,
 					species: p.species,
 					from: siteName(d, p.a.siteId),
 					to: siteName(d, p.b.siteId),
-					km: round(km, 1),
+					km: km != null ? round(km, 1) : null,
 					straightKm: round(straightKm, 1),
 					days: p.days,
 					date: p.b.date
 				};
 			})
-			.sort((a, b) => (b.km ?? 0) - (a.km ?? 0))
+			.sort((a, b) => (b.km ?? b.straightKm ?? 0) - (a.km ?? a.straightKm ?? 0))
 			.slice(0, 15);
 
 		const most = [...d.individuals]
