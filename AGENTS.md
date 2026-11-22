@@ -206,6 +206,8 @@ REAL_DATA_DIR=data pnpm vitest run src/lib/server/import/realData.test.ts   # op
 
 ### Before push / finishing a PR (required for agents)
 
+Run `pnpm format` (Prettier `--write`) before opening a PR and again before merging if anything still fails `pnpm lint` — especially after editing Markdown tables or Svelte markup, or after a prettier / prettier-plugin-svelte bump. Commit the reformats; do not open or merge with a red Prettier check.
+
 | Change                              | Local checks                                                         |
 | ----------------------------------- | -------------------------------------------------------------------- |
 | Docs only                           | `pnpm lint`                                                          |
