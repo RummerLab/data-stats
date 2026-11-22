@@ -6,8 +6,9 @@
 # days are skipped (`--cooldown`) so a hijacked release has time to be yanked before it
 # reaches the image.
 #
-# package.json is the only file this job edits on purpose. pnpm then re-resolves just the
-# specifiers that changed, because CI and the Dockerfile install with --frozen-lockfile.
+# package.json ranges are the only intentional dependency edit. After pnpm re-resolves the
+# lockfile (CI and the Dockerfile install with --frozen-lockfile), the job runs `pnpm format`
+# so a prettier / prettier-plugin-svelte bump can reformat sources instead of failing lint.
 #
 # Release policy: only bump / tag / GitHub Release / Docker when a package that reaches the
 # image moved. That includes the devDependencies SvelteKit bundles into build/ (svelte, kit,
@@ -92,6 +93,12 @@ jobs:
         if: steps.changes.outputs.changed == 'true'
         run: pnpm install --no-frozen-lockfile
 
+      # prettier-plugin-svelte (and prettier) can change markup layout on a minor bump;
+      # accept those reformats here so lint --check does not fail the release.
+      - name: Format after formatter upgrades
+        if: steps.changes.outputs.changed == 'true'
+        run: pnpm format
+
       - name: Lint
         if: steps.changes.outputs.changed == 'true'
         run: pnpm lint
@@ -135,6 +142,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add package.json pnpm-lock.yaml
+          # Include Prettier reformats from a formatter-plugin bump (see Format step).
+          git add -u
           if [ "${RELEASE}" = "true" ]; then
             git commit -m "chore(deps): nightly in-major dependency update (v${VERSION})"
           else
