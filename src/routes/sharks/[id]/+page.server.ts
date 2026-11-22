@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import { dataset } from '#lib/server/data';
+import { dataset, nurseryRoute } from '#lib/server/data';
 import { fulton, round, siteName } from '#lib/server/analytics/common';
 import type { PageServerLoad } from './$types';
 
@@ -43,13 +43,15 @@ export const load: PageServerLoad = ({ params }) => {
 			relMass: l.relMassKg,
 			notes: l.notes
 		})),
-		// Consecutive captures at different nurseries, in order (#173).
+		// Consecutive captures at different nurseries, in order (#173, #183).
 		moves: caps.flatMap((c, i) => {
 			const prev = caps[i - 1];
 			if (!prev || !prev.siteId || !c.siteId || prev.siteId === c.siteId) return [];
 			const a = d.siteById.get(prev.siteId);
 			const b = d.siteById.get(c.siteId);
 			if (a?.lat == null || a.lon == null || b?.lat == null || b.lon == null) return [];
+			const route = nurseryRoute(d, prev.siteId, c.siteId);
+			const km = route?.km;
 			return [
 				{
 					id: `move-${i}`,
@@ -57,7 +59,9 @@ export const load: PageServerLoad = ({ params }) => {
 					label: `${a.name} → ${b.name}`,
 					from: { lat: a.lat, lon: a.lon },
 					to: { lat: b.lat, lon: b.lon },
-					sub: `Capture ${i} to ${i + 1}: ${prev.date ?? '?'} → ${c.date ?? '?'}`
+					path: route?.coordinates,
+					km: km != null ? round(km, 1) : null,
+					sub: `Capture ${i} to ${i + 1}: ${prev.date ?? '?'} → ${c.date ?? '?'}${km != null ? ` · ≥ ${round(km, 1)} km by water` : ''}`
 				}
 			];
 		}),
