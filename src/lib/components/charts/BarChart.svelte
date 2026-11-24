@@ -146,8 +146,10 @@
 					y={h - m.bottom + 15}
 					text-anchor="middle"
 					font-size="11"
-					fill="var(--muted)">{valueFormat(t)}</text
+					fill="var(--muted)"
 				>
+					{valueFormat(t)}
+				</text>
 			{:else}
 				<line x1={m.left} x2={width - m.right} y1={vScale(t)} y2={vScale(t)} stroke="var(--grid)" />
 				<text
@@ -156,8 +158,10 @@
 					dy="0.32em"
 					text-anchor="end"
 					font-size="11"
-					fill="var(--muted)">{valueFormat(t)}</text
+					fill="var(--muted)"
 				>
+					{valueFormat(t)}
+				</text>
 			{/if}
 		{/each}
 		{#each categories as cat, i (i)}
@@ -262,8 +266,9 @@
 								dy="0.32em"
 								font-size="11"
 								fill="var(--ink-2)"
-								>{valueFormat(stacked ? totals[i] : (series[0].values[i] ?? 0))}</text
 							>
+								{valueFormat(stacked ? totals[i] : (series[0].values[i] ?? 0))}
+							</text>
 						{:else}
 							<text
 								x={c0 + groupW / 2}
@@ -271,8 +276,9 @@
 								text-anchor="middle"
 								font-size="10.5"
 								fill="var(--ink-2)"
-								>{valueFormat(stacked ? totals[i] : (series[0].values[i] ?? 0))}</text
 							>
+								{valueFormat(stacked ? totals[i] : (series[0].values[i] ?? 0))}
+							</text>
 						{/if}
 					{/if}
 				</svelte:element>
@@ -283,23 +289,29 @@
 						dy="0.32em"
 						text-anchor="end"
 						font-size="11.5"
-						fill="var(--ink-2)">{cat}</text
+						fill="var(--ink-2)"
 					>
+						{cat}
+					</text>
 				{:else if rotate}
 					<text
 						transform={`translate(${m.left + band * i + band / 2} ${h - m.bottom + 10}) rotate(-40)`}
 						text-anchor="end"
 						font-size="10.5"
-						fill="var(--muted)">{cat}</text
+						fill="var(--muted)"
 					>
+						{cat}
+					</text>
 				{:else}
 					<text
 						x={m.left + band * i + band / 2}
 						y={h - m.bottom + 16}
 						text-anchor="middle"
 						font-size="11"
-						fill="var(--muted)">{cat}</text
+						fill="var(--muted)"
 					>
+						{cat}
+					</text>
 				{/if}
 			</g>
 		{/each}
@@ -312,8 +324,10 @@
 					transform={`translate(12 ${(h - m.bottom + m.top) / 2}) rotate(-90)`}
 					text-anchor="middle"
 					font-size="11"
-					fill="var(--ink-2)">{yLabel}</text
+					fill="var(--ink-2)"
 				>
+					{yLabel}
+				</text>
 			{/if}
 		{/if}
 	</svg>

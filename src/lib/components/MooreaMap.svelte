@@ -266,8 +266,10 @@
 					stroke="var(--surface)"
 					stroke-width="3"
 					paint-order="stroke"
-					pointer-events="none">{p.label}</text
+					pointer-events="none"
 				>
+					{p.label}
+				</text>
 			{/each}
 		{/if}
 	</svg>

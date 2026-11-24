@@ -19,11 +19,11 @@
 		out here, and a very shallow logger may be out of the water at low tide.
 	</p>
 	{#if site}
-		<label
-			>Nursery <select value={site.id} onchange={(e) => (selected = e.currentTarget.value)}
-				>{#each calendar.sites as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select
-			></label
-		>
+		<label>
+			Nursery <select value={site.id} onchange={(e) => (selected = e.currentTarget.value)}>
+				{#each calendar.sites as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+			</select>
+		</label>
 		<ChartCard
 			title={`Month and hour: ${site.name}`}
 			subtitle={`Mean °C, Moorea local time (UTC−10). Every nursery uses the same ${lo}–${hi} °C colour scale.${site.first && site.last ? ` Logged on ${num(site.days)} days, ${monthYear(site.first)} to ${monthYear(site.last)}.` : ''}`}

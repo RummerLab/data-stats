@@ -129,9 +129,9 @@
 	>
 		{#each xt as t (t)}
 			<line x1={sx(t)} x2={sx(t)} y1={m.top} y2={h - m.bottom} stroke="var(--grid)" />
-			<text x={sx(t)} y={h - m.bottom + 15} text-anchor="middle" font-size="11" fill="var(--muted)"
-				>{format(t)}</text
-			>
+			<text x={sx(t)} y={h - m.bottom + 15} text-anchor="middle" font-size="11" fill="var(--muted)">
+				{format(t)}
+			</text>
 		{/each}
 		<line
 			x1={sx(ref)}
@@ -172,9 +172,9 @@
 				{/each}
 				<text x={m.left - 8} y={cy} text-anchor="end" font-size="11.5" fill="var(--ink-2)">
 					{#each labels[i] as line, j (j)}
-						<tspan x={m.left - 8} dy={j ? '1.15em' : labels[i].length > 1 ? '-0.25em' : '0.32em'}
-							>{line}</tspan
-						>
+						<tspan x={m.left - 8} dy={j ? '1.15em' : labels[i].length > 1 ? '-0.25em' : '0.32em'}>
+							{line}
+						</tspan>
 					{/each}
 					<title>{row}</title>
 				</text>
@@ -186,8 +186,10 @@
 				y={h - 6}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--ink-2)">{xLabel}</text
+				fill="var(--ink-2)"
 			>
+				{xLabel}
+			</text>
 		{/if}
 	</svg>
 	<Tip {tip} {width} />

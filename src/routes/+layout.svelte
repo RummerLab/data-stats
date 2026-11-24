@@ -101,14 +101,14 @@
 			onclick={() => (menuOpen = !menuOpen)}
 		>
 			<span class="sr">Menu</span>
-			<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"
-				><path
+			<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true">
+				<path
 					d="M4 7h16M4 12h16M4 17h16"
 					stroke="currentColor"
 					stroke-width="2"
 					stroke-linecap="round"
-				/></svg
-			>
+				/>
+			</svg>
 		</button>
 		<nav id="site-nav" class:open={menuOpen} aria-label="Main">
 			{#each NAV as group (group.label)}
@@ -131,21 +131,21 @@
 				title={`Theme: ${theme}`}
 			>
 				{#if theme === 'dark'}
-					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"
-						><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" /></svg
-					>
+					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+						<path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor" />
+					</svg>
 				{:else if theme === 'light'}
-					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"
-						><circle cx="12" cy="12" r="4.5" fill="currentColor" /><path
+					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+						<circle cx="12" cy="12" r="4.5" fill="currentColor" /><path
 							d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"
 							stroke="currentColor"
 							stroke-width="2"
 							stroke-linecap="round"
-						/></svg
-					>
+						/>
+					</svg>
 				{:else}
-					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"
-						><rect
+					<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+						<rect
 							x="3"
 							y="4"
 							width="18"
@@ -154,13 +154,8 @@
 							fill="none"
 							stroke="currentColor"
 							stroke-width="2"
-						/><path
-							d="M8 20h8"
-							stroke="currentColor"
-							stroke-width="2"
-							stroke-linecap="round"
-						/></svg
-					>
+						/><path d="M8 20h8" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+					</svg>
 				{/if}
 			</button>
 		</nav>

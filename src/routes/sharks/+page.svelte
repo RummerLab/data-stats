@@ -33,15 +33,15 @@
 	</header>
 
 	<div class="filters card">
-		<label
-			>Search tag or nursery <input
+		<label>
+			Search tag or nursery <input
 				type="search"
 				bind:value={q}
 				placeholder="e.g. 9550000 or Tiki"
-			/></label
-		>
-		<label
-			>Species
+			/>
+		</label>
+		<label>
+			Species
 			<select bind:value={species}>
 				<option value="all">All</option>
 				<option value="Cm">{speciesName('Cm')}</option>
@@ -49,9 +49,9 @@
 				<option value="Nf">{speciesName('Nf')}</option>
 			</select>
 		</label>
-		<label class="cb"
-			><input type="checkbox" bind:checked={recapOnly} /> Caught more than once</label
-		>
+		<label class="cb">
+			<input type="checkbox" bind:checked={recapOnly} /> Caught more than once
+		</label>
 		<span class="muted small">{num(filtered.length)} sharks</span>
 	</div>
 

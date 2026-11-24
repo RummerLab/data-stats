@@ -14,9 +14,9 @@
 		<p class="eyebrow">About</p>
 		<h1>About &amp; methods</h1>
 		<p class="lede">
-			Physioshark Data is an open window onto the <a href="https://physioshark.org/"
-				>Physioshark project</a
-			>'s shark-nursery surveys in Mo'orea, French Polynesia, led by Dr Jodie Rummer (RummerLab,
+			Physioshark Data is an open window onto the <a href="https://physioshark.org/">
+				Physioshark project
+			</a>'s shark-nursery surveys in Mo'orea, French Polynesia, led by Dr Jodie Rummer (RummerLab,
 			James Cook University) in collaboration with CRIOBE. Since 2013, field teams have set gillnets
 			across Mo'orea's shallow nurseries each pupping season to catch, measure, tag and release
 			newborn blacktip reef sharks and sicklefin lemon sharks.
@@ -72,9 +72,9 @@
 				<b>School holidays:</b> French Polynesia's official school calendars: the Polynesian
 				government's calendar orders for 2013-14 to 2016-17 (collèges and lycées, archived from
 				education.pf), then the French Ministry of Education's
-				<a href="https://www.data.gouv.fr/datasets/le-calendrier-scolaire/"
-					>Le calendrier scolaire</a
-				>
+				<a href="https://www.data.gouv.fr/datasets/le-calendrier-scolaire/">
+					Le calendrier scolaire
+				</a>
 				open data (Licence Ouverte 2.0).
 			</li>
 			<li>
@@ -166,9 +166,9 @@
 			{/each}
 		</ul>
 		<p>
-			Full and up-to-date lists: <a href="https://physioshark.org/#publications"
-				>Physioshark publications</a
-			>
+			Full and up-to-date lists: <a href="https://physioshark.org/#publications">
+				Physioshark publications
+			</a>
 			and <a href="https://rummerlab.com/publications">RummerLab publications</a>.
 		</p>
 	</section>

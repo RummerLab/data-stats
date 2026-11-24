@@ -65,13 +65,13 @@
 	<MeasurementCoverage data={data.coverage} />
 
 	<section class="section card">
-		<label class="filter"
-			>Category
+		<label class="filter">
+			Category
 			<select bind:value={category}>
 				<option value="all">All ({data.issues.length})</option>
-				{#each [...new Set(data.issues.map((i) => i.category))] as c (c)}<option value={c}
-						>{c}</option
-					>{/each}
+				{#each [...new Set(data.issues.map((i) => i.category))] as c (c)}<option value={c}>
+						{c}
+					</option>{/each}
 			</select>
 		</label>
 		<DataTable

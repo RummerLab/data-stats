@@ -39,9 +39,9 @@
 		<p class="eyebrow">Environment</p>
 		<h1>Human pressure</h1>
 		<p class="lede">
-			Ten nurseries were scored for three human pressures by Bouyoucos et al. (2024, <i
-				>Marine and Freshwater Research</i
-			>
+			Ten nurseries were scored for three human pressures by Bouyoucos et al. (2024, <i>
+				Marine and Freshwater Research
+			</i>
 			75, MF24080): relative fin-fish fishing effort (a proxy for bycatch, not shark fishing, banned since
 			2012), direct human impact (people moving around homes and tourism sites) and coastal artificialisation
 			(walls and embankments). The scores are the paper's own, from its
@@ -206,9 +206,9 @@
 			</ChartCard>
 			<p class="muted small">
 				Tourism figure: Institut de la statistique de la Polynésie française,
-				<a href="https://www.ispf.pf/publication/le-bilan-du-tourisme-de-l-annee-2020"
-					>Bilan du tourisme 2020</a
-				>. An island-level tourism time series is not yet included on this site.
+				<a href="https://www.ispf.pf/publication/le-bilan-du-tourisme-de-l-annee-2020">
+					Bilan du tourisme 2020
+				</a>. An island-level tourism time series is not yet included on this site.
 			</p>
 		</section>
 	{/if}

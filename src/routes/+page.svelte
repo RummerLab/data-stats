@@ -184,9 +184,9 @@
 		<section class="section">
 			<h2>A few findings</h2>
 			<p>
-				Computed live from the logs; they update when a new season is added. <a href="/findings"
-					>All findings →</a
-				>
+				Computed live from the logs; they update when a new season is added. <a href="/findings">
+					All findings →
+				</a>
 			</p>
 			<div class="grid-3">
 				{#each data.findings as f (f.id)}<FindingCard finding={f} />{/each}

@@ -111,8 +111,10 @@
 				dy="0.32em"
 				text-anchor="end"
 				font-size="11"
-				fill="var(--ink-2)">{yl}</text
+				fill="var(--ink-2)"
 			>
+				{yl}
+			</text>
 			{#each xLabels as _, c (c)}
 				{@const v = values[r]?.[c] ?? null}
 				{@const f = fill(v)}
@@ -139,8 +141,10 @@
 						text-anchor="middle"
 						font-size="10"
 						fill={f.ink}
-						pointer-events="none">{format(v)}</text
+						pointer-events="none"
 					>
+						{format(v)}
+					</text>
 				{/if}
 			{/each}
 		{/each}
@@ -150,16 +154,20 @@
 					transform={`translate(${m.left + c * cellW + cellW / 2} ${m.top + yLabels.length * cellH + 10}) rotate(-45)`}
 					text-anchor="end"
 					font-size="10.5"
-					fill="var(--muted)">{xl}</text
+					fill="var(--muted)"
 				>
+					{xl}
+				</text>
 			{:else if cellW > 16 || c % 2 === 0}
 				<text
 					x={m.left + c * cellW + cellW / 2}
 					y={m.top + yLabels.length * cellH + 16}
 					text-anchor="middle"
 					font-size="10.5"
-					fill="var(--muted)">{xl}</text
+					fill="var(--muted)"
 				>
+					{xl}
+				</text>
 			{/if}
 		{/each}
 	</svg>

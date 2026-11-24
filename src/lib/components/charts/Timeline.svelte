@@ -67,8 +67,10 @@
 				y={h - m.bottom + 16}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--muted)">{t.label}</text
+				fill="var(--muted)"
 			>
+				{t.label}
+			</text>
 		{/each}
 		{#each rows as r, i (r.label + i)}
 			<text
@@ -77,8 +79,10 @@
 				dy="0.32em"
 				text-anchor="end"
 				font-size="11"
-				fill="var(--ink-2)">{r.label}</text
+				fill="var(--ink-2)"
 			>
+				{r.label}
+			</text>
 			{#each r.items as it, k (k)}
 				<rect
 					x={sx(it.start)}

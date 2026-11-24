@@ -66,8 +66,9 @@
 				<tr>
 					{#each columns as c (c.key)}
 						<td class:num={c.num}>
-							{#if c.href && r[c.href]}<a href={String(r[c.href])}>{fmt(r[c.key], c)}</a
-								>{:else}{fmt(r[c.key], c)}{/if}
+							{#if c.href && r[c.href]}<a href={String(r[c.href])}>
+									{fmt(r[c.key], c)}
+								</a>{:else}{fmt(r[c.key], c)}{/if}
 						</td>
 					{/each}
 				</tr>

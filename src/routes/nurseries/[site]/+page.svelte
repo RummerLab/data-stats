@@ -84,21 +84,22 @@
 					<tbody>
 						<tr><th>Fishing effort</th><td class="num">{num(s.fishingEffort)}</td></tr>
 						<tr><th>Direct human impact</th><td class="num">{num(s.humanImpact, 3)}</td></tr>
-						<tr
-							><th>Coastal artificialisation</th><td class="num">{num(s.artificialisation, 3)}</td
-							></tr
-						>
-						<tr
-							><th>Composite (0–1)</th><td class="num"
-								>{num(s.pressureComposite, 2)} · {s.pressureTier}</td
-							></tr
-						>
+						<tr>
+							<th>Coastal artificialisation</th><td class="num">{num(s.artificialisation, 3)}</td>
+						</tr>
+						<tr>
+							<th>Composite (0–1)</th><td class="num">
+								{num(s.pressureComposite, 2)} · {s.pressureTier}
+							</td>
+						</tr>
 					</tbody>
 				</table>
 				<p class="small muted">
 					The paper found no significant effect of these pressures on neonate abundance. <a
-						href="/pressure">More →</a
+						href="/pressure"
 					>
+						More →
+					</a>
 				</p>
 			{:else}
 				<p class="muted">Not scored in the pressure ranking.</p>
@@ -232,8 +233,10 @@
 			/>
 			<p class="muted small">
 				HOBO deployments as recorded in the season workbooks. The logged temperatures are on the <a
-					href="/water-quality">water-quality page</a
-				>.
+					href="/water-quality"
+				>
+					water-quality page
+				</a>.
 			</p>
 		</section>
 	{/if}

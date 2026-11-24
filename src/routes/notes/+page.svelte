@@ -47,15 +47,15 @@
 			/>
 		</ChartCard>
 		<div class="card filters">
-			<label
-				>Search <input
+			<label>
+				Search <input
 					type="search"
 					bind:value={q}
 					placeholder="e.g. ray, rain, tourists, pregnant"
-				/></label
-			>
-			<label
-				>Kind
+				/>
+			</label>
+			<label>
+				Kind
 				<select bind:value={kind}>
 					<option value="all">All</option>
 					<option value="set">Set log</option>
@@ -66,8 +66,8 @@
 					<option value="prey">Prey</option>
 				</select>
 			</label>
-			<label
-				>Season
+			<label>
+				Season
 				<select bind:value={s}>
 					<option value="all">All</option>
 					{#each data.seasons as x (x)}<option value={x}>{season(x)}</option>{/each}
@@ -80,9 +80,9 @@
 	<ul class="notes">
 		{#each filtered.slice(0, limit) as n, i (i)}
 			<li>
-				<span class="meta"
-					>{date(n.date)} · {n.site} · {n.kind}{n.species ? ` · ${n.species}` : ''}</span
-				>
+				<span class="meta">
+					{date(n.date)} · {n.site} · {n.kind}{n.species ? ` · ${n.species}` : ''}
+				</span>
 				<span>{n.text}</span>
 			</li>
 		{/each}

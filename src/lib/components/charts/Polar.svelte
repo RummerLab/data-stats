@@ -93,8 +93,10 @@
 				dy="0.32em"
 				text-anchor="middle"
 				font-size="10.5"
-				fill="var(--ink-2)">{s.label}</text
+				fill="var(--ink-2)"
 			>
+				{s.label}
+			</text>
 		{/each}
 	</svg>
 	<Tip {tip} {width} />

@@ -177,9 +177,9 @@
 				stroke="var(--ink)"
 				stroke-dasharray="3 3"
 			/>
-			<text x={sx(mk.x)} y={m.top - 6} text-anchor="middle" font-size="10.5" fill="var(--ink-2)"
-				>{mk.label}</text
-			>
+			<text x={sx(mk.x)} y={m.top - 6} text-anchor="middle" font-size="10.5" fill="var(--ink-2)">
+				{mk.label}
+			</text>
 		{/each}
 		{#each yt as t (t)}
 			<line x1={m.left} x2={width - m.right} y1={sy(t)} y2={sy(t)} stroke="var(--grid)" />
@@ -189,8 +189,10 @@
 				dy="0.32em"
 				text-anchor="end"
 				font-size="11"
-				fill="var(--muted)">{yFormat(t)}</text
+				fill="var(--muted)"
 			>
+				{yFormat(t)}
+			</text>
 		{/each}
 		<line
 			x1={m.left}
@@ -206,8 +208,10 @@
 					y={height - m.bottom + 16}
 					text-anchor="middle"
 					font-size="11"
-					fill="var(--muted)">{t.label}</text
+					fill="var(--muted)"
 				>
+					{t.label}
+				</text>
 			{/if}
 		{/each}
 		{#each refs as r (r.label)}
@@ -224,8 +228,10 @@
 				y={sy(r.y) - 4}
 				text-anchor="end"
 				font-size="10.5"
-				fill="var(--ink-2)">{r.label}</text
+				fill="var(--ink-2)"
 			>
+				{r.label}
+			</text>
 		{/each}
 		{#each series as s (s.name)}
 			{#if s.area}
@@ -284,8 +290,10 @@
 				transform={`translate(12 ${(height - m.bottom + m.top) / 2}) rotate(-90)`}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--ink-2)">{yLabel}</text
+				fill="var(--ink-2)"
 			>
+				{yLabel}
+			</text>
 		{/if}
 		{#if xLabel}
 			<text
@@ -293,8 +301,10 @@
 				y={height - 6}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--ink-2)">{xLabel}</text
+				fill="var(--ink-2)"
 			>
+				{xLabel}
+			</text>
 		{/if}
 	</svg>
 	<Tip {tip} {width} />

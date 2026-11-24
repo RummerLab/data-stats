@@ -106,8 +106,10 @@
 				dy="0.32em"
 				text-anchor="end"
 				font-size="11"
-				fill="var(--muted)">{compact(t)}</text
+				fill="var(--muted)"
 			>
+				{compact(t)}
+			</text>
 		{/each}
 		{#each edges.slice(0, -1) as e0, i (i)}
 			{@const x0 = sx(e0) + 1}
@@ -170,8 +172,10 @@
 				y={height - m.bottom + 16}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--muted)">{xFormat(t)}</text
+				fill="var(--muted)"
 			>
+				{xFormat(t)}
+			</text>
 		{/each}
 		{#each markers as mk (mk.label)}
 			<line
@@ -182,17 +186,19 @@
 				stroke="var(--ink)"
 				stroke-dasharray="3 3"
 			/>
-			<text x={sx(mk.x)} y={m.top - 5} text-anchor="middle" font-size="10.5" fill="var(--ink-2)"
-				>{mk.label}</text
-			>
+			<text x={sx(mk.x)} y={m.top - 5} text-anchor="middle" font-size="10.5" fill="var(--ink-2)">
+				{mk.label}
+			</text>
 		{/each}
 		{#if yLabel}
 			<text
 				transform={`translate(12 ${(height - m.bottom + m.top) / 2}) rotate(-90)`}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--ink-2)">{yLabel}</text
+				fill="var(--ink-2)"
 			>
+				{yLabel}
+			</text>
 		{/if}
 		{#if xLabel}
 			<text
@@ -200,8 +206,10 @@
 				y={height - 6}
 				text-anchor="middle"
 				font-size="11"
-				fill="var(--ink-2)">{xLabel}</text
+				fill="var(--ink-2)"
 			>
+				{xLabel}
+			</text>
 		{/if}
 	</svg>
 	<Tip {tip} {width} />

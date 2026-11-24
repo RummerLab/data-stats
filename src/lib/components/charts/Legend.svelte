@@ -10,8 +10,8 @@
 		{#each items as it (it.label)}
 			<li>
 				{#if it.kind === 'line' || it.kind === 'dash'}
-					<svg width="18" height="10" aria-hidden="true"
-						><line
+					<svg width="18" height="10" aria-hidden="true">
+						<line
 							x1="1"
 							x2="17"
 							y1="5"
@@ -20,12 +20,12 @@
 							stroke-width="2"
 							stroke-linecap="round"
 							stroke-dasharray={it.kind === 'dash' ? '4 3' : undefined}
-						/></svg
-					>
+						/>
+					</svg>
 				{:else if it.kind === 'dot'}
-					<svg width="10" height="10" aria-hidden="true"
-						><circle cx="5" cy="5" r="4" fill={it.color} /></svg
-					>
+					<svg width="10" height="10" aria-hidden="true">
+						<circle cx="5" cy="5" r="4" fill={it.color} />
+					</svg>
 				{:else}
 					<span class="swatch" style:background={it.color}></span>
 				{/if}

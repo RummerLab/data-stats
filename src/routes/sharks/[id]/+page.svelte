@@ -209,9 +209,9 @@
 								<strong>Swimming:</strong>
 								{fromStop.site} → {toStop.site}
 								{#if activeMove.km != null}
-									· <strong
-										>{num(activeMove.km * legFraction, 1)} of {num(activeMove.km, 1)} km by water</strong
-									>
+									· <strong>
+										{num(activeMove.km * legFraction, 1)} of {num(activeMove.km, 1)} km by water
+									</strong>
 									({Math.round(legFraction * 100)}%)
 								{/if}
 							{:else if progress >= 0.99}
