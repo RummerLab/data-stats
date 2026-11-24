@@ -23,7 +23,7 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     # A full run took 48 minutes on 4 Nov 2026 with NOAA ERDDAP stalls and 429 backoff possible on top.
-    timeout-minutes: 120
+    timeout-minutes: 180
     outputs:
       version: ${{ steps.version.outputs.version }}
       changed: ${{ steps.diff.outputs.changed }}
