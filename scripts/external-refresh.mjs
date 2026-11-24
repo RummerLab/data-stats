@@ -22,7 +22,10 @@ export function createGet({
 					}
 				});
 				if (res.ok) return await (json ? res.json() : res.text());
-				error = new Error(`${res.status} ${url}`);
+				// Name the host that answered when a redirect moved the request elsewhere.
+				error = new Error(
+					`${res.status} ${url}${res.redirected && res.url !== url ? ` (via ${res.url})` : ''}`
+				);
 				error.status = res.status;
 				if (res.status === 429) {
 					const value = res.headers.get('retry-after');

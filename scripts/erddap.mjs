@@ -20,6 +20,14 @@ export function chunks(start, end, lagDays = 0) {
 	return out;
 }
 
+/** [first, last] of each run of `size` published time steps (requests by step, not by date). */
+export function groupTimes(times, size) {
+	const out = [];
+	for (let i = 0; i < times.length; i += size)
+		out.push([times[i], times[Math.min(i + size, times.length) - 1]]);
+	return out;
+}
+
 /** Fetch yearly ERDDAP chunks; never publish a silently truncated historical series. */
 export async function readSeries({
 	base,
@@ -78,7 +86,7 @@ export async function readSeries({
 }
 
 /** OISST must be continuous; allow two weeks for the final product plus three days for its ERDDAP mirror. */
-export function validateDaily(rows, variable, start, end) {
+export function validateDaily(rows, variable, start, end, { pendingAfter } = {}) {
 	const dates = [...rows.keys()].sort();
 	const last = dates.at(-1);
 	const day = 86400000;
@@ -86,6 +94,9 @@ export function validateDaily(rows, variable, start, end) {
 		throw new Error('OISST: stale or absent series');
 	for (let t = Date.parse(start); t <= Date.parse(last); t += day) {
 		const date = new Date(t).toISOString().slice(0, 10);
+		// A hole after the mirror's newest day can't be recovered yet: it stays blank until a
+		// later run. Older holes are outages.
+		if (pendingAfter && date > pendingAfter) continue;
 		if (!Number.isFinite(rows.get(date)?.[variable]))
 			throw new Error(`OISST: missing daily value ${date}`);
 	}

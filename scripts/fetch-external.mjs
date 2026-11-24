@@ -29,7 +29,7 @@ import { gzipSync } from 'node:zlib';
 
 import { createGet, refreshJobs, sleep, WEATHER_CHUNK_DELAY_MS } from './external-refresh.mjs';
 
-import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
+import { readSeries, validateDaily, chunks, groupTimes, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = process.env.EXTERNAL_DIR || join(root, 'external');
@@ -149,8 +149,10 @@ async function erddapSeries(base, dataset, vars, lat, lon, start, end, zlev = fa
 
 // OISST uses 0–360° longitude and a surface zlev dimension.
 async function fetchOisst(end) {
+	// upwell only redirects this dataset to coastwatch.pfeg; asking there directly skips a host
+	// that answered GitHub's runners with 403 on 24 Nov 2026.
 	const rows = await erddapSeries(
-		'https://upwell.pfeg.noaa.gov/erddap',
+		'https://coastwatch.pfeg.noaa.gov/erddap',
 		'ncdcOisst21Agg',
 		['sst'],
 		-17.625,
@@ -162,26 +164,72 @@ async function fetchOisst(end) {
 	);
 	// The legacy aggregation omits some archived dates. Recover those from NOAA's
 	// complete OISST v2.1 final-product mirror, never interpolate or invent values.
+	// If upwell refuses, a gap day keeps the value an earlier run recovered from that mirror.
+	const previous = previousOisst();
+	const mirror = 'https://upwell.pfeg.noaa.gov/erddap/griddap/oisst_rclone.csv';
+	// The mirror lags too: a hole after its newest day stays blank until a later run fills it.
+	let mirrorLast;
+	try {
+		const newest = (await get(`${mirror}?time%5B(last)%5D`)).trim().split(/\r?\n/)[2] ?? '';
+		if (/^\d{4}-\d{2}-\d{2}T/.test(newest)) mirrorLast = newest.slice(0, 10);
+	} catch (err) {
+		console.warn(`[external] oisst_rclone: newest day unknown (${err.message})`);
+	}
 	const last = [...rows.keys()].sort().at(-1);
 	for (let t = Date.parse(START); t <= Date.parse(last); t += 86400000) {
 		const date = new Date(t).toISOString().slice(0, 10);
 		if (rows.get(date)?.sst != null) continue;
-		const recovered = await readSeries({
-			base: 'https://upwell.pfeg.noaa.gov/erddap',
-			dataset: 'oisst_rclone',
-			vars: ['sst'],
-			lat: -17.625,
-			lon: 210.125,
-			zlev: true,
-			chunks: [[date, date]],
-			latest: false,
-			get,
-			sleep
-		});
-		rows.set(date, recovered.get(date));
+		if (mirrorLast && date > mirrorLast) {
+			const kept = previous.get(date);
+			console.warn(
+				`[external] OISST ${date}: not in the mirror yet (newest ${mirrorLast}); ${kept == null ? 'left blank' : 'kept previous snapshot value'}`
+			);
+			rows.set(date, { sst: kept ?? null });
+			continue;
+		}
+		let recovered;
+		try {
+			const series = await readSeries({
+				base: 'https://upwell.pfeg.noaa.gov/erddap',
+				dataset: 'oisst_rclone',
+				vars: ['sst'],
+				lat: -17.625,
+				lon: 210.125,
+				zlev: true,
+				chunks: [[date, date]],
+				latest: false,
+				get,
+				sleep
+			});
+			recovered = series.get(date);
+		} catch (err) {
+			if (!previous.has(date)) throw err;
+			console.warn(`[external] OISST ${date}: kept previous snapshot value (${err.message})`);
+			recovered = { sst: previous.get(date) };
+		}
+		rows.set(date, recovered);
 	}
-	validateDaily(rows, 'sst', START, end);
+	validateDaily(rows, 'sst', START, end, { pendingAfter: mirrorLast });
 	return rows;
+}
+
+/** OISST values already published in external/ocean-daily.csv, by date. */
+function previousOisst() {
+	const out = new Map();
+	let lines;
+	try {
+		lines = readFileSync(join(OUT, 'ocean-daily.csv'), 'utf8').trim().split(/\r?\n/);
+	} catch {
+		return out;
+	}
+	const col = lines.shift().split(',').indexOf('oisst');
+	if (col < 0) return out;
+	for (const line of lines) {
+		const cells = line.split(',');
+		const v = cells[col]?.trim() ? Number(cells[col]) : NaN;
+		if (Number.isFinite(v)) out.set(cells[0], v);
+	}
+	return out;
 }
 
 // Repair only SST without refreshing the independent CRW and wave snapshots.
@@ -353,22 +401,18 @@ async function chlorophyll() {
 	const box = '%5B(0.0)%5D%5B(-17.20):1:(-17.85)%5D%5B(-150.15):1:(-149.50)%5D';
 	const cells = new Map(); // "lat|lon" → [lat, lon]
 	const weeks = new Map(); // date → Map("lat|lon" → mg m⁻³)
-	const all = chunks('2013-07-28', daysAgo(0));
-	for (const [s, e] of all) {
-		// Science-quality weeks lag by a month or more, so the last chunk ends at `last`, and in
-		// January it may have no weeks yet. Any other failure keeps the old file.
-		const final = e === all[all.length - 1][1];
-		let text;
-		try {
-			text = await get(
-				`${base}?chlor_a%5B(${s}T00:00:00Z):1:(${final ? 'last' : `${e}T23:59:59Z`})%5D${box}`,
-				{ retry404: !final }
-			);
-		} catch (err) {
-			if (!final || err.status !== 404) throw err;
-			console.warn(`[external] chlorophyll ${s}…: ${err.message}`);
-			continue;
-		}
+	// Two weeks per request: CoastWatch's gateway gives up after about 20 s (502). Each week costs
+	// the server 2–4 s, more when it is busy: a half-year always failed and single months took
+	// 8–17 s, so one still failed five times in a row. The week list comes first (ERDDAP answers
+	// 404 to an end past its newest week). Any failure keeps the old file.
+	const times = (await get(`${base}?time%5B(2013-07-28T00:00:00Z):1:(last)%5D`))
+		.trim()
+		.split(/\r?\n/)
+		.slice(2);
+	if (!times.length || !times.every((t) => /^\d{4}-\d{2}-\d{2}T[\d:]+Z$/.test(t)))
+		throw new Error('chlorophyll: unreadable week list');
+	for (const [s, e] of groupTimes(times, 2)) {
+		const text = await get(`${base}?chlor_a%5B(${s}):1:(${e})%5D${box}`, { retry404: true });
 		for (const line of text.trim().split('\n').slice(2)) {
 			const [time, , lat, lon, chl] = line.split(',');
 			const key = `${lat}|${lon}`;

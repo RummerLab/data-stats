@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readSeries, validateDaily, chunks, OISST_MAX_LAG_DAYS } from './erddap.mjs';
+import { readSeries, validateDaily, chunks, groupTimes, OISST_MAX_LAG_DAYS } from './erddap.mjs';
 const csv = (value) =>
 	`time,zlev,latitude,longitude,sst\nUTC,m,degrees_north,degrees_east,degree_C\n2013-08-01T12:00:00Z,0,-17.625,210.125,${value}\n`;
 const options = {
@@ -90,6 +90,19 @@ test('daily validation rejects holes and stale tails', () => {
 	assert.doesNotThrow(() => validateDaily(rows, 'sst', '2013-08-01', '2013-08-04'));
 });
 
+test('daily validation allows only holes the mirror has not published yet', () => {
+	const rows = new Map([
+		['2013-08-01', { sst: 25 }],
+		['2013-08-02', { sst: null }],
+		['2013-08-03', { sst: 26 }]
+	]);
+	const check = (pendingAfter) =>
+		validateDaily(rows, 'sst', '2013-08-01', '2013-08-04', { pendingAfter });
+	assert.doesNotThrow(() => check('2013-08-01'));
+	assert.throws(() => check('2013-08-02'), /missing daily value 2013-08-02/);
+	assert.throws(() => check(undefined), /missing daily/);
+});
+
 test('bounded mirror recovery requests only the missing date', async () => {
 	let url;
 	await readSeries({
@@ -128,3 +141,13 @@ for (const end of ['2027-01-01', '2027-01-17', '2027-01-18']) {
 		assert.equal([...rows.keys()].sort().at(-1), last);
 	});
 }
+
+test('time groups cover every published step once, with a short last group', () => {
+	const times = ['2023-06-04', '2023-06-11', '2023-06-18', '2023-06-25', '2023-07-09'];
+	assert.deepEqual(groupTimes(times, 2), [
+		['2023-06-04', '2023-06-11'],
+		['2023-06-18', '2023-06-25'],
+		['2023-07-09', '2023-07-09']
+	]);
+	assert.deepEqual(groupTimes([], 2), []);
+});
